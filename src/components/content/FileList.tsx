@@ -10,8 +10,10 @@ import type { ContentFile } from '../../models/content';
 import { formatByteSize } from '../../utils/format';
 import { buildViewerPath } from '../../utils/links';
 import { canPlayAudio } from '../../viewers/audio/isAudioFile';
+import { canReadBook } from '../../viewers/book/isBookFile';
 import { canViewImage } from '../../viewers/image/isImageFile';
 import { canReadPdf } from '../../viewers/pdf/isPdfFile';
+import { canPlayVideo } from '../../viewers/video/isVideoFile';
 import styles from './FileList.module.css';
 
 interface FileListProps {
@@ -25,8 +27,8 @@ function describe(file: ContentFile): string {
     .join(' · ');
 }
 
-function viewerVerb(file: ContentFile): 'Read' | 'View' | 'Listen' | undefined {
-  if (canReadPdf(file)) {
+function viewerVerb(file: ContentFile): 'Read' | 'View' | 'Listen' | 'Watch' | undefined {
+  if (canReadPdf(file) || canReadBook(file)) {
     return 'Read';
   }
 
@@ -36,6 +38,10 @@ function viewerVerb(file: ContentFile): 'Read' | 'View' | 'Listen' | undefined {
 
   if (canPlayAudio(file)) {
     return 'Listen';
+  }
+
+  if (canPlayVideo(file)) {
+    return 'Watch';
   }
 
   return undefined;
@@ -65,8 +71,9 @@ function viewerOpenLink(file: ContentFile) {
  * Restriction is stated per file rather than per item: an item can be readable while its files are
  * not downloadable, and a file that cannot be fetched shows why instead of a disabled control.
  * Downloadable PDFs get a Read link into the in-app reader; photographs get View into the
- * gallery; audio gets Listen into the player. Download links open the provider's own URL in a
- * new tab. This app does not fetch the file and does not claim the download finished.
+ * gallery; audio gets Listen; video gets Watch; EPUB and book text get Read. Download links open the
+ * provider's own URL in a new tab. This app does not fetch the file and does not claim the
+ * download finished.
  */
 export function FileList({ files, itemTitle }: FileListProps) {
   const recordDownload = useRecordDownload();

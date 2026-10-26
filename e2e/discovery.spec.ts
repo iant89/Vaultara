@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 import { appUrl } from './appBase';
 import { MINIMAL_JPEG } from './minimalJpeg';
+import { buildMinimalEpub } from './minimalEpub';
 import { buildMinimalPdf } from './minimalPdf';
 import { buildMinimalWav } from './minimalWav';
 
@@ -196,6 +197,12 @@ async function mockArchive(page: Page): Promise<void> {
             format: 'WAVE',
             size: '8192',
           },
+          {
+            name: 'alice.epub',
+            source: 'derivative',
+            format: 'EPUB',
+            size: '8192',
+          },
         ],
       }),
     });
@@ -328,6 +335,10 @@ test('an item page shows files, attribution, and related content', async ({ page
     'href',
     'https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead.mp4',
   );
+  await expect(page.getByRole('link', { name: /Watch night_of_the_living_dead/ })).toHaveAttribute(
+    'href',
+    /\/viewer\/archive\/night_of_the_living_dead\?file=night_of_the_living_dead\.mp4$/,
+  );
   await expect(page.getByRole('link', { name: /Read notes.pdf/ })).toHaveAttribute(
     'href',
     /\/viewer\/archive\/night_of_the_living_dead\?file=notes\.pdf$/,
@@ -335,6 +346,10 @@ test('an item page shows files, attribution, and related content', async ({ page
   await expect(page.getByRole('link', { name: /Listen theme.wav/ })).toHaveAttribute(
     'href',
     /\/viewer\/archive\/night_of_the_living_dead\?file=theme\.wav$/,
+  );
+  await expect(page.getByRole('link', { name: /Read alice.epub/ })).toHaveAttribute(
+    'href',
+    /\/viewer\/archive\/night_of_the_living_dead\?file=alice\.epub$/,
   );
   await expect(
     page.getByRole('link', { name: 'View this item on Internet Archive' }),
@@ -488,4 +503,145 @@ test('audio still plays when the waveform fetch is blocked by CORS', async ({ pa
     'src',
     'https://archive.org/download/night_of_the_living_dead/theme.wav',
   );
+});
+
+test('an EPUB opens in the in-app book reader', async ({ page }) => {
+  await mockArchive(page);
+  await page.route('**/download/**/*.epub', async (route: Route) => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'access-control-allow-origin': '*',
+          'access-control-allow-methods': 'GET,HEAD,OPTIONS',
+          'access-control-allow-headers': '*',
+        },
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'application/epub+zip',
+        'access-control-allow-origin': '*',
+        'access-control-expose-headers': 'Accept-Ranges,Content-Length',
+      },
+      body: buildMinimalEpub(),
+    });
+  });
+
+  await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+  await page.getByRole('link', { name: /Read alice.epub/ }).click();
+
+  await expect(page.getByRole('toolbar', { name: 'Book reader' })).toBeVisible();
+  await expect(page.getByText('Once upon a time.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Download alice.epub' }).first()).toHaveAttribute(
+    'href',
+    'https://archive.org/download/night_of_the_living_dead/alice.epub',
+  );
+  await page.getByLabel('Contents').selectOption({ label: 'Chapter two' });
+  await expect(page.getByText('The next morning.')).toBeVisible();
+  await expect(page.getByText(/shows the book’s text/i)).toBeVisible();
+});
+
+test('a video file opens in the in-app player', async ({ page }) => {
+  await mockArchive(page);
+  await page.route('**/download/**/*.mp4', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'video/mp4' },
+      body: Buffer.from('not a real movie'),
+    });
+  });
+
+  await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+  await page.getByRole('link', { name: /Watch night_of_the_living_dead/ }).click();
+
+  await expect(page.getByRole('toolbar', { name: 'Video player' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+  await expect(page.locator('video')).toHaveAttribute(
+    'src',
+    'https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead.mp4',
+  );
+  await expect(page.getByRole('button', { name: 'Fullscreen' })).toBeVisible();
+  await expect(page.getByText(/Playback streams from the provider/i)).toBeVisible();
+});
+
+test.describe('viewers on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('playback and reading controls stay on screen', async ({ page }) => {
+    await mockArchive(page);
+    await page.route('**/download/**/*.wav', async (route: Route) => {
+      await fulfillWav(route, true);
+    });
+    await page.route('**/download/**/*.pdf', async (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({
+          status: 204,
+          headers: {
+            'access-control-allow-origin': '*',
+            'access-control-allow-methods': 'GET,HEAD,OPTIONS',
+            'access-control-allow-headers': '*',
+          },
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers: {
+          'content-type': 'application/pdf',
+          'access-control-allow-origin': '*',
+        },
+        body: Buffer.from(buildMinimalPdf(['Page one', 'Page two'])),
+      });
+    });
+    await page.route('**/download/**/*.epub', async (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({
+          status: 204,
+          headers: {
+            'access-control-allow-origin': '*',
+            'access-control-allow-methods': 'GET,HEAD,OPTIONS',
+            'access-control-allow-headers': '*',
+          },
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers: {
+          'content-type': 'application/epub+zip',
+          'access-control-allow-origin': '*',
+        },
+        body: buildMinimalEpub(),
+      });
+    });
+
+    await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+    await page.getByRole('link', { name: /Watch night_of_the_living_dead/ }).click();
+    await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+    expect(
+      (await page.getByRole('button', { name: 'Play' }).boundingBox())?.height ?? 0,
+    ).toBeGreaterThanOrEqual(44);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+
+    await page.getByRole('link', { name: 'Back to item' }).click();
+    await page.getByRole('link', { name: /Listen theme.wav/ }).click();
+    await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+
+    await page.getByRole('link', { name: 'Back to item' }).click();
+    await page.getByRole('link', { name: /Read alice.epub/ }).click();
+    await expect(page.getByRole('toolbar', { name: 'Book reader' })).toBeVisible();
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+
+    await page.getByRole('link', { name: 'Back to item' }).click();
+    await page.getByRole('link', { name: /Read notes.pdf/ }).click();
+    await expect(page.getByRole('toolbar', { name: 'PDF reader' })).toBeVisible();
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+  });
 });

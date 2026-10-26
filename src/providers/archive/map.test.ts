@@ -94,7 +94,7 @@ describe('taxonomy', () => {
     expect(isBrowserDisplayable(undefined)).toBe(false);
     expect(isAppViewable('application/pdf')).toBe(true);
     expect(isAppViewable('image/jpeg')).toBe(true);
-    expect(isAppViewable('application/epub+zip')).toBe(false);
+    expect(isAppViewable('application/epub+zip')).toBe(true);
   });
 });
 

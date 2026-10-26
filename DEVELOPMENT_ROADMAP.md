@@ -989,7 +989,7 @@ before implementing individual viewers.
 - [x] Implement viewer error handling.
 - [x] Release resources when viewers close.
 
-Registered viewers: PDF reader, photo gallery, audio player, generic file details. Video, EPUB,
+Registered viewers: PDF reader, photo gallery, audio player, video player, book reader, generic file details.
 Wikipedia, web archive, and emulator viewers remain later phases. Fullscreen is offered only
 when `document.fullscreenEnabled` is true. Download still opens the provider URL in a new tab.
 
@@ -1039,15 +1039,21 @@ registry like the photo gallery.
 
 ### 12.3 Book Reader
 
-- [ ] Support appropriate text formats.
-- [ ] Support EPUB where available.
-- [ ] Support PDF fallback.
-- [ ] Implement typography controls.
-- [ ] Implement themes.
-- [ ] Implement chapter navigation.
-- [ ] Implement table of contents.
-- [ ] Implement reading progress.
-- [ ] Implement resume functionality.
+- [x] Support appropriate text formats.
+- [x] Support EPUB where available.
+- [x] Support PDF fallback.
+- [x] Implement typography controls.
+- [x] Implement themes.
+- [x] Implement chapter navigation.
+- [x] Implement table of contents.
+- [x] Implement reading progress.
+- [x] Implement resume functionality.
+
+EPUB is unzipped (Store/Deflate) and reduced to chapter `textContent`. Markup, scripts, and
+illustrations are not rendered. Book-like `.txt` is a single chapter; scandata/metadata/readme/
+license/djvu dumps are skipped. PDFs stay with the existing PDF viewer. Fetching needs CORS and
+stops at 24 MiB; a blocked or oversized file is explained and still offers download. Search,
+dark/sepia/light themes, and a focus (distraction-free) mode are included.
 
 ### 12.4 Audio Player
 
@@ -1068,23 +1074,35 @@ invent a decorative shape.
 
 ### 12.5 Video Player
 
-- [ ] Implement playback controls.
-- [ ] Implement seek.
-- [ ] Implement fullscreen.
-- [ ] Implement volume.
-- [ ] Implement playback speed.
-- [ ] Implement subtitles where available.
-- [ ] Implement resume position.
-- [ ] Implement download.
+- [x] Implement playback controls.
+- [x] Implement seek.
+- [x] Implement fullscreen.
+- [x] Implement volume.
+- [x] Implement playback speed.
+- [x] Implement subtitles where available.
+- [x] Implement resume position.
+- [x] Implement download.
+
+Browser-playable video only (MP4, WebM, Ogg). Playback is the `<video>` element on the provider
+URL (no `crossOrigin`, so missing CORS does not block watching). Captions are WebVTT files on the
+same item, offered as a `<track>` when present. SRT, MPEG-2, Matroska, and AVI are not opened.
+512kb MPEG4 / Ogg Video derivatives remain playable but lose to the original.
 
 ### 12.6 Testing
 
-- [ ] Test supported formats.
-- [ ] Test unsupported formats.
-- [ ] Test large resources.
-- [ ] Test mobile playback.
-- [ ] Test viewer cleanup.
-- [ ] Test progress persistence.
+- [x] Test supported formats.
+- [x] Test unsupported formats.
+- [x] Test large resources.
+- [x] Test mobile playback.
+- [x] Test viewer cleanup.
+- [x] Test progress persistence.
+
+Registry selection covers the formats each core viewer claims (PDF, JPEG/PNG/GIF/WebP,
+MP3/Ogg/WAV/FLAC/M4A/AAC, MP4/WebM/Ogg, EPUB/text) and refuses MKV/AVI/MPEG-2/SRT/JPEG 2000/SVG/
+MIDI/ZIP/DjVu/scandata. Large EPUB and audio-waveform fetches stop at 24 MiB / 12 MiB (unit-tested;
+Playwright cannot fake `Content-Length` independently of the body). Phone-width e2e checks overflow
+and Play targets. Unmount aborts book and waveform fetches and pauses media. Progress of every core
+kind round-trips through the local backend; book resume restores the chapter.
 
 ## Deliverable
 

@@ -18,6 +18,7 @@ import { createAppError } from '../models/errors';
 import type { ContentCategory, ContentItem } from '../models/content';
 import { createPaginatedResult } from '../models/pagination';
 import { ProviderGateway } from '../providers/gateway';
+import { buildMinimalEpubBody } from '../viewers/book/minimalEpub';
 import { ProviderRegistry } from '../providers/registry';
 import {
   createFakeProvider,
@@ -554,18 +555,17 @@ describe('item page', () => {
     expect(screen.getByText('archive:night_of_the_living_dead')).toBeInTheDocument();
 
     const filesSection = await screen.findByRole('heading', { level: 2, name: 'Files' });
+    const files = within(filesSection.closest('section') as HTMLElement);
 
-    const download = within(filesSection.closest('section') as HTMLElement).getByRole('link');
-
-    expect(download).toHaveAttribute(
+    expect(files.getByRole('link', { name: /Download night_of_the_living_dead/ })).toHaveAttribute(
       'href',
       `https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead.mp4`,
     );
-    expect(
-      within(filesSection.closest('section') as HTMLElement).queryByRole('link', {
-        name: /Read /,
-      }),
-    ).not.toBeInTheDocument();
+    expect(files.getByRole('link', { name: /Watch night_of_the_living_dead/ })).toHaveAttribute(
+      'href',
+      `/viewer/${ARCHIVE}/${ITEM.id}?file=night_of_the_living_dead.mp4`,
+    );
+    expect(files.queryByRole('link', { name: /Read / })).not.toBeInTheDocument();
 
     expect(
       screen.getByRole('link', { name: /View this item on Internet Archive/ }),
@@ -631,11 +631,47 @@ describe('item page', () => {
 });
 
 describe('viewer page', () => {
-  it('falls back when no specialized viewer matches', async () => {
+  it('opens the book reader for an EPUB', async () => {
+    const archive = buildMinimalEpubBody();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(archive, {
+            status: 200,
+            headers: { 'content-type': 'application/epub+zip' },
+          }),
+      ),
+    );
+
+    try {
+      const { services } = createHarness();
+      services.runtime.gateway.getAvailableFiles = vi.fn(async () => [
+        makeFile({
+          id: 'alice.epub',
+          providerId: ARCHIVE,
+          itemId: BOOK.id,
+          name: 'alice.epub',
+          mimeType: 'application/epub+zip',
+          extension: 'epub',
+          downloadAvailable: true,
+          downloadUrl: `https://archive.org/download/${BOOK.id}/alice.epub`,
+        }),
+      ]);
+      renderAt(`/viewer/${ARCHIVE}/${BOOK.id}?file=alice.epub`, services);
+
+      expect(await screen.findByRole('toolbar', { name: 'Book reader' })).toBeInTheDocument();
+      expect(screen.getByText('Once upon a time.')).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('opens the video player for a movie file', async () => {
     const { services } = createHarness();
     renderAt(`/viewer/${ARCHIVE}/${ITEM.id}`, services);
 
-    expect(await screen.findByText(/no specialized viewer/i)).toBeInTheDocument();
+    expect(await screen.findByRole('toolbar', { name: 'Video player' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to item' })).toHaveAttribute(
       'href',
       `/item/${ARCHIVE}/${ITEM.id}`,

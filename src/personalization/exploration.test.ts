@@ -68,6 +68,29 @@ describe('withProgress', () => {
     expect(turned.lastExploredAt).toBe(NOW);
     expect(turned.progress).toEqual({ kind: 'pdf', page: 4, updatedAt: LATER });
   });
+
+  it('stores book, audio, video, and image progress without counting another visit', () => {
+    const started = withProgress(
+      undefined,
+      IDENTITY,
+      { kind: 'audio', positionSeconds: 12, updatedAt: NOW },
+      NOW,
+    );
+    const later = withProgress(
+      started,
+      IDENTITY,
+      { kind: 'book', chapterId: 'c2', positionPercent: 40, updatedAt: LATER },
+      LATER,
+    );
+
+    expect(later.explorationCount).toBe(1);
+    expect(later.progress).toEqual({
+      kind: 'book',
+      chapterId: 'c2',
+      positionPercent: 40,
+      updatedAt: LATER,
+    });
+  });
 });
 
 describe('history reset', () => {

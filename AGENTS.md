@@ -770,12 +770,12 @@ Registered viewers:
 - PDF viewer (book/page/grid layouts, auto scale, on-device then MyMemory translation)
 - Photo gallery (JPEG, PNG, GIF, WebP: zoom, pan, fit, previous/next; current image only)
 - Audio player (play/pause, seek, volume, speed, tracks, resume; waveform from decoded PCM when CORS and size allow)
+- Video player (play/pause, seek, volume, speed, fullscreen, resume; WebVTT captions when present)
+- Book reader (EPUB and book-like `.txt` as extracted text; typography, themes, TOC, search, focus, resume)
 - Generic file details (no specialized preview; download if the provider permits)
 
 Other viewer types remain planned:
 
-- EPUB and book reader
-- Video player
 - Wikipedia reader
 - Web archive viewer
 - Software information and file viewer

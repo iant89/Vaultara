@@ -66,6 +66,22 @@ describe('ImageGallery', () => {
     expect(onSelectFile).toHaveBeenCalledWith('next.jpg');
   });
 
+  it('reports the current photograph so viewing can resume', () => {
+    const onProgressChange = vi.fn();
+    render(
+      <ImageGallery
+        item={item}
+        files={[still, next]}
+        activeFileId="still.jpg"
+        onProgressChange={onProgressChange}
+      />,
+    );
+
+    expect(onProgressChange).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'image', fileId: 'still.jpg', index: 0 }),
+    );
+  });
+
   it('zooms in and returns to fit-to-screen', async () => {
     const user = userEvent.setup();
     render(<ImageGallery item={item} files={[still]} activeFileId="still.jpg" />);

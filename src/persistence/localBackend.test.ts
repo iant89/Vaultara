@@ -240,6 +240,36 @@ describe('local account backend', () => {
     expect(await backend.pendingOperations(session.sessionId)).toHaveLength(1);
   });
 
+  it('round-trips viewer progress for each core viewer kind', async () => {
+    const backend = createTestPersistence();
+    const session = await backend.createAccount({
+      email: 'alex@example.com',
+      password: PASSWORD,
+      displayName: 'Alex',
+    });
+    const now = '2026-10-26T12:00:00.000Z';
+    const kinds = [
+      { kind: 'pdf' as const, page: 4, updatedAt: now },
+      { kind: 'book' as const, chapterId: 'c2', positionPercent: 40, updatedAt: now },
+      { kind: 'audio' as const, positionSeconds: 12, durationSeconds: 90, updatedAt: now },
+      { kind: 'video' as const, positionSeconds: 8, durationSeconds: 60, updatedAt: now },
+      { kind: 'image' as const, fileId: 'still.jpg', index: 2, updatedAt: now },
+    ];
+
+    for (const progress of kinds) {
+      await backend.putContentState(
+        session.sessionId,
+        itemState('night', { explored: true, progress }),
+      );
+      const stored = await backend.getContentState(session.sessionId, {
+        providerId: 'archive',
+        itemId: 'night',
+      });
+
+      expect(stored?.progress).toEqual(progress);
+    }
+  });
+
   it('acknowledges local pending operations on synchronize', async () => {
     const backend = createTestPersistence();
     const session = await backend.createAccount({

@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { makeFile, makeItem } from '../../test/fakeProvider';
 import { PdfViewer } from './PdfViewer';
 import type { PdfDocumentHandle } from './types';
@@ -89,6 +89,19 @@ describe('PdfViewer', () => {
     await user.click(screen.getByRole('button', { name: 'Next page' }));
 
     expect(await screen.findByText('Pages 3–4 of 8')).toBeInTheDocument();
+  });
+
+  it('reports the visible page as reading progress', async () => {
+    const user = userEvent.setup();
+    const onProgress = vi.fn();
+    renderViewer({ onProgress });
+
+    await screen.findByText('Pages 1–2 of 8');
+    expect(onProgress).toHaveBeenCalledWith(1);
+
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+
+    expect(onProgress).toHaveBeenCalledWith(3);
   });
 
   it('shows a 2 by 2 grid and opens a page full screen', async () => {

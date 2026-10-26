@@ -90,10 +90,26 @@ describe('describeViewerCompatibility', () => {
     ).toBe('In-app reader');
     expect(
       describeViewerCompatibility({
+        name: 'alice.epub',
+        mimeType: 'application/epub+zip',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/alice/alice.epub',
+      }),
+    ).toBe('In-app book');
+    expect(
+      describeViewerCompatibility({
         name: 'night.mp4',
         mimeType: 'video/mp4',
         downloadAvailable: true,
         downloadUrl: 'https://archive.org/download/night/night.mp4',
+      }),
+    ).toBe('In-app video');
+    expect(
+      describeViewerCompatibility({
+        name: 'clip.mkv',
+        mimeType: 'video/x-matroska',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/film/clip.mkv',
       }),
     ).toBe('No in-app viewer');
     expect(

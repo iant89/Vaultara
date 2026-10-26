@@ -7,7 +7,7 @@ development sessions, including sessions performed by different AI agents.
 Record verification results honestly using `PASS` / `FAIL` / `BLOCKED` / `NOT RUN` / `PARTIAL`.
 Never record secrets, credentials, or private user information.
 
-Last updated: 2026-10-26 (Phase 12.4 audio player + waveform; see Session Handoff Log)
+Last updated: 2026-10-26 (Phase 12.6 testing; see Session Handoff Log)
 
 ---
 
@@ -35,7 +35,7 @@ Fixed product decisions already established by
 
 ## Current Development Status
 
-**Phase: 9 (global search) implemented. Deployment to GitHub Pages configured.**
+**Phase: 12 core viewers and 12.6 testing implemented. Deployment to GitHub Pages configured.**
 
 The Internet Archive adapter is now driven by the interface. Home shows a featured item, one row
 per content family (24 cards each) and the provider's category grid; provider pages list categories;
@@ -60,8 +60,9 @@ independent of favorites. **Global search queries every enabled, registered prov
 and keeps explored items. **Downloads open the provider's file in a new tab** and, when signed
 in, write an `opened` or `unavailable` row to IndexedDB. This app does not fetch the file and
 does not claim it arrived. Category onboarding, exploration history, and home-page filtering
-remain. Downloadable PDFs can be opened with Read; photographs with View in the gallery;
-audio with Listen in the player. Other formats get file details rather than a fake player.
+remain. Downloadable PDFs can be opened with Read; EPUB and book-like text with Read in the book
+reader; photographs with View in the gallery; audio with Listen in the player; video with Watch.
+Other formats get file details rather than a fake player.
 
 The application is published as a static site to GitHub Pages by
 `.github/workflows/deploy-pages.yml`. Discovery requires a network route to `archive.org`; without
@@ -99,8 +100,9 @@ Verified 2026-10-26 after the PDF reader:
 | Live Archive.org PDF CORS                                 | NOT VERIFIED                                                              |
 | Real provider artwork, Safari/Firefox/iOS, screen readers | NOT VERIFIED: no such environment is available here                       |
 
-Do not describe favourites, likes, history, search results, downloads, personalisation, or viewing as
-working. They do not exist.
+Favorites, likes, history, search, downloads, personalization, and the core viewers exist as of
+Phases 6–12. The Phase 5 note that they did not is obsolete. Live Archive.org behaviour remains
+NOT VERIFIED from this sandbox.
 
 ---
 
@@ -360,7 +362,7 @@ Points that are easy to get wrong:
 
 ## Provider Integrations
 
-One adapter implemented; the rest are planned. None is wired to the interface.
+One adapter implemented and wired to discovery; the rest are planned.
 
 | Provider         | Status              | Notes / constraints                                                                                                                                                                                      |
 | ---------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -375,17 +377,16 @@ malformed-response handling, capability honesty, and failure isolation (Spec §2
 
 ## Viewer Integrations
 
-The PDF reader is implemented ahead of Phase 11 (user request). Other viewers remain planned.
-The shared registry is still absent: PDF files are matched directly from MIME type / extension /
-name plus a download URL.
+Core Phase 12 viewers are registered modules. Wikipedia, emulator, and web-archive viewers remain
+later phases.
 
 | Viewer                 | Phase | Key constraints                                                                                                                                        |
 | ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Image                  | 12    | Zoom/pan/fit; don't load full resolution unnecessarily                                                                                                 |
-| PDF                    | 12    | Implemented: PDF.js, book/page/grid, auto scale, on-device translation overlay (MyMemory fallback). No search/resume yet. CORS failures are explained. |
-| Book / EPUB            | 12    | Typography + themes; scanned books fall back to PDF/image                                                                                              |
-| Audio                  | 12    | Resume position; release media on unmount                                                                                                              |
-| Video                  | 12    | Prefer native playback; subtitles when available                                                                                                       |
+| Image                  | 12    | Zoom/pan/fit; current `<img>` only. Progress is emitted; `initialProgress` is not restored.                                                            |
+| PDF                    | 12    | PDF.js, book/page/grid, auto scale, on-device translation overlay (MyMemory fallback). CORS failures are explained.                                    |
+| Book / EPUB            | 12    | Extracted text only; CORS fetch; 24 MiB cap; scanned books stay PDF/image                                                                              |
+| Audio                  | 12    | Native `<audio>` without `crossOrigin`; waveform CORS fetch capped at 12 MiB; pause on unmount                                                         |
+| Video                  | 12    | Native `<video>` without `crossOrigin`; WebVTT captions; pause on unmount                                                                              |
 | Wikipedia reader       | 13    | Document layout, TOC, references                                                                                                                       |
 | Game Boy emulator      | 14    | Maintained emulator behind an adapter; **never** execute ROMs as JS; no bundled commercial ROMs; design adapter to allow GBC/NES/SMS later             |
 | Web archive            | 15    | Sandboxed iframe, restrictive policy, no access to app credentials/storage/privileged APIs                                                             |
@@ -426,6 +427,9 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 | Viewer registry, selection, shared container, generic fallback                             | Implemented                                         | `src/viewers/{registry,select,composition,ViewerContainer}.ts(x)` |
 | Photo gallery: zoom, pan, fit, previous/next, metadata, download                           | Implemented; JPEG/PNG/GIF/WebP only                 | `src/viewers/image/`                                              |
 | Audio player: play/pause, seek, volume, speed, tracks, resume, download, PCM waveform      | Implemented; CORS fetch optional; 12 MiB cap        | `src/viewers/audio/`                                              |
+| Video player: play/pause, seek, volume, speed, fullscreen, resume, download, WebVTT        | Implemented; MP4/WebM/Ogg; no `crossOrigin`         | `src/viewers/video/`                                              |
+| Book reader: EPUB/text chapters, typography, themes, TOC, search, focus, resume, download  | Implemented; text only; CORS fetch; 24 MiB cap      | `src/viewers/book/`                                               |
+| Phase 12.6 viewer tests: formats, large resources, cleanup, progress, phone playback       | Implemented; oversized EPUB cap is unit-tested      | `src/viewers/formats.test.ts`, viewer tests, `e2e/discovery.spec.ts` |
 | Local accounts: create, sign in, sign out, session restore                                 | Implemented; device-local only                      | `src/persistence/`, `SessionContext.tsx`                          |
 | Per-account preferences, content state, pending sync, TTL cache                            | Implemented                                         | `src/persistence/localBackend.ts`                                 |
 | Discovery components: rows, breadcrumbs, pagination, files, toolbar, category card         | Implemented                                         | `src/components/content/`                                         |
@@ -450,7 +454,7 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 | Route table for every documented route, error boundary, not-found                          | Implemented                                         | `src/app/routes.tsx`                                              |
 | Shared models and provider/viewer contracts                                                | Implemented; viewers registered                     | `src/models/`, `src/viewers/`                                     |
 
-Not implemented anywhere: video/EPUB/Wikipedia/web-archive/emulator viewers.
+Not implemented anywhere: Wikipedia/web-archive/emulator viewers.
 Accounts, category preferences, exploration history, favorites, likes, recent searches, and
 download history persist locally. The Wikipedia and Adult adapters do not exist. Adult visibility
 stays Phase 16. There is no download proxy.
@@ -459,8 +463,8 @@ stays Phase 16. There is no download proxy.
 
 ## Features in Progress
 
-Phase 11 complete, plus Phase 12.1 photo gallery and Phase 12.4 audio player at explicit
-requests. Next is remaining Phase 12 media viewers (video, book/EPUB) on the user's instruction.
+Phase 12 core viewers and 12.6 testing are complete. Next is Phase 13 (Wikipedia) on the user's
+instruction. Do not start Wikipedia, the emulator, or web-archive unprompted.
 
 ---
 
@@ -640,6 +644,9 @@ requests. Next is remaining Phase 12 media viewers (video, book/EPUB) on the use
 | 67 | Downloads are a browser navigation, never a proxied fetch, and never `completed` | GitHub Pages cannot host a proxy, and a proxy would be an SSRF surface. Status is only `opened` or `unavailable`. `javascript:` URLs are rejected. Lending/`nodownload` files stay listed without a Download control. Pause/resume are not offered. | Phase 10 |
 | 68 | Viewers are registered modules; the route does not hardcode PDF | Selection scores (file, viewer) pairs. `?file=` is honoured. Nothing specialized falls back to file details. The photo gallery loads only the current `<img>` from the provider URL. | Phase 11 |
 | 69 | Audio playback streams without CORS; the waveform is a separate CORS fetch capped at 12 MiB | Missing provider CORS must not block listening. Fake or random bars are forbidden. Unknown or huge files are not downloaded solely to draw peaks. URL safety is scored in `audio/module.ts`, not `canPlayAudio`. | Phase 12.4 |
+| 70 | Video playback streams without CORS; captions are WebVTT `<track>` files on the item | Missing provider CORS must not block watching. MPEG-2/MKV/AVI/SRT are not pretended to play. URL safety is scored in `video/module.ts`, not `canPlayVideo`. The viewer receives the item's full file list so captions are visible. | Phase 12.5 |
+| 71 | EPUB is extracted text, never rendered HTML; fetch needs CORS and stops at 24 MiB | Design spec 26 / AGENTS 10.2: no EPUB scripts. Scanned books stay PDF/image. Path traversal ZIP names are skipped. PDFs stay with the PDF viewer. URL safety is scored in `book/module.ts`, not `canReadBook`. | Phase 12.3 |
+| 72 | Large EPUB and waveform caps are unit-tested; Playwright cannot fake `Content-Length` independently of the body | `route.fulfill` exposes the actual body size to `fetch()`, so a 25 MiB header on a tiny body never hits `loadBook`'s cap in e2e. 24 MiB / 12 MiB refusals stay in `loadBook.test.ts` and waveform tests. | Phase 12.6 |
 
 Resolved by user decision on 2026-10-25: file naming (issue 3, decision 18) and the
 roadmap's authoritative status (issue 2, decision 19).
@@ -732,12 +739,12 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 | Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                                                      |
 | Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                                                  |
 | Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                                                    |
-| Unit and component tests                                    | `npm test`                    | PASS    | 82 files, 826 tests                                                                                                                                      |
-| Production build                                            | `npm run build`               | PASS    | Main 472.47 kB (143.90 kB gzip); PDF, gallery, and audio player code-split                                                                               |
+| Unit and component tests                                    | `npm test`                    | PASS    | 90 files, 892 tests                                                                                                                                      |
+| Production build                                            | `npm run build`               | PASS    | Main 475.63 kB (144.69 kB gzip); BookReader code-split 13.71 kB (4.92 kB gzip)                                                                            |
 | Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1                                       |
 | Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                                                              |
 | Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                                                     |
-| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 46 tests, Chromium; 4 viewports, keyboard, mobile search, discovery, search, downloads, PDF reader, photo gallery, audio player + CORS skip              |
+| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 49 tests, Chromium; 4 viewports, keyboard, mobile search, discovery, search, downloads, PDF, gallery, audio, video, book, phone viewers                  |
 | Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                                                     |
 | Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed                                |
 | Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                                                       |
@@ -1095,13 +1102,14 @@ Previous entry:
 
 ## Next Steps
 
-Phases 0-11 are complete, plus the Phase 12.1 photo gallery and Phase 12.4 audio player: the shell,
-the design system, static deployment, the provider architecture, the Archive adapter, the discovery
-workflow, a PDF reader, local accounts, category onboarding, exploration history, discovery
-filtering, global favorites and likes, global search, the download manager, the viewer registry,
-the photo gallery, and the audio player with a decoded-PCM waveform.
+Phases 0–12.6 are complete for the Archive-backed app: the shell, the design system, static
+deployment, the provider architecture, the Archive adapter, the discovery workflow, a PDF reader,
+local accounts, category onboarding, exploration history, discovery filtering, global favorites and
+likes, global search, the download manager, the viewer registry, the photo gallery, the audio player
+with a decoded-PCM waveform, the video player, the book reader (EPUB and book-like text as extracted
+chapters), and the Phase 12.6 format / large-resource / cleanup / progress / phone tests.
 
-1. **Remaining Phase 12 viewers** — video, book/EPUB — only on the user's instruction.
+1. **Phase 13 Wikipedia** — only on the user's instruction. Do not start the emulator or web-archive.
 2. **Verify the hierarchy against the live service:** confirm `mediatype:collection AND
 collection:<media type>` returns the expected collections (and not every collection on the
    Archive), that `-mediatype:collection` behaves as a filter on the live index, and that `numFound`
@@ -1116,6 +1124,64 @@ collection:<media type>` returns the expected collections (and not every collect
 6. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
 
 ## Session Handoff Log
+
+### Session 2026-10-26 (Phase 12.6 testing)
+
+1. **Objective:** Phase 12.6 testing, on the user's instruction to continue to the next step after
+   the book-reader report.
+2. **Specification references:** roadmap 12.6; `TESTING_AND_REGRESSION_GUIDELINES.md` §10; `AGENTS.md` 12.
+3. **Changes made:** Registry format matrix (`formats.test.ts`) for supported and refused types.
+   Large EPUB (24 MiB `Content-Length`) and waveform (12 MiB) refusals in unit tests. Viewer
+   unmount aborts book and waveform fetches and pauses media. Progress of pdf/book/audio/video/image
+   round-trips through the local backend; book resume restores the chapter. Phone-width e2e (390×844)
+   checks overflow and Play targets. An e2e that faked a 25 MiB `Content-Length` on a tiny body was
+   removed (decision 72). `WAVEFORM_MAX_BYTES` is 12 MiB; Seek is disabled when `total <= 0`.
+4. **Implementation status:** Phase 12 core viewers and 12.6 tests are done. Wikipedia, web archive,
+   and emulator remain unimplemented. No download proxy. ImageGallery emits progress and does not
+   restore `initialProgress`.
+5. **Verification:** `npm run check` PASS (90 files / 892 tests). `npm run build` PASS: main
+   475.63 kB (144.69 kB gzip); BookReader 13.71 kB. `npm run verify:pages` PASS. `npm run test:e2e`
+   PASS 49 tests including phone viewers. An earlier oversized-EPUB e2e FAILED (`getByText(/larger
+   than 24 MB/i)` not visible); that case is covered by `loadBook.test.ts` instead.
+6. **Outstanding work:** Phase 13 Wikipedia on instruction. Git push/PR only if asked.
+
+### Session 2026-10-26 (Phase 12.3 book reader)
+
+1. **Objective:** in-app book reader, on the user's instruction to continue to the next step after
+   the video player report.
+2. **Specification references:** design spec 18.2; roadmap 12.3; `AGENTS.md` 10.
+3. **Changes made:** Book viewer module. EPUB is unzipped (Store/Deflate only; `..` names skipped)
+   and reduced to chapter `textContent` — markup and scripts are never rendered. Book-like `.txt`
+   is a single chapter; scandata/metadata/readme/license/djvu dumps are skipped. PDFs stay with the
+   existing PDF viewer. Fetch is CORS, capped at 24 MiB, not proxied. Typography, dark/sepia/light
+   themes, TOC, chapter nav, in-chapter search, focus mode, `kind: 'book'` resume, and download.
+   File list Read; describe "In-app book". Score EPUB 95 (+5 book/document), text 55, PDF 0 from
+   this module. URL safety is scored in `book/module.ts`, not `canReadBook`.
+4. **Implementation status:** EPUB and book-like text open from the file list. Wikipedia, web
+   archive, and emulator remain unimplemented. No download proxy.
+5. **Verification:** `npm run check` PASS (89 files / 855 tests). `npm run build` PASS: main
+   475.63 kB (144.69 kB gzip); BookReader code-split 13.71 kB (4.92 kB gzip). `npm run verify:pages`
+   PASS. `npm run test:e2e` PASS 48 tests including Read alice.epub → book reader (stored-zip
+   fixture; scripts stripped from extracted text).
+6. **Outstanding work:** Phase 12.6 testing on instruction. Git push/PR only if asked.
+
+### Session 2026-10-26 (Phase 12.5 video player)
+
+1. **Objective:** in-app video player, on the user's instruction to start the next phase after
+   the audio-player PR merged.
+2. **Specification references:** design spec 18.4; roadmap 12.5; `AGENTS.md` 10.
+3. **Changes made:** Video viewer module (MP4/WebM/Ogg). Playback is the browser `<video>`
+   element on the provider URL, without `crossOrigin`. WebVTT files on the same item are offered
+   as captions. File list Watch; describe "In-app video". 512kb MPEG4 / Ogg Video derivatives
+   score below the original. The shared container passes the item's full file list so captions
+   are visible to the player. MPEG-2, Matroska, AVI, and SRT are not opened.
+4. **Implementation status:** Video opens from the file list. EPUB/book, Wikipedia, web archive,
+   and emulator remain unimplemented. No download proxy.
+5. **Verification:** `npm run check` PASS (84 files / 837 tests). `npm run build` PASS: main
+   474.23 kB (144.33 kB gzip); VideoPlayer code-split 5.23 kB. `npm run verify:pages` PASS.
+   `npm run test:e2e` PASS 47 tests including Watch → video player. The stubbed MP4 is not a
+   real movie; the test asserts controls and `src`, not decode.
+6. **Outstanding work:** remaining Phase 12 (book/EPUB) on instruction. Git push/PR only if asked.
 
 ### Session 2026-10-26 (Phase 12.4 audio player + waveform)
 
