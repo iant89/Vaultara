@@ -13,6 +13,9 @@ import type { ContentType } from '../models/content';
 /** The provider the discovery surfaces read from. */
 export const PRIMARY_PROVIDER_ID = 'archive';
 
+/** Cards asked for per search provider page; matches a full discovery row. */
+export const SEARCH_PAGE_SIZE = 24;
+
 /** Rows ask for this many items; design spec 5.2 targets 20-30 per row. */
 export const ROW_PAGE_SIZE = 24;
 

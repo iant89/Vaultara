@@ -15,6 +15,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
+import { buildDownloadRecord } from '../downloads/record';
 import {
   DEFAULT_PREFERENCES,
   type AccountRecord,
@@ -22,10 +23,15 @@ import {
   type SignInInput,
   type UserPreferences,
 } from '../models/account';
+import type { DownloadDraft } from '../models/download';
 import { formatCanonicalId, type ContentIdentity } from '../models/identity';
 import type { FavoriteSnapshot, UserContentState, ViewerProgress } from '../models/userState';
-import type { AccountBackend, StoredContentState } from '../persistence/contract';
 import { getSharedPersistence } from '../persistence/composition';
+import type {
+  AccountBackend,
+  StoredContentState,
+  StoredDownloadRecord,
+} from '../persistence/contract';
 import {
   createPersistenceError,
   toPersistenceError,
@@ -46,6 +52,7 @@ export interface SessionContextValue {
   readonly account?: AccountRecord;
   readonly preferences: UserPreferences;
   readonly contentStates: readonly StoredContentState[];
+  readonly downloads: readonly StoredDownloadRecord[];
   readonly createAccount: (input: CreateAccountInput) => Promise<UserPreferences>;
   readonly signIn: (input: SignInInput) => Promise<UserPreferences>;
   readonly signOut: () => Promise<void>;
@@ -63,6 +70,7 @@ export interface SessionContextValue {
     next: boolean,
     snapshot?: FavoriteSnapshot,
   ) => Promise<void>;
+  readonly recordDownload: (draft: DownloadDraft) => Promise<void>;
   readonly backend: AccountBackend;
 }
 
@@ -78,6 +86,7 @@ const FALLBACK: SessionContextValue = {
   status: 'signed-out',
   preferences: DEFAULT_PREFERENCES,
   contentStates: [],
+  downloads: [],
   createAccount: unavailable,
   signIn: unavailable,
   signOut: unavailable,
@@ -87,6 +96,7 @@ const FALLBACK: SessionContextValue = {
   resetExplorationHistory: unavailable,
   toggleFavorite: unavailable,
   toggleLike: unavailable,
+  recordDownload: noop,
   get backend(): AccountBackend {
     throw createPersistenceError(
       'unavailable',
@@ -107,6 +117,7 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [preferences, setPreferencesState] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [contentStates, setContentStates] = useState<readonly StoredContentState[]>([]);
+  const [downloads, setDownloads] = useState<readonly StoredDownloadRecord[]>([]);
   const writeChain = useRef(Promise.resolve());
 
   const hydrate = useCallback(
@@ -114,10 +125,12 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
       const nextAccount = await resolved.getAccount(id);
       const nextPreferences = await resolved.getPreferences(id);
       const nextContent = await resolved.listContentState(id);
+      const nextDownloads = await resolved.listDownloads(id);
       setAccount(nextAccount);
       setSessionId(id);
       setPreferencesState(nextPreferences);
       setContentStates(nextContent);
+      setDownloads(nextDownloads);
       setStatus('signed-in');
       return nextPreferences;
     },
@@ -140,6 +153,7 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
           setSessionId(undefined);
           setPreferencesState(DEFAULT_PREFERENCES);
           setContentStates([]);
+          setDownloads([]);
           return;
         }
 
@@ -152,6 +166,7 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
           setSessionId(undefined);
           setPreferencesState(DEFAULT_PREFERENCES);
           setContentStates([]);
+          setDownloads([]);
         }
       });
 
@@ -186,6 +201,7 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
     setSessionId(undefined);
     setPreferencesState(DEFAULT_PREFERENCES);
     setContentStates([]);
+    setDownloads([]);
   }, [resolved, sessionId]);
 
   const setPreferences = useCallback(
@@ -307,6 +323,23 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
     [writeFlag],
   );
 
+  const recordDownload = useCallback(
+    async (draft: DownloadDraft) => {
+      if (sessionId === undefined) {
+        return;
+      }
+
+      const id = sessionId;
+      const record = buildDownloadRecord(draft);
+
+      await runExclusive(async () => {
+        const saved = await resolved.putDownload(id, record);
+        setDownloads((current) => [saved, ...current.filter((entry) => entry.id !== saved.id)]);
+      });
+    },
+    [resolved, runExclusive, sessionId],
+  );
+
   const resetExplorationHistory = useCallback(
     async (options: { readonly providerId?: string } = {}) => {
       if (sessionId === undefined) {
@@ -345,6 +378,7 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
       ...(account !== undefined ? { account } : {}),
       preferences,
       contentStates,
+      downloads,
       createAccount,
       signIn,
       signOut,
@@ -354,14 +388,17 @@ export function SessionProvider({ backend, children }: SessionProviderProps) {
       resetExplorationHistory,
       toggleFavorite,
       toggleLike,
+      recordDownload,
       backend: resolved,
     }),
     [
       account,
       contentStates,
       createAccount,
+      downloads,
       markExplored,
       preferences,
+      recordDownload,
       recordProgress,
       resetExplorationHistory,
       resolved,

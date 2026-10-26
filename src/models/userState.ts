@@ -19,6 +19,12 @@ export interface PdfViewerProgress extends ViewerProgressBase {
   readonly scrollPercent?: number;
 }
 
+export interface ImageViewerProgress extends ViewerProgressBase {
+  readonly kind: 'image';
+  readonly fileId: string;
+  readonly index: number;
+}
+
 export interface BookViewerProgress extends ViewerProgressBase {
   readonly kind: 'book';
   readonly chapterId?: string;
@@ -52,6 +58,7 @@ export interface WebArchiveViewerProgress extends ViewerProgressBase {
 
 export type ViewerProgress =
   | PdfViewerProgress
+  | ImageViewerProgress
   | BookViewerProgress
   | AudioViewerProgress
   | VideoViewerProgress

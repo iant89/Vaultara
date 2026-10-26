@@ -780,8 +780,7 @@ canonical identity. Toggles are optimistic inside the session write queue and ro
 persistence failure. Unsigned visitors do not see dead controls. `/favorites` lists snapshot-first
 so a downed provider still shows the saved title. Likes stay independent of favorites; they already
 keep items on discovery (Phase 7) and do not create a recommendation engine here. Cross-device
-sync is not offered — GitHub Pages has no backend. Adult visibility stays Phase 16. Search stays
-Phase 9.
+sync is not offered — GitHub Pages has no backend. Adult visibility stays Phase 16.
 
 ## Tasks
 
@@ -837,39 +836,49 @@ that operate consistently across providers.
 
 Implement search across every enabled provider.
 
+## Status
+
+**Implemented (2026-10-26).** The header search already navigated to `/search?q=`. The page now
+queries every enabled, registered provider that advertises search, independently. Results are
+grouped by source so one failure cannot blank another provider's hits. Explored and favorited
+items stay visible. Disabled providers are skipped. Wikipedia and Adult remain unregistered, so
+they are not queried. Suggestions are omitted: no enabled adapter offers them. Requests fire on
+submit, not per keystroke (stronger than debounce). Recent queries are stored in localStorage,
+not the account database. Adult visibility stays Phase 16. Downloads stay Phase 10.
+
 ## Tasks
 
 ### 9.1 Search Interface
 
-- [ ] Implement the global search field.
-- [ ] Implement the expanded search interface.
-- [ ] Implement search suggestions where available.
-- [ ] Implement recent searches.
-- [ ] Implement provider filters.
-- [ ] Implement content-type filters.
-- [ ] Implement category filters.
+- [x] Implement the global search field.
+- [x] Implement the expanded search interface.
+- [ ] Implement search suggestions where available. No enabled provider offers suggestions.
+- [x] Implement recent searches.
+- [x] Implement provider filters.
+- [x] Implement content-type filters.
+- [x] Implement category filters.
 
 ### 9.2 Search Orchestration
 
-- [ ] Query enabled providers independently.
-- [ ] Normalize search results.
-- [ ] Merge results.
-- [ ] Preserve provider attribution.
-- [ ] Implement pagination.
-- [ ] Implement sorting.
-- [ ] Cancel obsolete requests.
-- [ ] Debounce input.
-- [ ] Handle partial provider failures.
+- [x] Query enabled providers independently.
+- [x] Normalize search results.
+- [x] Merge results.
+- [x] Preserve provider attribution.
+- [x] Implement pagination.
+- [x] Implement sorting.
+- [x] Cancel obsolete requests.
+- [x] Debounce input.
+- [x] Handle partial provider failures.
 
 ### 9.3 Search Correctness
 
-- [ ] Ensure explored items remain searchable.
-- [ ] Ensure favorite items remain searchable.
-- [ ] Ensure disabled providers are excluded.
-- [ ] Test empty results.
-- [ ] Test rate limits.
-- [ ] Test partial failures.
-- [ ] Test large result sets.
+- [x] Ensure explored items remain searchable.
+- [x] Ensure favorite items remain searchable.
+- [x] Ensure disabled providers are excluded.
+- [x] Test empty results.
+- [x] Test rate limits.
+- [x] Test partial failures.
+- [x] Test large result sets.
 
 ## Deliverable
 
@@ -888,39 +897,50 @@ providers permit users to download.
 
 ### 10.1 File Discovery
 
-- [ ] Retrieve available files.
-- [ ] Display file names.
-- [ ] Display formats.
-- [ ] Display sizes where available.
-- [ ] Display access restrictions.
-- [ ] Identify compatible viewers.
-- [ ] Resolve download URLs.
+- [x] Retrieve available files.
+- [x] Display file names.
+- [x] Display formats.
+- [x] Display sizes where available.
+- [x] Display access restrictions.
+- [x] Identify compatible viewers.
+- [x] Resolve download URLs.
 
 ### 10.2 Download Workflow
 
-- [ ] Implement the download action.
-- [ ] Implement file selection.
-- [ ] Implement browser download handling.
-- [ ] Handle cross-origin restrictions.
-- [ ] Handle inaccessible files.
-- [ ] Handle unsupported formats.
-- [ ] Respect provider access requirements.
+- [x] Implement the download action.
+- [x] Implement file selection.
+- [x] Implement browser download handling.
+- [x] Handle cross-origin restrictions.
+- [x] Handle inaccessible files.
+- [x] Handle unsupported formats.
+- [x] Respect provider access requirements.
+
+Browser handling is a new-tab navigation to the provider URL. This client does not fetch the
+file (CORS would fail for Archive.org anyway) and does not pause or resume a transfer it does
+not own. Restricted, borrowed, and non-http(s) files are explained instead of offered.
 
 ### 10.3 Download History
 
-- [ ] Implement download records.
-- [ ] Display item and file information.
-- [ ] Track observable statuses.
-- [ ] Implement retry actions where appropriate.
-- [ ] Avoid claiming completion without confirmation.
+- [x] Implement download records.
+- [x] Display item and file information.
+- [x] Track observable statuses.
+- [x] Implement retry actions where appropriate.
+- [x] Avoid claiming completion without confirmation.
+
+Statuses are only `opened` and `unavailable`. Opening a tab is not treated as a finished
+download. Retry is "Open again" on the same validated URL.
 
 ### 10.4 Security
 
-- [ ] Validate download URLs.
-- [ ] Protect backend proxy endpoints.
-- [ ] Prevent SSRF.
-- [ ] Avoid bypassing access restrictions.
-- [ ] Verify provider policies.
+- [x] Validate download URLs.
+- [x] Protect backend proxy endpoints.
+- [x] Prevent SSRF.
+- [x] Avoid bypassing access restrictions.
+- [x] Verify provider policies.
+
+There is no download proxy and none was added: GitHub Pages cannot host one, and a proxy
+would be an SSRF surface. URL validation is client-side http(s) only. Archive `nodownload`
+and lending flags already travel with each file.
 
 ## Deliverable
 
@@ -940,34 +960,38 @@ before implementing individual viewers.
 
 ### 11.1 Viewer Registry
 
-- [ ] Define the viewer interface.
-- [ ] Register viewers.
-- [ ] Prevent duplicate registrations.
-- [ ] Declare supported content types.
-- [ ] Declare supported MIME types.
-- [ ] Declare supported extensions.
-- [ ] Declare viewer capabilities.
+- [x] Define the viewer interface.
+- [x] Register viewers.
+- [x] Prevent duplicate registrations.
+- [x] Declare supported content types.
+- [x] Declare supported MIME types.
+- [x] Declare supported extensions.
+- [x] Declare viewer capabilities.
 
 ### 11.2 Viewer Selection
 
-- [ ] Match files to viewers.
-- [ ] Prioritize suitable formats.
-- [ ] Handle multiple compatible formats.
-- [ ] Allow manual format selection.
-- [ ] Implement generic fallback.
-- [ ] Handle initialization failures.
+- [x] Match files to viewers.
+- [x] Prioritize suitable formats.
+- [x] Handle multiple compatible formats.
+- [x] Allow manual format selection.
+- [x] Implement generic fallback.
+- [x] Handle initialization failures.
 
 ### 11.3 Shared Viewer Container
 
-- [ ] Implement the viewer route.
-- [ ] Implement the shared toolbar.
-- [ ] Implement back navigation.
-- [ ] Implement favorite action.
-- [ ] Implement download action.
-- [ ] Implement fullscreen where supported.
-- [ ] Implement progress tracking.
-- [ ] Implement viewer error handling.
-- [ ] Release resources when viewers close.
+- [x] Implement the viewer route.
+- [x] Implement the shared toolbar.
+- [x] Implement back navigation.
+- [x] Implement favorite action.
+- [x] Implement download action.
+- [x] Implement fullscreen where supported.
+- [x] Implement progress tracking.
+- [x] Implement viewer error handling.
+- [x] Release resources when viewers close.
+
+Registered viewers: PDF reader, photo gallery, audio player, generic file details. Video, EPUB,
+Wikipedia, web archive, and emulator viewers remain later phases. Fullscreen is offered only
+when `document.fullscreenEnabled` is true. Download still opens the provider URL in a new tab.
 
 ## Deliverable
 
@@ -986,18 +1010,23 @@ Implement the most broadly useful viewers.
 
 ### 12.1 Image Viewer
 
-- [ ] Display images.
-- [ ] Implement zoom.
-- [ ] Implement pan.
-- [ ] Implement fit-to-screen.
-- [ ] Implement image navigation.
-- [ ] Display available metadata.
-- [ ] Add download action.
+Brought forward with Phase 11 at an explicit request.
+
+- [x] Display images.
+- [x] Implement zoom.
+- [x] Implement pan.
+- [x] Implement fit-to-screen.
+- [x] Implement image navigation.
+- [x] Display available metadata.
+- [x] Add download action.
+
+Browser-displayable stills only (JPEG, PNG, GIF, WebP). The current photograph is an `<img>`
+of the provider URL; other files are named, not decoded. SVG and JPEG 2000 are not opened.
 
 ### 12.2 PDF Viewer
 
-Brought forward ahead of Phase 11 at an explicit request. Files are matched as PDFs directly;
-the shared viewer registry is still absent.
+Brought forward ahead of Phase 11 at an explicit request. Now selected through the viewer
+registry like the photo gallery.
 
 - [x] Integrate PDF.js or equivalent.
 - [x] Implement page navigation.
@@ -1022,14 +1051,20 @@ the shared viewer registry is still absent.
 
 ### 12.4 Audio Player
 
-- [ ] Implement playback controls.
-- [ ] Implement seek.
-- [ ] Implement volume.
-- [ ] Implement duration.
-- [ ] Implement playback speed where supported.
-- [ ] Implement track selection.
-- [ ] Implement resume position.
-- [ ] Implement download.
+- [x] Implement playback controls.
+- [x] Implement seek.
+- [x] Implement volume.
+- [x] Implement duration.
+- [x] Implement playback speed where supported.
+- [x] Implement track selection.
+- [x] Implement resume position.
+- [x] Implement download.
+
+Browser-playable audio only (MP3, Ogg, WAV, FLAC, M4A, AAC). Playback is the `<audio>` element
+on the provider URL (no `crossOrigin`, so missing CORS does not block listening). The waveform
+is decoded PCM from a CORS fetch, and only for files whose size is known and at most 12 MiB so
+drawing bars does not download a lecture. A CORS or decoder failure still plays; it does not
+invent a decorative shape.
 
 ### 12.5 Video Player
 

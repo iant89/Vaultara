@@ -7,7 +7,7 @@ development sessions, including sessions performed by different AI agents.
 Record verification results honestly using `PASS` / `FAIL` / `BLOCKED` / `NOT RUN` / `PARTIAL`.
 Never record secrets, credentials, or private user information.
 
-Last updated: 2026-10-26 (Phase 8 global favorites and likes; see Session Handoff Log)
+Last updated: 2026-10-26 (Phase 12.4 audio player + waveform; see Session Handoff Log)
 
 ---
 
@@ -35,7 +35,7 @@ Fixed product decisions already established by
 
 ## Current Development Status
 
-**Phase: 8 (global favorites and likes) implemented. Deployment to GitHub Pages configured.**
+**Phase: 9 (global search) implemented. Deployment to GitHub Pages configured.**
 
 The Internet Archive adapter is now driven by the interface. Home shows a featured item, one row
 per content family (24 cards each) and the provider's category grid; provider pages list categories;
@@ -56,9 +56,12 @@ never import an adapter; `getProviderRuntime()` is reached only through that con
 
 **Favorites and likes are live for signed-in visitors.** Unsigned surfaces omit the controls.
 `/favorites` lists snapshot-first so a downed provider still shows the saved title. Likes stay
-independent of favorites. Search results and the download manager are still unimplemented.
-Category onboarding, exploration history, and home-page filtering remain. Downloadable PDFs can
-be opened with Read; other formats do not have a viewer yet.
+independent of favorites. **Global search queries every enabled, registered provider independently**
+and keeps explored items. **Downloads open the provider's file in a new tab** and, when signed
+in, write an `opened` or `unavailable` row to IndexedDB. This app does not fetch the file and
+does not claim it arrived. Category onboarding, exploration history, and home-page filtering
+remain. Downloadable PDFs can be opened with Read; photographs with View in the gallery;
+audio with Listen in the player. Other formats get file details rather than a fake player.
 
 The application is published as a static site to GitHub Pages by
 `.github/workflows/deploy-pages.yml`. Discovery requires a network route to `archive.org`; without
@@ -395,62 +398,69 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 
 ## Implemented Features
 
-| Area                                                                                       | State                                              | Evidence                                                    |
-| ------------------------------------------------------------------------------------------ | -------------------------------------------------- | ----------------------------------------------------------- |
-| Provider contract (`ContentProvider`, capabilities, request options)                       | Implemented                                        | `src/models/provider.ts`                                    |
-| Provider registry (registration, duplicates, lookup, enable/disable, capabilities)         | Implemented                                        | `src/providers/registry.ts`                                 |
-| Provider lifecycle, health and availability circuit                                        | Implemented                                        | `registry.ts`, `recordSuccess`/`recordFailure`              |
-| Gateway enforcing one call policy for every operation                                      | Implemented                                        | `src/providers/gateway.ts`                                  |
-| Timeouts, cancellation, retries, jittered backoff, rate-limit hints                        | Implemented                                        | `src/providers/reliability.ts`                              |
-| Payload normalization (types, URLs, text, dates, metadata, entities)                       | Implemented                                        | `src/providers/normalize.ts`                                |
-| Response validation and malformed-payload rejection                                        | Implemented                                        | `src/providers/validate.ts`                                 |
-| Archive adapter: search, categories, collections, collection items, item metadata          | Implemented; drives the discovery pages            | `src/providers/archive/adapter.ts`                          |
-| Archive normalization: mediatype/format taxonomy, dates, rights, artwork, access           | Implemented                                        | `src/providers/archive/{taxonomy,map}.ts`                   |
-| Archive available files, access restrictions, download URLs                                | Implemented                                        | `mapFiles`, `getDownloadUrl`                                |
-| Provider composition root (single registration point)                                      | Implemented; reached through `ProviderServices`    | `src/providers/composition.ts`                              |
-| Wikipedia and Adult adapters                                                               | **Not implemented** — Phases 13, 16                | catalogue entries remain `planned`                          |
-| Discovery query layer: TTL cache, in-flight de-duplication, concurrency limiter            | Implemented                                        | `src/data/{contentQueries,requestCache,requestLimiter}.ts`  |
-| `useAsyncValue`: one request key to one component, abort on change, fresh reload           | Implemented                                        | `src/data/useAsyncValue.ts`                                 |
-| Provider context (`ProviderServices`, shared lazy runtime)                                 | Implemented                                        | `src/data/ProviderServices.tsx`                             |
-| Home page: featured item, six category rows, category grid, personalisation notice         | Implemented                                        | `src/pages/HomePage.tsx`                                    |
-| Provider page: categories for an available provider, honest status otherwise               | Implemented                                        | `src/pages/ProviderPage.tsx`                                |
-| Category page: each collection as a shelf of its items, numbered pages of shelves          | Implemented                                        | `src/pages/CategoryPage.tsx`, `CollectionShelf.tsx`         |
-| Nested collections ("Collections inside") as item shelves, with View more                  | Implemented                                        | `adapter.getSubcollections`, `CollectionPage.tsx`           |
-| Incremental lists: first batch on arrival, "View more" appends the next                    | Implemented                                        | `src/data/useProgressiveList.ts`, `ShowMore.tsx`            |
-| Collection page: item shelf, sorting, type filter, in-collection search, View more         | Implemented                                        | `src/pages/CollectionPage.tsx`                              |
-| Item page: hero, description, files with download links, metadata, rights, related         | Implemented                                        | `src/pages/ItemPage.tsx`                                    |
-| PDF reader: Read on downloadable PDFs, book/page/grid, auto scale, on-device then MyMemory | Implemented; other viewers still absent            | `src/viewers/pdf/`, `ViewerPage.tsx`                        |
-| Local accounts: create, sign in, sign out, session restore                                 | Implemented; device-local only                     | `src/persistence/`, `SessionContext.tsx`                    |
-| Per-account preferences, content state, pending sync, TTL cache                            | Implemented                                        | `src/persistence/localBackend.ts`                           |
-| Discovery components: rows, breadcrumbs, pagination, files, toolbar, category card         | Implemented                                        | `src/components/content/`                                   |
-| Design tokens: colour, type, space, radii, elevation, motion, layout, z-index              | Implemented                                        | `src/styles/tokens.css`                                     |
-| Reduced-motion support (CSS + JS smooth-scroll guard)                                      | Implemented                                        | `tokens.css`, `src/utils/motion.ts`                         |
-| Global baseline: focus rings, selection, scrollbars, `.sr-only`, typography defaults       | Implemented                                        | `src/styles/global.css`                                     |
-| Brand lockup with decorative vault mark                                                    | Implemented                                        | `src/components/layout/Logo.tsx`                            |
-| Provider tabs (Adult hidden unless enabled)                                                | Implemented                                        | `Navigation.tsx`, `src/config/providers.test.ts`            |
-| Global search control (navigates to `/search?q=`)                                          | Implemented                                        | `SearchControl.tsx`; results are Phase 9                    |
-| Favourites control, directly reachable at all widths                                       | Implemented                                        | `Navigation.tsx`                                            |
-| Account menu (library + settings groups, signed-in name or honest "not signed in")         | Implemented                                        | `AccountMenu.tsx`, `Disclosure.tsx`                         |
-| Responsive navigation (collapsible search, wrapping provider strip)                        | Implemented; verified at 4 viewports in Chromium   | `Navigation.module.css`, `e2e/responsive.spec.ts`           |
-| Item cards, collection cards, provider badges                                              | Implemented                                        | `src/components/ui/`                                        |
-| Favourite and like toggle primitives                                                       | Implemented; signed-in only                        | `ToggleButton.tsx`, `SavedActions.tsx`, `SavedItemCard.tsx` |
-| Global favorites page                                                                      | Implemented; snapshot-first listing                | `src/pages/FavoritesPage.tsx`, `favoriteList.ts`            |
-| Metadata list, responsive grid, horizontal content row                                     | Implemented                                        | `src/components/ui/`                                        |
-| Dialog, disclosure menu, button primitive, skeletons                                       | Implemented                                        | `src/components/ui/`                                        |
-| Development-only design system reference                                                   | Implemented, dev-only, code-split                  | `/design-system`, `src/pages/DesignSystemPage.tsx`          |
-| SPA focus management on navigation + skip link + footer attribution                        | Implemented                                        | `AppLayout.tsx`, `src/hooks/useFocusMainOnNavigate.ts`      |
-| Route table for every documented route, error boundary, not-found                          | Implemented                                        | `src/app/routes.tsx`                                        |
-| Shared models and provider/viewer contracts                                                | Provider contract implemented against; viewers not | `src/models/`                                               |
+| Area                                                                                       | State                                               | Evidence                                                          |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------- | ----------------------------------------------------------------- |
+| Provider contract (`ContentProvider`, capabilities, request options)                       | Implemented                                         | `src/models/provider.ts`                                          |
+| Provider registry (registration, duplicates, lookup, enable/disable, capabilities)         | Implemented                                         | `src/providers/registry.ts`                                       |
+| Provider lifecycle, health and availability circuit                                        | Implemented                                         | `registry.ts`, `recordSuccess`/`recordFailure`                    |
+| Gateway enforcing one call policy for every operation                                      | Implemented                                         | `src/providers/gateway.ts`                                        |
+| Timeouts, cancellation, retries, jittered backoff, rate-limit hints                        | Implemented                                         | `src/providers/reliability.ts`                                    |
+| Payload normalization (types, URLs, text, dates, metadata, entities)                       | Implemented                                         | `src/providers/normalize.ts`                                      |
+| Response validation and malformed-payload rejection                                        | Implemented                                         | `src/providers/validate.ts`                                       |
+| Archive adapter: search, categories, collections, collection items, item metadata          | Implemented; drives the discovery pages             | `src/providers/archive/adapter.ts`                                |
+| Archive normalization: mediatype/format taxonomy, dates, rights, artwork, access           | Implemented                                         | `src/providers/archive/{taxonomy,map}.ts`                         |
+| Archive available files, access restrictions, download URLs                                | Implemented                                         | `mapFiles`, `getDownloadUrl`                                      |
+| Provider composition root (single registration point)                                      | Implemented; reached through `ProviderServices`     | `src/providers/composition.ts`                                    |
+| Wikipedia and Adult adapters                                                               | **Not implemented** — Phases 13, 16                 | catalogue entries remain `planned`                                |
+| Discovery query layer: TTL cache, in-flight de-duplication, concurrency limiter            | Implemented                                         | `src/data/{contentQueries,requestCache,requestLimiter}.ts`        |
+| `useAsyncValue`: one request key to one component, abort on change, fresh reload           | Implemented                                         | `src/data/useAsyncValue.ts`                                       |
+| Provider context (`ProviderServices`, shared lazy runtime)                                 | Implemented                                         | `src/data/ProviderServices.tsx`                                   |
+| Home page: featured item, six category rows, category grid, personalisation notice         | Implemented                                         | `src/pages/HomePage.tsx`                                          |
+| Provider page: categories for an available provider, honest status otherwise               | Implemented                                         | `src/pages/ProviderPage.tsx`                                      |
+| Category page: each collection as a shelf of its items, numbered pages of shelves          | Implemented                                         | `src/pages/CategoryPage.tsx`, `CollectionShelf.tsx`               |
+| Nested collections ("Collections inside") as item shelves, with View more                  | Implemented                                         | `adapter.getSubcollections`, `CollectionPage.tsx`                 |
+| Incremental lists: first batch on arrival, "View more" appends the next                    | Implemented                                         | `src/data/useProgressiveList.ts`, `ShowMore.tsx`                  |
+| Collection page: item shelf, sorting, type filter, in-collection search, View more         | Implemented                                         | `src/pages/CollectionPage.tsx`                                    |
+| Item page: hero, description, files with download links, metadata, rights, related         | Implemented                                         | `src/pages/ItemPage.tsx`                                          |
+| PDF reader: Read on downloadable PDFs, book/page/grid, auto scale, on-device then MyMemory | Implemented via the viewer registry                 | `src/viewers/pdf/`, `ViewerPage.tsx`                              |
+| Viewer registry, selection, shared container, generic fallback                             | Implemented                                         | `src/viewers/{registry,select,composition,ViewerContainer}.ts(x)` |
+| Photo gallery: zoom, pan, fit, previous/next, metadata, download                           | Implemented; JPEG/PNG/GIF/WebP only                 | `src/viewers/image/`                                              |
+| Audio player: play/pause, seek, volume, speed, tracks, resume, download, PCM waveform      | Implemented; CORS fetch optional; 12 MiB cap        | `src/viewers/audio/`                                              |
+| Local accounts: create, sign in, sign out, session restore                                 | Implemented; device-local only                      | `src/persistence/`, `SessionContext.tsx`                          |
+| Per-account preferences, content state, pending sync, TTL cache                            | Implemented                                         | `src/persistence/localBackend.ts`                                 |
+| Discovery components: rows, breadcrumbs, pagination, files, toolbar, category card         | Implemented                                         | `src/components/content/`                                         |
+| Design tokens: colour, type, space, radii, elevation, motion, layout, z-index              | Implemented                                         | `src/styles/tokens.css`                                           |
+| Reduced-motion support (CSS + JS smooth-scroll guard)                                      | Implemented                                         | `tokens.css`, `src/utils/motion.ts`                               |
+| Global baseline: focus rings, selection, scrollbars, `.sr-only`, typography defaults       | Implemented                                         | `src/styles/global.css`                                           |
+| Brand lockup with decorative vault mark                                                    | Implemented                                         | `src/components/layout/Logo.tsx`                                  |
+| Provider tabs (Adult hidden unless enabled)                                                | Implemented                                         | `Navigation.tsx`, `src/config/providers.test.ts`                  |
+| Global search control (navigates to `/search?q=`)                                          | Implemented                                         | `SearchControl.tsx`                                               |
+| Global search results                                                                      | Implemented; per-provider sections, partial failure | `SearchPage.tsx`, `searchProviders.ts`                            |
+| Downloads                                                                                  | Implemented; new-tab provider URL, local log only   | `FileList.tsx`, `DownloadsPage.tsx`, `src/downloads/`             |
+| Favourites control, directly reachable at all widths                                       | Implemented                                         | `Navigation.tsx`                                                  |
+| Account menu (library + settings groups, signed-in name or honest "not signed in")         | Implemented                                         | `AccountMenu.tsx`, `Disclosure.tsx`                               |
+| Responsive navigation (collapsible search, wrapping provider strip)                        | Implemented; verified at 4 viewports in Chromium    | `Navigation.module.css`, `e2e/responsive.spec.ts`                 |
+| Item cards, collection cards, provider badges                                              | Implemented                                         | `src/components/ui/`                                              |
+| Favourite and like toggle primitives                                                       | Implemented; signed-in only                         | `ToggleButton.tsx`, `SavedActions.tsx`, `SavedItemCard.tsx`       |
+| Global favorites page                                                                      | Implemented; snapshot-first listing                 | `src/pages/FavoritesPage.tsx`, `favoriteList.ts`                  |
+| Metadata list, responsive grid, horizontal content row                                     | Implemented                                         | `src/components/ui/`                                              |
+| Dialog, disclosure menu, button primitive, skeletons                                       | Implemented                                         | `src/components/ui/`                                              |
+| Development-only design system reference                                                   | Implemented, dev-only, code-split                   | `/design-system`, `src/pages/DesignSystemPage.tsx`                |
+| SPA focus management on navigation + skip link + footer attribution                        | Implemented                                         | `AppLayout.tsx`, `src/hooks/useFocusMainOnNavigate.ts`            |
+| Route table for every documented route, error boundary, not-found                          | Implemented                                         | `src/app/routes.tsx`                                              |
+| Shared models and provider/viewer contracts                                                | Implemented; viewers registered                     | `src/models/`, `src/viewers/`                                     |
 
-Not implemented anywhere: search results, downloads, the viewer registry, and every viewer other
-than PDF. Accounts, category preferences, exploration history, favorites, and likes persist
-locally. The Wikipedia and Adult adapters do not exist. Adult visibility stays Phase 16.
+Not implemented anywhere: video/EPUB/Wikipedia/web-archive/emulator viewers.
+Accounts, category preferences, exploration history, favorites, likes, recent searches, and
+download history persist locally. The Wikipedia and Adult adapters do not exist. Adult visibility
+stays Phase 16. There is no download proxy.
 
 ---
 
 ## Features in Progress
 
-Phase 8 complete. Next is Phase 9 (global search) on the user's instruction.
+Phase 11 complete, plus Phase 12.1 photo gallery and Phase 12.4 audio player at explicit
+requests. Next is remaining Phase 12 media viewers (video, book/EPUB) on the user's instruction.
 
 ---
 
@@ -626,6 +636,10 @@ Phase 8 complete. Next is Phase 9 (global search) on the user's instruction.
 | 63 | Accounts are a local IndexedDB backend, not a hosted server | GitHub Pages cannot run a backend. The API is a TypeScript contract; the implementation hashes passwords with PBKDF2 and stores state per `userId`. Sign-in does not mean cross-device sync. `VITE_API_BASE_URL` stays reserved. | Phase 6 |
 | 64 | Home-page filtering uses one shared predicate; onboarding categories are the discovery rows that already have an adapter | Search and collection pages must never hide explored items (design spec 7.2). Wikipedia/comics are omitted from onboarding rather than shown as empty shelves. Adult visibility stays Phase 16. | Phase 7 |
 | 65 | Favorite and like toggles are optimistic inside the session write queue and keep a snapshot | Rollback on persistence failure. `/favorites` filters against snapshots so a downed provider cannot blank the list. Likes never create favorites. No cross-device sync. | Phase 8 |
+| 66 | Global search queries providers independently and never hides explored items | Results are grouped by source. A rate limit or outage on one provider leaves the others. Requests commit on submit rather than per keystroke. Suggestions stay absent until a provider offers them. | Phase 9 |
+| 67 | Downloads are a browser navigation, never a proxied fetch, and never `completed` | GitHub Pages cannot host a proxy, and a proxy would be an SSRF surface. Status is only `opened` or `unavailable`. `javascript:` URLs are rejected. Lending/`nodownload` files stay listed without a Download control. Pause/resume are not offered. | Phase 10 |
+| 68 | Viewers are registered modules; the route does not hardcode PDF | Selection scores (file, viewer) pairs. `?file=` is honoured. Nothing specialized falls back to file details. The photo gallery loads only the current `<img>` from the provider URL. | Phase 11 |
+| 69 | Audio playback streams without CORS; the waveform is a separate CORS fetch capped at 12 MiB | Missing provider CORS must not block listening. Fake or random bars are forbidden. Unknown or huge files are not downloaded solely to draw peaks. URL safety is scored in `audio/module.ts`, not `canPlayAudio`. | Phase 12.4 |
 
 Resolved by user decision on 2026-10-25: file naming (issue 3, decision 18) and the
 roadmap's authoritative status (issue 2, decision 19).
@@ -697,8 +711,8 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 - **URLs:** validate and restrict dangerous schemes (`javascript:`, `data:` where
   inappropriate); validate resolved download URLs; protect any backend proxy from SSRF.
 - **Downloads:** respect provider permissions, licensing, DRM, borrowing, paywalls, and CORS
-  reality. Never attempt to bypass access controls. A backend proxy is optional and must be
-  justified (Spec §16.3, §26).
+  reality. Never attempt to bypass access controls. No backend proxy exists; none was added
+  (Spec §16.3, §26). History never records `completed` from a new-tab open.
 - **No binary execution:** downloaded software, OS images, and ROMs are never executed in the
   application origin. Game Boy emulation runs behind an adapter in an isolated context and
   treats ROMs/save states as untrusted data (Spec §18.6, §18.7).
@@ -718,12 +732,12 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 | Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                                                      |
 | Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                                                  |
 | Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                                                    |
-| Unit and component tests                                    | `npm test`                    | PASS    | 40 files, 635 tests                                                                                                                                      |
-| Production build                                            | `npm run build`               | PASS    | Main 416.99 kB (129.17 kB gzip); dev chunk split out                                                                                                     |
+| Unit and component tests                                    | `npm test`                    | PASS    | 82 files, 826 tests                                                                                                                                      |
+| Production build                                            | `npm run build`               | PASS    | Main 472.47 kB (143.90 kB gzip); PDF, gallery, and audio player code-split                                                                               |
 | Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1                                       |
 | Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                                                              |
 | Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                                                     |
-| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 35 tests, Chromium 153.0.8010.0; 4 viewports, keyboard, mobile search, discovery workflow, hierarchy, collection-as-item redirect                        |
+| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 46 tests, Chromium; 4 viewports, keyboard, mobile search, discovery, search, downloads, PDF reader, photo gallery, audio player + CORS skip              |
 | Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                                                     |
 | Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed                                |
 | Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                                                       |
@@ -1081,13 +1095,13 @@ Previous entry:
 
 ## Next Steps
 
-Phases 0-8 are complete: the shell, the design system, static deployment, the provider
-architecture, the Archive adapter, the discovery workflow, a PDF reader brought forward, local
-accounts, category onboarding, exploration history, discovery filtering, and global favorites
-and likes.
+Phases 0-11 are complete, plus the Phase 12.1 photo gallery and Phase 12.4 audio player: the shell,
+the design system, static deployment, the provider architecture, the Archive adapter, the discovery
+workflow, a PDF reader, local accounts, category onboarding, exploration history, discovery
+filtering, global favorites and likes, global search, the download manager, the viewer registry,
+the photo gallery, and the audio player with a decoded-PCM waveform.
 
-1. **Phase 9: global search** — only on the user's instruction. The search control still
-   navigates to `/search?q=` and the page states it is not implemented.
+1. **Remaining Phase 12 viewers** — video, book/EPUB — only on the user's instruction.
 2. **Verify the hierarchy against the live service:** confirm `mediatype:collection AND
 collection:<media type>` returns the expected collections (and not every collection on the
    Archive), that `-mediatype:collection` behaves as a filter on the live index, and that `numFound`
@@ -1102,6 +1116,74 @@ collection:<media type>` returns the expected collections (and not every collect
 6. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
 
 ## Session Handoff Log
+
+### Session 2026-10-26 (Phase 12.4 audio player + waveform)
+
+1. **Objective:** in-app audio player with a real waveform visualizer, on the user's instruction
+   to implement the audio player with a waveform.
+2. **Specification references:** design spec 18.3; roadmap 12.4; `AGENTS.md` 10.
+3. **Changes made:** Audio viewer module (MP3/Ogg/WAV/FLAC/M4A/AAC). Playback is the browser
+   `<audio>` element on the provider URL, without `crossOrigin`. Waveform peaks come from decoded
+   PCM (`decodeAudioData`) after a CORS fetch, only when size is known and ≤ 12 MiB. CORS or
+   decoder failure still plays and explains the missing drawing. File list Listen; describe
+   "In-app player". 64kbps/Ogg Vorbis derivatives score below originals.
+4. **Implementation status:** Audio opens from the file list. Video, EPUB, and emulator remain
+   unimplemented. No download proxy. No invented waveform.
+5. **Verification:** `npm run check` PASS (82 files / 826 tests). `npm run build` PASS: main
+   472.47 kB (143.90 kB gzip); AudioPlayer code-split 7.91 kB. `npm run verify:pages` PASS.
+   `npm run test:e2e` PASS 46 tests including a CORS waveform and a blocked-fetch still-playing
+   case. Playwright's `route.fulfill` does not emulate CORS, so the blocked case aborts the
+   waveform `fetch` while the media element still receives the WAV.
+6. **Outstanding work:** remaining Phase 12 viewers on instruction. Git push/PR only if asked.
+
+### Session 2026-10-26 (Phase 11 viewer framework + photo gallery)
+
+1. **Objective:** roadmap Phase 11 and the Phase 12.1 photo gallery, on the user's instruction
+   to start Phase 11 and also implement a photo gallery viewer.
+2. **Specification references:** design spec 17, 18.5; roadmap 11.1–11.3, 12.1; `AGENTS.md` 10.
+3. **Changes made:** Viewer registry with duplicate rejection and declared capabilities.
+   Selection scores (file, viewer) pairs, honours `?file=`, falls back to generic file details.
+   Shared container: back, file select, download, fullscreen when the API exists, progress,
+   load-error retry, unmount cleanup. PDF reader registered through a host adapter. Photo
+   gallery: JPEG/PNG/GIF/WebP, zoom/pan/fit, previous/next, metadata, current `<img>` only.
+4. **Implementation status:** PDF and photographs open from the file list. Video and other
+   formats get file details. No audio/EPUB/emulator viewers. No download proxy.
+5. **Verification:** `npm run check` PASS (78 files / 809 tests). `npm run build` PASS: main
+   470.98 kB (143.46 kB gzip); PDF and gallery code-split. `npm run verify:pages` PASS.
+   `npm run test:e2e` PASS 44 tests including PDF reader and photo gallery.
+6. **Outstanding work:** remaining Phase 12 viewers on instruction. Git push/PR only if asked.
+
+### Session 2026-10-26 (Phase 10 download manager)
+
+1. **Objective:** roadmap Phase 10 — download manager — on the user's instruction to continue
+   to the next phase.
+2. **Specification references:** design spec 9.2 / 16; roadmap 10.1–10.4; `AGENTS.md` 9.2.
+3. **Changes made:** File lists show name, format, size, viewer hint, and access restrictions.
+   Download is a `target=_blank` http(s) provider URL. Signed-in clicks store an `opened` or
+   `unavailable` record. `/downloads` lists that log with Open again. No proxy, no `completed`
+   status, no pause/resume, no DRM/lending bypass. Unsafe URLs are rejected.
+4. **Implementation status:** Works against Archive file listings already on the item page.
+   History is device-local IndexedDB. Wikipedia/Adult still unregistered.
+5. **Verification:** `npm run check` PASS (72 files / 786 tests). `npm run build` PASS: main
+   463.14 kB (141.07 kB gzip). `npm run verify:pages` PASS. `npm run test:e2e` PASS 43 tests
+   including unsigned `/downloads` and an empty signed-in log.
+6. **Outstanding work:** Phase 11 on instruction. Git push/PR only if asked.
+
+### Session 2026-10-26 (Phase 9 global search)
+
+1. **Objective:** roadmap Phase 9 — global search — on the user's instruction to start the next
+   phase.
+2. **Specification references:** design spec 15; roadmap 9.1–9.3; `AGENTS.md` 9.1.
+3. **Changes made:** `/search` queries each enabled, registered, searching provider independently;
+   grouped results with View more; provider/type/category/sort URL filters; recent searches in
+   localStorage; explored items stay visible; disabled providers skipped. Suggestions omitted —
+   no adapter offers them. Requests fire on submit, not per keystroke.
+4. **Implementation status:** Search works against the Archive adapter. Wikipedia/Adult are not
+   registered. No download manager.
+5. **Verification:** `npm run check` PASS (69 files / 771 tests). `npm run build` PASS: main
+   458.03 kB (139.67 kB gzip). `npm run verify:pages` PASS. `npm run test:e2e` PASS 41 tests
+   including empty `/search` and header submit → Archive results.
+6. **Outstanding work:** Phase 10 on instruction. Git push/PR only if asked.
 
 ### Session 2026-10-26 (Phase 8 global favorites and likes)
 

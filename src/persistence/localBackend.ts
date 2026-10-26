@@ -21,6 +21,7 @@ import type {
   AccountBackend,
   PendingOperation,
   StoredContentState,
+  StoredDownloadRecord,
   SyncResult,
   UserSnapshot,
 } from './contract';
@@ -247,6 +248,36 @@ export function createLocalAccountBackend(
       return rows.flatMap((row) => (isStoredContentState(row.value) ? [row.value] : []));
     },
 
+    async listDownloads(sessionId: string): Promise<readonly StoredDownloadRecord[]> {
+      const session = await requireSession(sessionId);
+      const rows = await kv.list(downloadPrefix(session.userId));
+
+      return rows
+        .flatMap((row) => (isStoredDownloadRecord(row.value) ? [row.value] : []))
+        .sort(byStartedAtDesc);
+    },
+
+    async putDownload(
+      sessionId: string,
+      record: StoredDownloadRecord,
+    ): Promise<StoredDownloadRecord> {
+      const session = await requireSession(sessionId);
+
+      if (!isStoredDownloadRecord(record)) {
+        throw createPersistenceError('unavailable', 'That download record is not valid.');
+      }
+
+      if (record.downloadUrl !== undefined && !isHttpDownloadUrl(record.downloadUrl)) {
+        throw createPersistenceError(
+          'unavailable',
+          'Download URLs must be http or https addresses.',
+        );
+      }
+
+      await kv.set(downloadKey(session.userId, record.id), record);
+      return record;
+    },
+
     async getContentState(
       sessionId: string,
       identity: ContentIdentity,
@@ -390,6 +421,14 @@ function contentKey(userId: string, identity: ContentIdentity): string {
   return `${contentPrefix(userId)}${formatCanonicalId(identity)}`;
 }
 
+function downloadPrefix(userId: string): string {
+  return `download:${userId}:`;
+}
+
+function downloadKey(userId: string, id: string): string {
+  return `${downloadPrefix(userId)}${id}`;
+}
+
 function pendingPrefix(userId: string): string {
   return `pending:${userId}:`;
 }
@@ -454,6 +493,46 @@ function isStoredPreferences(value: unknown): value is StoredPreferences {
   }
 
   return record.preferences !== null;
+}
+
+function isStoredDownloadRecord(value: unknown): value is StoredDownloadRecord {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    typeof record['id'] !== 'string' ||
+    typeof record['providerId'] !== 'string' ||
+    typeof record['itemId'] !== 'string' ||
+    typeof record['itemTitle'] !== 'string' ||
+    typeof record['fileId'] !== 'string' ||
+    typeof record['fileName'] !== 'string' ||
+    typeof record['startedAt'] !== 'string' ||
+    (record['status'] !== 'opened' && record['status'] !== 'unavailable')
+  ) {
+    return false;
+  }
+
+  if (record['downloadUrl'] !== undefined && typeof record['downloadUrl'] !== 'string') {
+    return false;
+  }
+
+  return true;
+}
+
+function byStartedAtDesc(left: StoredDownloadRecord, right: StoredDownloadRecord): number {
+  return Date.parse(right.startedAt) - Date.parse(left.startedAt);
+}
+
+function isHttpDownloadUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function isStoredContentState(value: unknown): value is StoredContentState {

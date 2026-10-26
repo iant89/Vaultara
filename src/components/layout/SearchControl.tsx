@@ -8,10 +8,9 @@ import styles from './Navigation.module.css';
 /**
  * Global search entry point (design spec 4.1, 15.2).
  *
- * The control is real: submitting navigates to `/search?q=…`, which is the documented route
- * and the contract the search implementation will read. Search *results* are not implemented
- * until Phase 9, and that page says so. A single DOM serves both layouts — the toggle only
- * exists below the desktop breakpoint.
+ * Submitting navigates to `/search?q=…`. Requests run from that page, not on every keystroke,
+ * so a rate-limited provider is not hit per character. A single DOM serves both layouts — the
+ * toggle only exists below the desktop breakpoint.
  */
 export function SearchControl() {
   const [query, setQuery] = useState('');

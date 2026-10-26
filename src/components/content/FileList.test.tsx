@@ -37,6 +37,48 @@ describe('FileList', () => {
     );
   });
 
+  it('offers View for a downloadable photograph', () => {
+    renderList([
+      makeFile({
+        id: 'still.jpg',
+        providerId: 'archive',
+        itemId: 'photos',
+        name: 'still.jpg',
+        mimeType: 'image/jpeg',
+        extension: 'jpg',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/photos/still.jpg',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'View still.jpg' })).toHaveAttribute(
+      'href',
+      '/viewer/archive/photos?file=still.jpg',
+    );
+    expect(screen.getByText(/In-app gallery/)).toBeInTheDocument();
+  });
+
+  it('offers Listen for a downloadable audio file', () => {
+    renderList([
+      makeFile({
+        id: 'theme.wav',
+        providerId: 'archive',
+        itemId: 'album',
+        name: 'theme.wav',
+        mimeType: 'audio/wav',
+        extension: 'wav',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/album/theme.wav',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'Listen theme.wav' })).toHaveAttribute(
+      'href',
+      '/viewer/archive/album?file=theme.wav',
+    );
+    expect(screen.getByText(/In-app player/)).toBeInTheDocument();
+  });
+
   it('does not offer Read for a video or a restricted PDF', () => {
     renderList([
       makeFile({
@@ -61,5 +103,28 @@ describe('FileList', () => {
     expect(screen.queryByRole('link', { name: /Read / })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Download clip.mp4' })).toBeInTheDocument();
     expect(screen.getByText('Not downloadable')).toBeInTheDocument();
+    expect(screen.getAllByText(/No in-app viewer/)).toHaveLength(2);
+  });
+
+  it('explains lending restrictions and never turns an unsafe URL into a download link', () => {
+    renderList([
+      makeFile({
+        id: 'lend.pdf',
+        name: 'lend.pdf',
+        mimeType: 'application/pdf',
+        downloadAvailable: false,
+        accessStatus: 'lending-restricted',
+      }),
+      makeFile({
+        id: 'payload.html',
+        name: 'payload.html',
+        downloadAvailable: true,
+        downloadUrl: 'javascript:alert(1)',
+      }),
+    ]);
+
+    expect(screen.queryByRole('link', { name: /Download / })).not.toBeInTheDocument();
+    expect(screen.getByText(/requires borrowing/i)).toBeInTheDocument();
+    expect(screen.getByText(/not a valid http\(s\) address/i)).toBeInTheDocument();
   });
 });

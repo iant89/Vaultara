@@ -1,10 +1,8 @@
 /**
  * Viewer contracts (design specification 17.3, 17.4).
  *
- * The full registry implementation arrives in roadmap Phase 11. The PDF reader matches
- * files directly until then. Viewers are selected by matching content metadata and file
- * format against declared support, and provider metadata plus file extensions are treated
- * as untrusted when matching.
+ * Viewers are selected by matching content metadata and file format against declared support.
+ * Provider metadata plus file extensions are treated as untrusted when matching.
  */
 
 import type { ContentFile, ContentItem, ContentType } from './content';
@@ -24,9 +22,11 @@ export interface ViewerError {
 export interface ContentViewerProps {
   readonly item: ContentItem;
   readonly files: readonly ContentFile[];
-
+  /** File the route asked for. The viewer still validates it against `files`. */
+  readonly activeFileId?: string;
   readonly initialProgress?: ViewerProgress;
 
+  readonly onSelectFile?: (fileId: string) => void;
   readonly onProgressChange?: (progress: ViewerProgress) => void;
   readonly onFavoriteToggle?: () => void;
   readonly onDownload?: (file: ContentFile) => void;

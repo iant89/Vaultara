@@ -190,7 +190,7 @@ export function ItemPage() {
                   reload={files.reload}
                   errorTitle="Files could not be loaded"
                 >
-                  {(entries) => <FileList files={entries} />}
+                  {(entries) => <FileList files={entries} itemTitle={loaded.title} />}
                 </AsyncContent>
               </Section>
 

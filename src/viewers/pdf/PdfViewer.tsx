@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { ErrorState } from '../../components/feedback/ErrorState';
 import { LoadingState } from '../../components/feedback/LoadingState';
 import { Button } from '../../components/ui/Button';
+import { isSafeDownloadUrl } from '../../downloads/describe';
+import { useRecordDownload } from '../../downloads/useRecordDownload';
 import type { ContentFile, ContentItem } from '../../models/content';
 import type { AppError } from '../../models/errors';
 import { describePdfLoadFailure } from './errors';
@@ -79,6 +81,7 @@ export function PdfViewer({
   onSelectFile,
   onProgress,
 }: PdfViewerProps) {
+  const recordDownload = useRecordDownload();
   const hintId = useId();
   const stageRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -369,12 +372,15 @@ export function PdfViewer({
           </select>
         </label>
 
-        {file.downloadUrl !== undefined ? (
+        {isSafeDownloadUrl(file.downloadUrl) ? (
           <a
             className={styles.download}
             href={file.downloadUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              recordDownload({ itemTitle: item.title, file });
+            }}
           >
             Download
             <span className="sr-only"> {file.name}</span>
