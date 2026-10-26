@@ -1,0 +1,46 @@
+.nav {
+  font-size: var(--text-sm);
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-subtle);
+}
+
+/* Decorative separator: generated content is not announced, which is what we want. */
+.item + .item::before {
+  content: '/';
+  color: var(--color-text-subtle);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  /* Breadcrumb links still meet the touch target without inflating the row's visual weight. */
+  min-height: var(--touch-target);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.current {
+  color: var(--color-text);
+}

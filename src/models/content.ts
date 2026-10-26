@@ -115,6 +115,12 @@ export interface ContentFile {
 
   readonly checksum?: string;
   readonly accessStatus?: string;
+  /**
+   * Direct link to the file, when the provider can construct one and the file may be downloaded
+   * (design spec 11.3 lists the download URL as file metadata). Absent means "no direct link",
+   * not "unknown": callers must handle its absence rather than assuming a URL.
+   */
+  readonly downloadUrl?: string;
 
   readonly metadata: Readonly<Record<string, unknown>>;
 }

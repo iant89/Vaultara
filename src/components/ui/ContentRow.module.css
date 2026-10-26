@@ -1,5 +1,9 @@
 .row {
   display: grid;
+  /* Without an explicit shrinkable track the implicit `auto` column floors at the row's
+   * max-content width, so a 24-card track pushes the page sideways instead of scrolling inside
+   * its own box. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   /* Container query context: card width adapts to the row's own width, not the viewport. */
   container-type: inline-size;
@@ -48,11 +52,14 @@
   position: relative;
   /* Allows the scroll controls to sit outside the clipping track. */
   margin-inline: calc(var(--space-2) * -1);
+  min-width: 0;
 }
 
 .track {
   display: grid;
   grid-auto-flow: column;
+  max-width: 100%;
+  min-width: 0;
   grid-auto-columns: minmax(var(--card-min-width), 1fr);
   gap: var(--row-gap);
   align-items: stretch;

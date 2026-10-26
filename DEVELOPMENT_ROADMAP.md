@@ -229,49 +229,92 @@ business logic throughout the application.
 
 ### 3.1 Provider Registry
 
-- [ ] Implement provider registration.
-- [ ] Prevent duplicate provider IDs.
-- [ ] Implement provider lookup.
-- [ ] Track provider initialization.
-- [ ] Track provider health and availability.
-- [ ] Implement enable and disable operations.
-- [ ] Expose provider capabilities.
+- [x] Implement provider registration.
+- [x] Prevent duplicate provider IDs.
+- [x] Implement provider lookup.
+- [x] Track provider initialization.
+- [x] Track provider health and availability.
+- [x] Implement enable and disable operations.
+- [x] Expose provider capabilities.
 
 ### 3.2 Provider Contract
 
-- [ ] Define search operations.
-- [ ] Define category operations.
-- [ ] Define collection operations.
-- [ ] Define item-detail operations.
-- [ ] Define related-content operations.
-- [ ] Define available-file operations.
-- [ ] Define download URL resolution.
-- [ ] Define provider error handling.
+- [x] Define search operations.
+- [x] Define category operations.
+- [x] Define collection operations.
+- [x] Define item-detail operations.
+- [x] Define related-content operations.
+- [x] Define available-file operations.
+- [x] Define download URL resolution.
+- [x] Define provider error handling.
 
 ### 3.3 Data Normalization
 
-- [ ] Normalize provider identifiers.
-- [ ] Normalize item types.
-- [ ] Normalize titles and descriptions.
-- [ ] Normalize thumbnails.
-- [ ] Normalize categories and tags.
-- [ ] Normalize publication metadata.
-- [ ] Preserve provider-specific metadata.
-- [ ] Preserve original source URLs.
+- [x] Normalize provider identifiers.
+- [x] Normalize item types.
+- [x] Normalize titles and descriptions.
+- [x] Normalize thumbnails.
+- [x] Normalize categories and tags.
+- [x] Normalize publication metadata.
+- [x] Preserve provider-specific metadata.
+- [x] Preserve original source URLs.
 
 ### 3.4 Reliability
 
-- [ ] Implement request timeouts.
-- [ ] Implement cancellation.
-- [ ] Implement retry policies.
-- [ ] Implement rate-limit handling.
-- [ ] Isolate provider failures.
-- [ ] Test malformed provider responses.
+- [x] Implement request timeouts.
+- [x] Implement cancellation.
+- [x] Implement retry policies.
+- [x] Implement rate-limit handling.
+- [x] Isolate provider failures.
+- [x] Test malformed provider responses.
+
+## Status
+
+**Implemented and tested (2026-10-25).**
+
+The architecture exists and is exercised by 174 tests. **No provider adapter is implemented
+yet**, so the application still fetches nothing: every content surface continues to state that
+it is unimplemented. Phase 4 supplies the first adapter.
+
+Where each responsibility lives:
+
+| Concern                | Module                           |
+| ---------------------- | -------------------------------- |
+| Contract types         | `src/models/provider.ts`         |
+| Registration and state | `src/providers/registry.ts`      |
+| Call policy            | `src/providers/gateway.ts`       |
+| Timeouts/retries       | `src/providers/reliability.ts`   |
+| Payload normalization  | `src/providers/normalize.ts`     |
+| Response validation    | `src/providers/validate.ts`      |
+
+Design decisions worth knowing:
+
+- **The registry performs no fetching, and the gateway imports no adapter.** Adding a provider
+  touches neither file; it registers an object that satisfies the contract.
+- **Timeouts are enforced by racing the call**, not by trusting the adapter to honour its
+  `AbortSignal`. An adapter that ignores cancellation still cannot hang a caller.
+- **Cancellation is never recorded as a failure.** Otherwise an impatient user could trip a
+  provider's availability threshold and hide a healthy provider.
+- **A failed initialization isolates only that provider.** Others initialize and serve normally.
+- **Availability is a circuit, not a status.** Three consecutive failed requests (configurable)
+  stop new requests until a success clears the streak; a provider's own health probe returning
+  "unhealthy" is decisive rather than counted.
+- **Retries are limited to transient kinds** (timeout, network, rate limit, unavailability).
+  Malformed payloads are not retried, because the same bad payload would come back.
+- **Only `http`/`https` URLs survive normalization.** `javascript:`, `data:`, and `file:` are
+  dropped rather than sanitized.
 
 ## Deliverable
 
 A working provider registry and shared adapter contract
 with tests and documented integration requirements.
+
+Delivered as: `ProviderRegistry` (registration, duplicate rejection, lookup, independent
+initialization, health, enable/disable, capability exposure, change subscription);
+`ProviderGateway` (one call policy for every operation, capability enforcement, response
+validation, health recording); a reliability layer (timeouts, cancellation, jittered exponential
+backoff, rate-limit hints); normalization and validation layers for untrusted provider payloads;
+and integration requirements documented in `README.md` and `AGENTS.md` section 5.7.
 
 ---
 
@@ -286,43 +329,120 @@ first complete end-to-end discovery experience.
 
 ### 4.1 API Integration
 
-- [ ] Research supported Archive.org APIs.
-- [ ] Implement the Archive provider adapter.
-- [ ] Implement search.
-- [ ] Implement category discovery.
-- [ ] Implement collection retrieval.
-- [ ] Implement collection-item retrieval.
-- [ ] Implement item metadata retrieval.
-- [ ] Implement thumbnail resolution.
-- [ ] Implement available-file retrieval.
-- [ ] Implement source-page links.
+- [x] Research supported Archive.org APIs.
+- [x] Implement the Archive provider adapter.
+- [x] Implement search.
+- [x] Implement category discovery.
+- [x] Implement collection retrieval.
+- [x] Implement collection-item retrieval.
+- [x] Implement item metadata retrieval.
+- [x] Implement thumbnail resolution.
+- [x] Implement available-file retrieval.
+- [x] Implement source-page links.
 
 ### 4.2 Content Normalization
 
-- [ ] Map Archive.org metadata to shared models.
-- [ ] Normalize available content types.
-- [ ] Normalize file formats.
-- [ ] Normalize publication metadata.
-- [ ] Normalize collection information.
-- [ ] Handle missing artwork.
-- [ ] Handle incomplete metadata.
-- [ ] Handle inaccessible resources.
+- [x] Map Archive.org metadata to shared models.
+- [x] Normalize available content types.
+- [x] Normalize file formats.
+- [x] Normalize publication metadata.
+- [x] Normalize collection information.
+- [x] Handle missing artwork.
+- [x] Handle incomplete metadata.
+- [x] Handle inaccessible resources.
 
 ### 4.3 Provider Testing
 
-- [ ] Test search responses.
-- [ ] Test collection responses.
-- [ ] Test item details.
-- [ ] Test pagination.
-- [ ] Test missing items.
-- [ ] Test rate limits.
-- [ ] Test temporary provider failures.
-- [ ] Verify attribution and source links.
+- [x] Test search responses.
+- [x] Test collection responses.
+- [x] Test item details.
+- [x] Test pagination.
+- [x] Test missing items.
+- [x] Test rate limits.
+- [x] Test temporary provider failures.
+- [x] Verify attribution and source links.
+
+## Status
+
+**Implemented and tested (2026-10-25).** 135 tests cover the adapter and its integration with the
+registry and gateway.
+
+Roadmap Phase 5 wired the adapter to the interface: the discovery pages read through the gateway,
+so the provider's data path is exercised in a browser as well as in unit tests. See Phase 5's
+status for what the surfaces do with the data.
+
+Where each responsibility lives:
+
+| Concern                        | Module                                  |
+| ------------------------------ | --------------------------------------- |
+| HTTP, status translation       | `src/providers/archive/api.ts`          |
+| Raw response shapes            | `src/providers/archive/types.ts`        |
+| Mediatype and format taxonomy  | `src/providers/archive/taxonomy.ts`     |
+| Query construction             | `src/providers/archive/query.ts`        |
+| Payload → shared models        | `src/providers/archive/map.ts`          |
+| Browsable categories           | `src/providers/archive/catalog.ts`      |
+| The `ContentProvider` contract | `src/providers/archive/adapter.ts`      |
+| Test payloads and stubs        | `src/providers/archive/fixtures.ts`     |
+| Registration                   | `src/providers/composition.ts`          |
+
+Endpoints used, all read-only:
+
+| Operation          | Endpoint                                     |
+| ------------------ | -------------------------------------------- |
+| Search, counts     | `/advancedsearch.php` (`output=json`)        |
+| Item metadata      | `/metadata/<identifier>`                     |
+| Thumbnails         | `/services/img/<identifier>`                 |
+| Downloads          | `/download/<identifier>/<file>`              |
+| Source attribution | `/details/<identifier>`                      |
+
+Design decisions worth knowing:
+
+- **No media is ever downloaded.** Metadata and search responses only; artwork and files are URLs
+  the browser resolves (design spec 11.4).
+- **The 10,000-result ceiling is reported as the total.** The Archive refuses searches beyond it,
+  so `total` is clamped and `hasMore` stops offering pages that cannot exist.
+- **User text is escaped, and parenthesized when a filter is present.** Escaping stops a search
+  term becoming a field query; the parentheses stop a typed `OR` from binding looser than the
+  `AND` and slipping past a content-type filter.
+- **`texts` maps to `document`, not `book`.** The Archive does not distinguish a scanned book from
+  a scanned report; inferring one would make an item's type depend on which request produced it.
+- **An unknown identifier is `not-found`, not an empty item.** The metadata endpoint answers `200`
+  with `{}`, so absence has to be recognized rather than wait for a 404. `is_dark` items are
+  treated the same way.
+- **`getDownloadUrl` returns `null` instead of throwing.** That is the contract's channel for
+  "nothing to offer"; restricted, private, and missing files all use it.
+- **Restriction travels with each file.** `downloadAvailable`, `viewable`, and `accessStatus`
+  separate a lending-library scan (metadata public, files not) from a `nodownload` item and from a
+  private file, so the interface can explain rather than fail (design spec 11.3).
+- **`viewable` means "the browser can present this unaided".** PDF, EPUB, and DjVu are excluded
+  until a viewer exists (Phase 8), because marking them viewable would advertise functionality
+  that is not there.
+- **Artwork is always a URL, never a probe.** The thumbnail service answers a placeholder for
+  items without a cover, so resolving missing artwork costs no request.
+- **Categories are configuration.** The Archive has no category endpoint, so `catalog.ts` holds
+  curated mediatype/collection lists; one identifier lookup fills in real titles and a failure
+  falls back to the catalogue names rather than an empty screen.
+- **Related content means sibling collections.** Personalization does not exist yet, and an item
+  that is missing or withdrawn is reported as `not-found` rather than as "no related content".
+
+**Not verified:** live archive.org behaviour — the development sandbox has no route to it, so the
+fixtures are hand-written to the documented response shapes. The curated collection identifiers in
+`catalog.ts` and the CORS behaviour of `advancedsearch.php` should be confirmed against the live
+service when a network is available. Response caching is deliberately not the adapter's job: it
+lives above the gateway in `src/data/requestCache.ts` (roadmap 5.5).
 
 ## Deliverable
 
 A functional Archive.org provider returning normalized,
 validated data through the shared provider contract.
+
+Delivered as: an adapter implementing every contract operation the provider can support (search,
+categories, collections, collection metadata, collection items, item metadata, related items,
+available files, download URLs, health probe); a mapping layer covering content types, file
+formats and MIME types, publication dates, collections, rights, artwork, incomplete metadata, and
+inaccessible resources; a composition root that registers it with the registry behind the gateway;
+and failure handling that reaches the caller as `AppError` values the reliability layer already
+understands.
 
 ---
 
@@ -337,63 +457,126 @@ using real Archive.org data.
 
 ### 5.1 Home Page
 
-- [ ] Implement the discovery page.
-- [ ] Implement category rows.
-- [ ] Display 20-30 entries where available.
-- [ ] Add View All entries.
-- [ ] Implement featured content when available.
-- [ ] Add recently added content where supported.
-- [ ] Add category-based discovery.
-- [ ] Add recommendation placeholders until personalization
+- [x] Implement the discovery page.
+- [x] Implement category rows.
+- [x] Display 20-30 entries where available.
+- [x] Add View All entries.
+- [x] Implement featured content when available.
+- [x] Add recently added content where supported.
+- [x] Add category-based discovery.
+- [x] Add recommendation placeholders until personalization
       becomes available.
 
 ### 5.2 Collection Cards
 
-- [ ] Display artwork.
-- [ ] Display titles.
-- [ ] Display provider badges.
-- [ ] Display item counts where available.
-- [ ] Display descriptions where appropriate.
-- [ ] Implement card navigation.
-- [ ] Implement favorite actions.
-- [ ] Implement missing-image fallbacks.
+- [x] Display artwork.
+- [x] Display titles.
+- [x] Display provider badges.
+- [x] Display item counts where available.
+- [x] Display descriptions where appropriate.
+- [x] Implement card navigation.
+- [ ] Implement favorite actions. Deferred to Phase 8: favourite state does not exist yet, so
+      cards render no favourite control rather than a button that cannot save anything.
+- [x] Implement missing-image fallbacks.
 
 ### 5.3 Collection Pages
 
-- [ ] Implement collection headers.
-- [ ] Implement item grids.
-- [ ] Implement pagination.
-- [ ] Implement sorting.
-- [ ] Implement filtering.
-- [ ] Implement search within collections.
-- [ ] Implement breadcrumbs.
-- [ ] Implement related collections.
+- [x] Implement collection headers.
+- [x] Implement item grids.
+- [x] Implement pagination.
+- [x] Implement sorting.
+- [x] Implement filtering.
+- [x] Implement search within collections.
+- [x] Implement breadcrumbs.
+- [x] Implement related collections.
 
 ### 5.4 Item Details
 
-- [ ] Implement item hero sections.
-- [ ] Display metadata.
-- [ ] Display descriptions.
-- [ ] Display provider information.
-- [ ] Display source attribution.
-- [ ] Add available actions.
-- [ ] Add available-file listings.
-- [ ] Add related content.
+- [x] Implement item hero sections.
+- [x] Display metadata.
+- [x] Display descriptions.
+- [x] Display provider information.
+- [x] Display source attribution.
+- [x] Add available actions.
+- [x] Add available-file listings.
+- [x] Add related content.
 
 ### 5.5 Performance
 
-- [ ] Lazy-load artwork.
-- [ ] Implement request caching.
-- [ ] Avoid duplicate requests.
-- [ ] Prevent layout shifts.
-- [ ] Test large collections.
-- [ ] Verify responsive scrolling.
+- [x] Lazy-load artwork.
+- [x] Implement request caching.
+- [x] Avoid duplicate requests.
+- [x] Prevent layout shifts.
+- [x] Test large collections.
+- [x] Verify responsive scrolling.
+
+## Status
+
+**Implemented and tested (2026-10-26).** The discovery workflow runs end to end against the Internet
+Archive provider: home, category, collection, and item details, with breadcrumbs, related content,
+and per-file download links.
+
+| Surface                | Behaviour                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| Home                   | Featured item, six category rows of 24 cards, category grid, personalisation placeholder    |
+| Provider               | That provider's categories, or an honest status for providers without an adapter            |
+| Category               | Its collections, paginated, with provider badges                                            |
+| Collection             | Item grid with sorting, content-type filter, in-collection search, paging, related rows     |
+| Item                   | Hero, description, files with download links, metadata, rights, source link, related items  |
+
+Where each piece lives:
+
+| Concern                                  | Module                                                   |
+| ---------------------------------------- | -------------------------------------------------------- |
+| Cached reads, de-duplication, concurrency | `src/data/contentQueries.ts`, `requestCache.ts`, `requestLimiter.ts` |
+| Request to component state               | `src/data/useAsyncValue.ts`                              |
+| Provider context for the tree            | `src/data/ProviderServices.tsx`                          |
+| Discovery rows, sort, page size          | `src/config/discovery.ts`                                |
+| URL parsing for paging/sorting/filtering | `src/utils/contentParams.ts`                             |
+| Discovery components                     | `src/components/content/`                                |
+| Pages                                    | `src/pages/{Home,Provider,Category,Collection,Item}Page.tsx` |
+
+Decisions worth knowing:
+
+- **Rows are defined by shared content type, not by provider collection.** `src/config/discovery.ts`
+  says which families appear and in what order, so a second provider serving films fills the same
+  row. Each row is one search request; the featured slot reuses the films row's cache entry, so
+  promoting an item costs no extra request.
+- **"View all" is only rendered for a category the provider actually reports.** A dead link is
+  worse than a missing one.
+- **Paging, sorting, filtering, and in-collection search live in the URL.** Changing anything other
+  than the page returns to page one, so a narrowed view is never requested from the middle of a
+  result set.
+- **Filter options come from declared capabilities.** A provider that never returns audio is not
+  offered an audio filter.
+- **Item counts appear only where the provider reports one.** Collections carry a real count; the
+  category grid omits counts rather than inventing them, because a count per card would cost one
+  request per card (design spec 9.3).
+- **Cards omit the provider badge on single-provider surfaces** (rows, collection grids) and the
+  surface itself names the provider; every hero, badge row, and detail page identifies it.
+- **No favourite controls exist yet.** Phase 8 brings favourite state; until then the item page says
+  so rather than showing a control that cannot save anything.
+- **Failures are contained per surface.** A row that fails reports it and offers a retry while the
+  rest of the page keeps working; an unknown item says "not found" rather than blaming the network.
+
+**Verification (2026-10-26):** `npm run check` PASS (37 files, 598 tests); `npm run test:e2e` PASS
+(33 tests, Chromium); `npm run build` PASS; `npm run verify:pages` PASS. Bundle: main 408.78 kB
+(127.38 kB gzip), because the provider and data layer are now part of the application.
+
+**Not verified:** live archive.org behaviour (the sandbox has no route to it), real provider
+artwork, Safari/Firefox/iOS, and screen-reader output. The browser tests stub the provider's JSON so
+they do not depend on network access.
 
 ## Deliverable
 
 A complete Archive.org discovery workflow:
 
 Home -> Category -> Collection -> Item Details.
+
+Delivered as: a cached, rate-limited query layer above the gateway; five discovery surfaces with real
+navigation between them; paginated, sortable, searchable collection browsing; item pages with
+available files, attribution, and related content; and per-surface failure handling that keeps the
+rest of the page usable.
 
 ---
 

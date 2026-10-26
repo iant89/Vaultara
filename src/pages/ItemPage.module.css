@@ -1,0 +1,40 @@
+.skeleton {
+  max-width: 24rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.metaText {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.prose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  max-width: 70ch;
+  font-size: var(--text-base);
+  line-height: 1.6;
+  /* Licence URLs and provider quotations are arbitrary text: they must wrap rather than widen
+   * the page. */
+  overflow-wrap: anywhere;
+}
+
+.sourceLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+}
+
+.sourceLink:hover {
+  background-color: var(--color-surface-hover);
+}

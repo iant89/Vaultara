@@ -26,14 +26,31 @@ afterEach(() => {
 });
 
 describe('provider catalogue', () => {
-  it('describes every provider as planned until its adapter exists', async () => {
+  it('reports availability per adapter, not per roadmap', async () => {
     const { PROVIDER_CATALOG } = await loadProviders(false);
 
     expect(PROVIDER_CATALOG.length).toBeGreaterThan(0);
     for (const provider of PROVIDER_CATALOG) {
-      expect(provider.availability).toBe('planned');
       expect(provider.roadmapPhase).toMatch(/^Phase \d+$/);
+
+      if (provider.availability === 'planned') {
+        // Nothing to browse before the adapter exists, so no browsing phase is claimed.
+        expect(provider.browsingPhase).toBeUndefined();
+      } else {
+        expect(provider.browsingPhase).toMatch(/^Phase \d+$/);
+      }
     }
+  });
+
+  it('marks the Internet Archive as available now that its adapter exists', async () => {
+    const { PROVIDER_CATALOG } = await loadProviders(false);
+    const archive = PROVIDER_CATALOG.find((provider) => provider.id === 'archive');
+
+    expect(archive).toMatchObject({
+      availability: 'available',
+      roadmapPhase: 'Phase 4',
+      browsingPhase: 'Phase 5',
+    });
   });
 
   it('finds providers by id and returns undefined otherwise', async () => {

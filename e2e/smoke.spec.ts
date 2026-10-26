@@ -2,17 +2,46 @@ import { expect, test } from '@playwright/test';
 import { appUrl, appUrlPattern } from './appBase';
 
 /**
- * End-to-end smoke coverage for the application shell.
+ * End-to-end smoke coverage for the application shell and the discovery surfaces.
  *
- * These tests assert routing and layout only. They deliberately make no claim about provider,
- * discovery, or viewer behaviour, none of which exists yet.
+ * Assertions stay independent of provider data: the suite must pass with and without a reachable
+ * provider, so it checks structure and status copy rather than rows of items.
  */
-test('discovery shell loads and declares its implementation status', async ({ page }) => {
+test('discovery renders its rows and declares what is still missing', async ({ page }) => {
   await page.goto(appUrl('/'));
 
   await expect(page.getByRole('heading', { level: 1, name: 'Discovery' })).toBeVisible();
-  await expect(page.getByText('Not implemented')).toBeVisible();
   await expect(page.getByRole('main')).toBeVisible();
+
+  // Row headings come from configuration, so they exist before (and without) any provider data.
+  await expect(page.getByRole('heading', { level: 2, name: 'Films' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Books and documents' })).toBeVisible();
+
+  // Personalisation is the one recommendation feature that does not exist yet, and the page says
+  // so rather than presenting an empty "recommended" shelf (roadmap 5.1).
+  await expect(page.getByText('Personal recommendations is not available yet')).toBeVisible();
+  await expect(page.getByText('Not implemented')).toBeVisible();
+});
+
+test('a category page names the category and offers its collections section', async ({ page }) => {
+  await page.goto(appUrl('/category/movies'));
+
+  // Categories are provider configuration, so the title does not depend on a network request.
+  await expect(page.getByRole('heading', { level: 1, name: 'Moving Images' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Collections' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible();
+});
+
+test('an item page offers a trail back to its provider', async ({ page }) => {
+  await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+
+  const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
+  await expect(crumbs).toBeVisible();
+
+  await crumbs.getByRole('link', { name: 'Internet Archive' }).click();
+
+  await expect(page).toHaveURL(appUrlPattern('/provider/archive'));
+  await expect(page.getByRole('heading', { level: 1, name: 'Internet Archive' })).toBeVisible();
 });
 
 test('navigates through the primary navigation', async ({ page }) => {

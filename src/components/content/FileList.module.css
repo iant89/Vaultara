@@ -1,0 +1,64 @@
+.list {
+  display: grid;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.identity {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  /* Long provider file names must not force the row wider than the page. */
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+}
+
+.meta {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.action:hover {
+  background-color: var(--color-surface-hover);
+  text-decoration: none;
+}
+
+.restricted {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}

@@ -16,7 +16,18 @@ const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
 ] as const;
 
-const ROUTES = ['/', '/favorites', '/settings', '/search', '/design-system'] as const;
+// Discovery routes are included because their grids, toolbars, and hero layouts are the most
+// likely places for a horizontal overflow to reappear (roadmap 5.5).
+const ROUTES = [
+  '/',
+  '/favorites',
+  '/settings',
+  '/search',
+  '/design-system',
+  '/category/movies',
+  '/collection/archive/feature_films',
+  '/item/archive/night_of_the_living_dead',
+] as const;
 
 /** Width of the document's scrollable area minus the viewport, in pixels. */
 async function horizontalOverflow(page: Page): Promise<number> {
@@ -48,7 +59,10 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByRole('link', { name: 'Vaultara' })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Favorites' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Account menu' })).toBeVisible();
-      await expect(page.getByRole('link', { name: /Internet Archive/ })).toBeVisible();
+
+      // Scoped to the provider strip: the discovery page also links to the provider by name.
+      const providers = page.getByRole('navigation', { name: 'Providers' });
+      await expect(providers.getByRole('link', { name: /Internet Archive/ })).toBeVisible();
     });
 
     // Regression guard: the provider strip must never clip a tab behind hidden overflow. An
