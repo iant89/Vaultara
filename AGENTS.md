@@ -1,0 +1,821 @@
+# AGENTS.md — Vaultara Engineering Instructions
+
+## 1. Project Overview
+
+Vaultara is a unified digital discovery and content-viewing platform built with React and TypeScript. It provides a Netflix-inspired interface for discovering, organizing, and viewing digital content from multiple independent providers.
+
+Supported and planned content types include:
+
+- Books, EPUBs, PDFs, and other documents
+- Movies, videos, and audio
+- Images, artwork, and photography
+- Software, operating system images, and utilities
+- Retro games and compatible ROM files
+- Historical documents and web archives
+- Wikipedia articles and reference material
+- Additional content sources through a plugin-based provider architecture
+
+The application emphasizes a consistent discovery experience, cross-provider search, personalized recommendations, global favorites, content history, downloads where permitted, and specialized in-browser viewers.
+
+All development agents must follow this document when working on the repository.
+
+---
+
+## 2. Mandatory Engineering Rules
+
+1. Read `AGENTS.md`, `APPLICATION_DESIGN_SPECIFICATION.md`, and `mnemosync.md` before beginning meaningful development work.
+2. Inspect the existing repository before proposing or implementing architectural changes.
+3. Treat the existing implementation, configuration, tests, and package scripts as authoritative regarding what currently exists and works.
+4. Treat `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior and requirements.
+5. Preserve established architecture and coding conventions unless there is a documented reason to change them.
+6. Use React and TypeScript for application development.
+7. Use strict TypeScript and avoid `any`. Prefer explicit types, discriminated unions, and safe runtime validation.
+8. Build reusable, maintainable components rather than duplicating functionality.
+9. Keep provider-specific logic isolated from shared application functionality.
+10. Do not introduce unnecessary dependencies, frameworks, build tools, or architectural complexity.
+11. Do not claim that code works unless the relevant implementation has been inspected and verification has been performed.
+12. Do not silently remove existing functionality to make a change easier.
+13. Clearly distinguish implemented functionality from planned, partially implemented, mocked, or unverified functionality.
+14. Update documentation and `mnemosync.md` when significant implementation details, architectural decisions, or development state change.
+15. Never overwrite useful notebook information with a short, vague status update. Preserve important historical context.
+16. Protect existing user changes and avoid destructive Git operations without explicit authorization.
+
+When requirements conflict, prioritize security, correctness, data integrity, explicit user instructions, and established project conventions. Resolve conflicts with the design specification explicitly rather than silently ignoring requirements.
+
+---
+
+## 3. Authoritative Application Design Specification
+
+The root-level file `APPLICATION_DESIGN_SPECIFICATION.md` is the authoritative application design specification for Vaultara.
+
+It defines the intended product, required features, user workflows, application architecture, user interface, data models, technical constraints, and acceptance criteria.
+
+### 3.1 Mandatory Reading
+
+Before implementing features, making architectural changes, or modifying significant application behavior:
+
+1. Read `APPLICATION_DESIGN_SPECIFICATION.md`.
+2. Identify the relevant requirements and acceptance criteria.
+3. Inspect the existing implementation to understand what is already supported.
+4. Identify gaps between the intended design and the current implementation.
+5. Plan changes that satisfy the specification while preserving existing functionality.
+
+Do not begin substantial implementation work based solely on a task description when the specification contains relevant requirements.
+
+For small, isolated tasks, consult the relevant sections rather than rereading the entire document unnecessarily.
+
+### 3.2 Implementation Requirements
+
+- Use the specification as the primary reference for intended application functionality.
+- Follow the documented requirements unless the user explicitly authorizes a change or a necessary technical adjustment is justified.
+- Do not silently omit, simplify, or replace specified functionality.
+- Do not invent requirements and attribute them to the specification.
+- Check related requirements before modifying shared interfaces or application-wide behavior.
+- Consider the effects of changes on other features, providers, viewers, and user workflows.
+- If a requirement is ambiguous, inspect the surrounding specification and existing implementation before deciding how to proceed.
+- If a requirement is technically infeasible, unsafe, outdated, or incompatible with an established constraint, document the issue and propose an appropriate alternative.
+- Do not treat a planned feature as implemented simply because it appears in the specification.
+
+### 3.3 Handling Conflicts
+
+If the design specification, user instructions, existing implementation, and technical constraints disagree:
+
+1. Identify the conflicting requirements.
+2. Determine whether the conflict concerns intended behavior or existing implementation.
+3. Follow explicit user instructions for authorized design changes.
+4. Preserve security, correctness, and data integrity.
+5. Explain material trade-offs and proposed changes.
+6. Update the specification when the user approves a change to the intended product design.
+
+Do not silently rewrite the product requirements to match an incomplete implementation.
+
+### 3.4 Updating the Specification
+
+Update `APPLICATION_DESIGN_SPECIFICATION.md` when the user approves changes to the intended product design or requirements.
+
+Examples include:
+
+- Adding or removing application features
+- Changing core user workflows
+- Introducing or removing providers
+- Changing application architecture
+- Revising data models or integration contracts
+- Changing viewer behavior
+- Modifying security requirements
+- Changing acceptance criteria
+
+Keep the specification focused on the intended application, not a chronological record of coding activity.
+
+Do not update the specification merely to rationalize an implementation that deviates from the approved design.
+
+### 3.5 Missing Specification
+
+If `APPLICATION_DESIGN_SPECIFICATION.md` is missing:
+
+1. Check the repository and available project files before assuming it does not exist.
+2. Search the repository for a renamed or relocated specification if appropriate.
+3. Do not fabricate an authoritative specification from incomplete context.
+4. Record the missing document in `mnemosync.md`.
+5. If the task depends on requirements that cannot be recovered, explain the limitation and request clarification when necessary.
+
+### 3.6 Document Responsibilities
+
+Keep the responsibilities of the root-level documentation files distinct:
+
+| File | Responsibility |
+|---|---|
+| `AGENTS.md` | Engineering rules, architectural constraints, agent behavior, and development workflow |
+| `APPLICATION_DESIGN_SPECIFICATION.md` | Authoritative product requirements, intended functionality, architecture, workflows, and acceptance criteria |
+| `mnemosync.md` | Persistent engineering notebook containing implementation status, discoveries, decisions, known issues, and session handoffs |
+| `README.md` | Project introduction, installation, configuration, usage, and developer onboarding |
+
+Do not duplicate large amounts of changing implementation detail across these documents.
+
+---
+
+## 4. Persistent Engineering Notebook: `mnemosync.md`
+
+### 4.1 Purpose
+
+The root-level file `mnemosync.md` is the project's persistent engineering notebook.
+
+It exists to preserve useful technical context between development sessions, including sessions performed by different AI agents.
+
+Use it as both:
+
+- A session-to-session memory system for preserving project context.
+- An engineering notepad for recording discoveries, design decisions, implementation details, problems, experiments, and next steps.
+
+The notebook must make it possible for a future session to continue development without unnecessarily repeating repository exploration or rediscovering previously established facts.
+
+### 4.2 Mandatory Reading
+
+Before beginning meaningful development work:
+
+1. Read `AGENTS.md`.
+2. Read `APPLICATION_DESIGN_SPECIFICATION.md`.
+3. Read `mnemosync.md`, if it exists.
+4. Inspect the relevant source files, configuration, and tests.
+5. Compare the notebook's descriptions with the current repository state.
+6. Identify outstanding tasks, known issues, architectural constraints, and recent decisions.
+
+If `mnemosync.md` does not exist, create it using the structure described below.
+
+Do not assume notebook entries are still accurate simply because they were recorded previously. Verify important claims against the current implementation.
+
+### 4.3 What to Record
+
+Update `mnemosync.md` whenever meaningful engineering information is discovered or changed.
+
+Record information such as:
+
+- Current project status and development phase
+- Application architecture and important module boundaries
+- Technology stack and significant dependencies
+- Repository structure and important file locations
+- Development, build, test, lint, and type-check commands
+- Architectural decisions and their rationale
+- Features completed, in progress, planned, or blocked
+- Important data models and API contracts
+- Provider integrations and their limitations
+- Viewer implementations and supported file formats
+- Known bugs, regressions, and technical debt
+- Security concerns and mitigations
+- Test results and verification performed
+- Failed approaches and why they failed
+- Performance issues and relevant measurements
+- Environment-specific problems and workarounds
+- Changes made during the current session
+- Remaining work and recommended next steps
+- Important assumptions requiring future verification
+
+Prefer concrete details over vague summaries.
+
+**Weak entry:**
+
+> Improved the viewer and fixed some bugs.
+
+**Good entry:**
+
+> Updated the PDF viewer to preserve the current page when the toolbar changes. Verified with the existing viewer tests. Mobile Safari behavior still requires manual testing. The viewer currently relies on the shared content-loading service; do not introduce a separate provider fetch path.
+
+### 4.4 Notebook Maintenance Rules
+
+- Keep information organized under meaningful headings.
+- Include file paths, component names, function names, and commands when useful.
+- Record why significant decisions were made, not just what was changed.
+- Distinguish verified facts from assumptions and hypotheses.
+- Record failed experiments when repeating them could waste future effort.
+- Update outdated entries rather than allowing contradictory instructions to accumulate.
+- Preserve important historical decisions when they explain current architecture.
+- Avoid recording secrets, access tokens, credentials, or private user information.
+- Never use the notebook as a substitute for source code, automated tests, or formal project documentation.
+- Keep entries concise enough to scan while retaining the context needed to continue work.
+- Do not record routine, insignificant edits unless they affect future engineering decisions.
+- Keep current implementation status separate from intended requirements in `APPLICATION_DESIGN_SPECIFICATION.md`.
+
+### 4.5 Session Handoff Protocol
+
+Before finishing a meaningful development session, update `mnemosync.md` with a handoff entry.
+
+Include the following when applicable:
+
+1. **Objective:** What the session was intended to accomplish.
+2. **Specification references:** Relevant sections of `APPLICATION_DESIGN_SPECIFICATION.md`.
+3. **Changes made:** Important files, components, APIs, and behavior changed.
+4. **Implementation status:** Completed, partial, blocked, or unverified.
+5. **Verification:** Commands executed and whether they passed.
+6. **Failures:** Tests, builds, or checks that failed, including relevant error details.
+7. **Outstanding work:** Tasks that remain incomplete.
+8. **Known risks:** Regressions, assumptions, limitations, or areas requiring review.
+9. **Next steps:** The most useful actions for the next session.
+10. **Relevant files:** Paths that the next session should inspect first.
+
+Never report a test as passing if it was not run. If verification could not be performed, explicitly state that limitation.
+
+### 4.6 Recommended Notebook Structure
+
+Create and maintain the following structure in `mnemosync.md` as appropriate:
+
+- Project Summary
+- Current Development Status
+- Technology Stack
+- Repository Structure
+- Architecture and Module Boundaries
+- Development Commands
+- Data Models and Contracts
+- Provider Integrations
+- Viewer Integrations
+- Implemented Features
+- Features in Progress
+- Known Issues and Technical Debt
+- Architecture Decisions
+- Security Considerations
+- Testing and Verification
+- Failed Approaches and Lessons Learned
+- Recent Changes
+- Next Steps
+- Session Handoff Log
+
+Sections may be added, reorganized, or removed when appropriate. Preserve important information during restructuring.
+
+---
+
+## 5. Technology and Code Standards
+
+### 5.1 React and TypeScript
+
+- Use React function components and hooks.
+- Use TypeScript for application logic, components, data models, and service interfaces.
+- Enable and respect strict TypeScript checks.
+- Avoid `any`, unsafe type assertions, and unnecessary non-null assertions.
+- Use explicit types for public interfaces and shared contracts.
+- Use discriminated unions for state that has distinct variants.
+- Keep components focused on a clear responsibility.
+- Extract reusable logic into hooks, services, utilities, or shared components when appropriate.
+- Avoid unnecessary global state.
+- Handle asynchronous operations, loading states, errors, and cancellation where appropriate.
+- Clean up event listeners, timers, subscriptions, and other external resources.
+
+Follow the dependency choices and architectural constraints established by the design specification and existing project configuration.
+
+### 5.2 Component Design
+
+Components should have clear boundaries.
+
+Examples include:
+
+- Application shell and navigation
+- Search and filtering controls
+- Content cards and collections
+- Category and provider pages
+- Content detail pages
+- Favorites and history interfaces
+- Viewer containers and viewer-specific controls
+- Settings and onboarding flows
+
+Do not place provider-specific API requests, large amounts of business logic, and presentation code into a single component.
+
+Prefer composition over large components with many unrelated conditional branches.
+
+### 5.3 Responsive Design
+
+The application must work across desktop, tablet, and mobile devices.
+
+- Design mobile layouts intentionally rather than shrinking desktop layouts.
+- Support touch interaction with practical touch targets, generally around 44 × 44 CSS pixels.
+- Avoid horizontal overflow.
+- Ensure dialogs, menus, viewers, and navigation work on narrow screens.
+- Test relevant interactions on iOS Safari.
+- Respect reduced-motion preferences.
+- Preserve keyboard accessibility and visible focus indicators.
+
+### 5.4 Accessibility
+
+Target WCAG 2.2 AA where applicable.
+
+- Use semantic HTML.
+- Provide accessible names for controls.
+- Support keyboard navigation.
+- Maintain sufficient color contrast.
+- Associate form controls with labels.
+- Provide meaningful alternative text for informative images.
+- Communicate loading, success, and error states to assistive technology.
+- Do not rely on color alone to communicate important information.
+
+---
+
+## 6. Architectural Boundaries
+
+Vaultara must support multiple content providers without coupling the entire application to any single provider.
+
+Maintain clear boundaries between the application core, provider integrations, viewer system, and persistence layer. Follow `APPLICATION_DESIGN_SPECIFICATION.md` for the intended architecture.
+
+### 6.1 Application Core
+
+Responsible for:
+
+- Navigation and routing
+- Shared application state
+- Content discovery
+- Search coordination
+- Favorites, likes, and history
+- User preferences
+- Collection presentation
+- Download coordination
+- Viewer selection
+- Shared error handling and loading states
+
+### 6.2 Provider Integrations
+
+Responsible for:
+
+- Provider-specific API communication
+- Provider-specific content discovery
+- Translating provider data into common models
+- Provider-specific metadata and capabilities
+- Provider-specific collection and item retrieval
+- Provider-permitted file access and downloads
+
+### 6.3 Viewer System
+
+Responsible for:
+
+- Selecting an appropriate viewer
+- Loading content through approved interfaces
+- Rendering supported content types
+- Exposing consistent viewer controls where practical
+- Managing viewer lifecycle and cleanup
+- Reporting loading and playback errors
+
+### 6.4 Persistence Layer
+
+Responsible for:
+
+- User preferences
+- Favorites and likes
+- Exploration history
+- Cached metadata
+- Download metadata
+- Account-backed synchronization when supported
+
+Use IndexedDB or another suitable local persistence mechanism for substantial browser-side data. Use a backend when cross-device accounts, shared state, or server-side synchronization are required.
+
+Do not imply that browser-local data automatically synchronizes across devices.
+
+### 6.5 Canonical Content Identity
+
+Use a stable composite identity for content across providers:
+
+`providerId:itemId`
+
+Do not assume item IDs are globally unique.
+
+Use this identity consistently for favorites, likes, exploration history, caching, routing, and deduplication where appropriate.
+
+When a provider exposes multiple representations of the same item, use explicit normalization or deduplication rules rather than silently merging potentially different content.
+
+---
+
+## 7. Provider Integration Rules
+
+Providers must be independently maintainable and independently failure-tolerant.
+
+Initial and planned providers include:
+
+- Internet Archive
+- Wikipedia
+- Adult content providers
+- Future providers implementing the shared provider contract
+
+### 7.1 Requirements
+
+- Define a common provider interface.
+- Normalize provider results into shared content models.
+- Preserve provider-specific metadata when needed.
+- Expose supported capabilities explicitly.
+- Handle pagination, rate limits, network failures, and malformed responses.
+- Use request timeouts and cancellation where appropriate.
+- Avoid hardcoding provider-specific behavior throughout the UI.
+- Keep provider configuration separate from provider implementation.
+- Do not allow one unavailable provider to break unrelated providers.
+- Display useful error and empty states.
+- Respect provider terms, licenses, permissions, and access restrictions.
+
+A provider should advertise capabilities such as:
+
+- Search
+- Browse and discovery
+- Collections
+- Item details
+- File listing
+- Direct file access
+- Downloads
+- Streaming
+- Metadata enrichment
+
+Only advertise a capability when it is actually supported.
+
+Never assume that a listed file can be downloaded or played directly.
+
+---
+
+## 8. Discovery and User-State Rules
+
+Vaultara uses a media-discovery experience inspired by streaming platforms.
+
+### 8.1 Discovery Interface
+
+Support the discovery behaviors described in `APPLICATION_DESIGN_SPECIFICATION.md`, including applicable features such as:
+
+- Personalized home-page sections
+- Category-based browsing
+- Horizontal content rows
+- Collection cards
+- Collection detail pages
+- Universal content detail pages
+- Provider-specific browsing
+- Search results
+- Favorites and history pages
+
+Display approximately 20–30 cards per category row when enough content is available and doing so is practical. Use pagination or incremental loading for larger collections.
+
+Do not substitute these general guidelines for more specific requirements in the application design specification.
+
+### 8.2 Exploration History
+
+Track when a user has explored an individual content item according to a clearly defined product rule.
+
+In ordinary discovery feeds:
+
+- Hide previously explored items by default where appropriate.
+- Allow liked or favorited items to remain discoverable.
+- Provide a way to revisit history.
+
+Do not apply the ordinary discovery exclusion rule to explicit search results or collections that the user deliberately opens.
+
+Opening a collection must not mark every item in that collection as explored. Only mark an item when the defined item-level exploration action occurs.
+
+Avoid marking content as explored merely because its metadata appeared in a card, row, or search result.
+
+### 8.3 Likes and Favorites
+
+Likes and favorites are separate concepts.
+
+- **Like:** A positive preference signal used for personalization.
+- **Favorite:** An explicit bookmark that places an item in the user's global favorites collection.
+
+Both must use canonical content identity and work across enabled providers.
+
+---
+
+## 9. Search and Download Rules
+
+### 9.1 Search
+
+- Search across all enabled providers when possible.
+- Handle provider failures independently.
+- Return available results even if one or more providers fail.
+- Normalize results into a common representation.
+- Support loading, partial-result, empty-result, and total-failure states.
+- Prevent stale responses from overwriting newer search results.
+- Debounce interactive search requests where appropriate.
+- Preserve explicit user search intent even when ordinary discovery filters hide explored content.
+
+### 9.2 Downloads
+
+Downloads must respect provider permissions and browser security restrictions.
+
+- Download only content the provider permits the application to retrieve.
+- Check whether the provider exposes a usable file URL or download endpoint.
+- Respect authentication, access restrictions, licensing, and applicable copyright requirements.
+- Do not bypass DRM, borrowing restrictions, paywalls, or access controls.
+- Do not assume CORS-restricted resources can be fetched by browser JavaScript.
+- Explain when a download must be opened through the provider's own website.
+- Handle interrupted, failed, unavailable, and unsupported downloads.
+- Distinguish a download link from a file that has actually been downloaded.
+
+Where relevant, display source attribution, licensing information, and provider links.
+
+---
+
+## 10. Viewer and Execution Security
+
+Vaultara must use a viewer registry that selects viewers based on content type, format, and provider capabilities.
+
+Planned viewer types include:
+
+- PDF viewer
+- EPUB and book reader
+- Image viewer
+- Audio player
+- Video player
+- Wikipedia reader
+- Web archive viewer
+- Software information and file viewer
+- Game Boy emulator for compatible ROMs
+- Generic fallback viewer
+
+Use specialized libraries when they provide meaningful functionality, reliability, and acceptable maintenance costs.
+
+### 10.1 Viewer Requirements
+
+- Define a shared viewer interface.
+- Keep format-specific parsing and rendering isolated.
+- Handle unsupported formats gracefully.
+- Validate content metadata before loading.
+- Clean up resources when viewers unmount.
+- Avoid downloading entire files when streaming or partial loading is available and supported.
+- Provide clear error messages and fallback actions.
+- Preserve navigation and relevant content state when practical.
+
+### 10.2 Untrusted Content
+
+Content obtained from external providers must be treated as untrusted.
+
+- Never evaluate downloaded content as application JavaScript.
+- Never execute arbitrary scripts supplied by content providers.
+- Sanitize HTML before rendering it as HTML.
+- Prefer text rendering over raw HTML where possible.
+- Use sandboxed iframes for appropriate isolated content.
+- Apply a restrictive iframe sandbox policy and grant only necessary permissions.
+- Do not expose application credentials, privileged APIs, or unrestricted parent-window access to untrusted content.
+- Validate external URLs and restrict dangerous URL schemes.
+- Avoid unsafe DOM insertion and script injection.
+- Do not trust file extensions alone to determine file types.
+
+### 10.3 Game Boy Emulation
+
+- Integrate a maintained emulator through an adapter.
+- Keep emulator implementation details separate from shared application code.
+- Do not execute ROM files as JavaScript.
+- Validate supported file formats and handle invalid ROMs.
+- Use an isolated execution context where appropriate and practical.
+- Respect applicable copyright and licensing restrictions.
+- Do not bundle unauthorized commercial ROMs.
+
+### 10.4 Software and Operating System Images
+
+- Treat software files, disk images, and operating system images as downloadable or inspectable content unless a specifically designed and securely isolated execution environment exists.
+- Do not execute arbitrary downloaded binaries inside the application.
+- Clearly distinguish file viewing, downloading, and execution capabilities.
+
+---
+
+## 11. Dependency Management
+
+- Inspect existing dependencies before adding new packages.
+- Prefer established, actively maintained libraries.
+- Avoid adding dependencies for trivial functionality that can be implemented safely with existing tools.
+- Explain the purpose of significant new dependencies.
+- Check compatibility with the project's React and TypeScript versions.
+- Avoid introducing multiple libraries that solve the same problem without a clear reason.
+- Do not replace existing infrastructure merely because an alternative is fashionable.
+- Keep dependencies and lockfiles consistent.
+- Never commit secrets, credentials, or environment-specific private configuration.
+
+When choosing a library, consider maintenance status, security, licensing, bundle size, accessibility, browser support, and integration complexity.
+
+---
+
+## 12. Testing and Verification
+
+Testing must reflect the scope and risk of the change.
+
+### 12.1 Required Checks
+
+Use the commands defined by the repository's `package.json` and documentation.
+
+Run relevant checks, such as:
+
+- TypeScript type checking
+- Linting
+- Unit tests
+- Component or integration tests
+- Production builds
+- Browser tests
+- Manual responsive and accessibility checks when appropriate
+
+Do not invent command names. Inspect the available scripts first.
+
+### 12.2 Testing Expectations
+
+Test:
+
+- Successful operation
+- Loading states
+- Empty states
+- Network failures
+- Malformed provider responses
+- Partial provider failures
+- Invalid or unsupported files
+- Responsive behavior
+- Keyboard interaction
+- Persistence and restoration
+- Relevant security boundaries
+
+For changes to provider or viewer interfaces, verify both the affected integration and shared behavior that depends on it.
+
+For bug fixes, add a regression test where practical.
+
+If a check fails:
+
+1. Capture the relevant error.
+2. Determine whether the failure was introduced by the change.
+3. Fix the problem or document why it remains unresolved.
+4. Rerun the relevant verification.
+5. Record unresolved failures in `mnemosync.md`.
+
+Never claim that the application builds, tests pass, or a feature is verified without supporting evidence.
+
+---
+
+## 13. Git and Change Management
+
+- Inspect the current Git status before making changes.
+- Preserve unrelated user modifications.
+- Do not discard, reset, or overwrite existing work without explicit authorization.
+- Keep changes focused on the requested objective.
+- Avoid broad refactoring when a targeted change is sufficient.
+- Do not silently modify generated files or dependency lockfiles without a reason.
+- Review the final diff for unintended changes.
+- Do not commit or push unless requested or explicitly authorized by the established workflow.
+- Document meaningful architectural or behavioral changes.
+
+When encountering uncommitted changes, assume they may belong to the user and protect them.
+
+---
+
+## 14. Documentation Requirements
+
+Update documentation when implementation changes affect how the application is built, used, configured, or extended.
+
+Relevant documentation may include:
+
+- `README.md`
+- `AGENTS.md`
+- `APPLICATION_DESIGN_SPECIFICATION.md`
+- `mnemosync.md`
+- Architecture documentation
+- Provider integration guides
+- Viewer integration guides
+- API contracts
+- Environment configuration instructions
+- Testing instructions
+
+Keep the responsibilities of these files distinct:
+
+- **`AGENTS.md`:** Stable instructions, engineering standards, architectural constraints, and agent workflow requirements.
+- **`APPLICATION_DESIGN_SPECIFICATION.md`:** Authoritative application requirements, intended functionality, architecture, and product design.
+- **`mnemosync.md`:** Evolving engineering context, current implementation status, discoveries, decisions, issues, and session handoffs.
+- **`README.md`:** Project overview, setup, usage, and general developer onboarding.
+
+Do not duplicate large amounts of changing implementation detail across multiple documents when a single authoritative location is sufficient.
+
+---
+
+## 15. Required Development Workflow
+
+For every meaningful development task, follow this process.
+
+### Step 1: Recover Context
+
+- Read `AGENTS.md`.
+- Read `APPLICATION_DESIGN_SPECIFICATION.md`.
+- Read `mnemosync.md`.
+- Inspect the current Git status.
+- Identify the relevant source files, tests, and dependencies.
+
+### Step 2: Understand the Requirement
+
+- Determine the intended behavior.
+- Identify the relevant design specification sections.
+- Identify affected modules and interfaces.
+- Review existing implementation patterns.
+- Identify dependencies, risks, and edge cases.
+- Determine whether the requested behavior is already implemented.
+- Clarify genuinely blocking ambiguities before making assumptions that could cause substantial rework.
+
+### Step 3: Plan
+
+- Choose the smallest maintainable implementation that satisfies the requirement.
+- Identify required code, tests, and documentation changes.
+- Preserve existing architecture unless a change is justified.
+- Consider failure handling, accessibility, security, and responsive behavior.
+- Identify any deviations from the design specification and resolve them explicitly.
+
+### Step 4: Implement
+
+- Make focused changes.
+- Keep types and interfaces consistent.
+- Handle errors explicitly.
+- Avoid unrelated refactoring.
+- Preserve existing user work.
+- Follow the approved product requirements.
+
+### Step 5: Verify
+
+- Run relevant tests and checks.
+- Inspect the final diff.
+- Confirm that the implementation matches the requirement.
+- Confirm that relevant acceptance criteria have been addressed.
+- Identify anything that remains unverified.
+
+### Step 6: Update Documentation and Notebook
+
+- Update `APPLICATION_DESIGN_SPECIFICATION.md` only when approved product requirements change.
+- Record significant implementation changes in `mnemosync.md`.
+- Update current status and outstanding tasks.
+- Capture important discoveries and decisions.
+- Document failed checks and unresolved risks.
+- Provide clear next steps for a future session.
+
+### Step 7: Report
+
+Provide a concise but useful summary that includes:
+
+- What changed
+- Relevant specification requirements addressed
+- Important implementation decisions
+- Files or modules affected
+- Verification performed and its results
+- Known limitations or outstanding issues
+- Recommended next steps, if applicable
+
+Be explicit about incomplete work. Never describe a proposed implementation as completed functionality.
+
+---
+
+## 16. Prioritization
+
+When choosing between competing implementation approaches, prioritize:
+
+1. Correctness and data integrity
+2. Security and privacy
+3. Compliance with provider permissions and licensing
+4. Conformance to approved product requirements
+5. Maintainability and architectural consistency
+6. Reliability and error recovery
+7. Accessibility and responsive usability
+8. Performance
+9. Development simplicity
+10. Visual polish
+11. Optional enhancements
+
+Do not sacrifice security or correctness for convenience or superficial UI improvements.
+
+Avoid premature optimization, but do not ignore known performance bottlenecks in content-heavy interfaces.
+
+---
+
+## 17. Definition of Done
+
+A task is complete only when the applicable requirements have been satisfied.
+
+- [ ] The requested behavior has been implemented.
+- [ ] Relevant requirements in `APPLICATION_DESIGN_SPECIFICATION.md` have been reviewed.
+- [ ] The implementation follows existing architecture and coding standards.
+- [ ] TypeScript types and interfaces are consistent.
+- [ ] Relevant error and edge cases are handled.
+- [ ] Security and provider restrictions have been considered.
+- [ ] Responsive behavior and accessibility have been addressed where applicable.
+- [ ] Relevant tests and checks have been run.
+- [ ] Verification results are accurately reported.
+- [ ] No unrelated user changes have been overwritten.
+- [ ] Relevant documentation has been updated.
+- [ ] `mnemosync.md` has been updated with meaningful discoveries, status changes, and handoff information.
+- [ ] Outstanding limitations are documented.
+
+Not every checkbox applies to every task. Any inapplicable item should be assessed according to the change's scope and risk rather than treated as a reason to skip relevant verification.
+
+---
+
+## 18. Final Directive
+
+Work as a careful, context-aware software engineer.
+
+Understand the existing codebase before changing it. Read the authoritative application design specification before implementing meaningful features. Make focused, type-safe, maintainable changes. Verify results rather than assuming success. Preserve user work and document important decisions.
+
+**Always use `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior and `mnemosync.md` as the persistent engineering notebook that carries technical knowledge, implementation status, discoveries, and actionable handoff notes into future development sessions.**
+
+The objective is not merely to make the current change work. It is to ensure Vaultara remains aligned with its approved design, understandable, secure, extensible, and maintainable as development continues across multiple sessions and contributors.
