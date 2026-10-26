@@ -128,6 +128,24 @@ export function mapSort(sort: SearchSort | undefined): string | undefined {
   return sort === undefined ? undefined : SORT_EXPRESSIONS[sort];
 }
 
+/**
+ * Selects containers rather than content.
+ *
+ * A collection is itself an item, distinguished only by its mediatype. Asking for
+ * `mediatype:collection` within a collection's scope is how the Archive's own pages list the
+ * collections inside one.
+ */
+export const COLLECTION_MEDIATYPE_CLAUSE = 'mediatype:collection';
+
+/**
+ * Removes collections from a result set.
+ *
+ * Every item's `collection` field lists its ancestors up to the media type, and a collection is an
+ * item too — so `collection:<id>` alone returns subcollections alongside the items they group.
+ * This clause is what keeps an item grid to items.
+ */
+export const EXCLUDE_COLLECTIONS_CLAUSE = '-mediatype:collection';
+
 /** `collection:<id>` filter, escaped. */
 export function buildCollectionClause(collectionId: string): string {
   return `collection:${escapeLucene(collectionId.trim())}`;

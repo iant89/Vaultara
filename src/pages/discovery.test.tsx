@@ -82,29 +82,60 @@ function createHarness() {
     },
   );
 
-  const getCollections = vi.fn(async (categoryId: string) => {
-    if (!CATEGORIES.some((category) => category.id === categoryId)) {
-      throw createAppError('not-found', `The category ${categoryId} does not exist.`);
-    }
+  const getCollections = vi.fn(
+    async (categoryId: string, options?: { page?: number; pageSize?: number }) => {
+      if (!CATEGORIES.some((category) => category.id === categoryId)) {
+        throw createAppError('not-found', `The category ${categoryId} does not exist.`);
+      }
+
+      const page = options?.page ?? 1;
+      const pageSize = options?.pageSize ?? 24;
+
+      return createPaginatedResult(
+        [
+          makeCollection({
+            id: 'feature_films',
+            providerId: ARCHIVE,
+            title: 'Feature Films',
+            description: 'Feature-length films.',
+            itemCount: 4_210,
+            categoryIds: [categoryId],
+          }),
+          makeCollection({
+            id: 'classic_tv',
+            providerId: ARCHIVE,
+            title: 'Classic TV',
+            categoryIds: [categoryId],
+          }),
+        ],
+        { page, pageSize, total: 40 },
+      );
+    },
+  );
+
+  const getSubcollections = vi.fn(async (_collectionId: string, options?: { page?: number }) => {
+    const page = options?.page ?? 1;
 
     return createPaginatedResult(
-      [
-        makeCollection({
-          id: 'feature_films',
-          providerId: ARCHIVE,
-          title: 'Feature Films',
-          description: 'Feature-length films.',
-          itemCount: 4_210,
-          categoryIds: [categoryId],
-        }),
-        makeCollection({
-          id: 'classic_tv',
-          providerId: ARCHIVE,
-          title: 'Classic TV',
-          categoryIds: [categoryId],
-        }),
-      ],
-      { page: 1, pageSize: 24, total: 9 },
+      page === 1
+        ? [
+            makeCollection({
+              id: 'dos_games',
+              providerId: ARCHIVE,
+              title: 'DOS Games',
+              description: 'Games written for MS-DOS.',
+              categoryIds: ['movies'],
+            }),
+          ]
+        : [
+            makeCollection({
+              id: 'windows_apps',
+              providerId: ARCHIVE,
+              title: 'Windows Applications',
+              categoryIds: ['movies'],
+            }),
+          ],
+      { page, pageSize: 6, total: 8 },
     );
   });
 
@@ -121,21 +152,64 @@ function createHarness() {
   );
 
   const getCollectionItems = vi.fn(
-    async (_collectionId: string, options?: { page?: number; sort?: string; query?: string }) =>
-      createPaginatedResult(
-        [ITEM, makeItem({ id: 'second', providerId: ARCHIVE, title: 'Second film' })],
-        {
-          page: options?.page ?? 1,
-          pageSize: 24,
-          total: 30,
-        },
-      ),
+    async (collectionId: string, options?: { page?: number; sort?: string; query?: string }) => {
+      const page = options?.page ?? 1;
+
+      if (collectionId === 'dos_games') {
+        return createPaginatedResult(
+          [makeItem({ id: 'doom', providerId: ARCHIVE, title: 'Doom', type: 'game' })],
+          { page, pageSize: 24, total: 12 },
+        );
+      }
+
+      if (collectionId === 'windows_apps') {
+        return createPaginatedResult(
+          [makeItem({ id: 'notepad', providerId: ARCHIVE, title: 'Notepad', type: 'software' })],
+          { page, pageSize: 24, total: 4 },
+        );
+      }
+
+      if (collectionId === 'classic_tv') {
+        return createPaginatedResult(
+          [
+            makeItem({
+              id: 'twilight-zone',
+              providerId: ARCHIVE,
+              title: 'The Twilight Zone',
+              type: 'video',
+            }),
+          ],
+          { page, pageSize: 24, total: 20 },
+        );
+      }
+
+      return createPaginatedResult(
+        page === 1
+          ? [ITEM, makeItem({ id: 'second', providerId: ARCHIVE, title: 'Second film' })]
+          : [makeItem({ id: 'third', providerId: ARCHIVE, title: 'Third film' })],
+        { page, pageSize: 24, total: 30 },
+      );
+    },
   );
 
   const getItem = vi.fn(async () => ITEM);
-  const getRelatedItems = vi.fn(async () => [
-    makeItem({ id: 'related', providerId: ARCHIVE, title: 'A related film', type: 'movie' }),
-  ]);
+  const getRelatedItems = vi.fn(async (_itemId: string, options?: { page?: number }) => {
+    const page = options?.page ?? 1;
+
+    return createPaginatedResult(
+      [
+        page === 1
+          ? makeItem({ id: 'related', providerId: ARCHIVE, title: 'A related film', type: 'movie' })
+          : makeItem({
+              id: 'related-2',
+              providerId: ARCHIVE,
+              title: 'Another film',
+              type: 'movie',
+            }),
+      ],
+      { page, pageSize: 12, total: 30 },
+    );
+  });
   const getAvailableFiles = vi.fn(async () => [
     makeFile({
       id: 'night_of_the_living_dead.mp4',
@@ -163,6 +237,7 @@ function createHarness() {
       getCollections,
       getCollection,
       getCollectionItems,
+      getSubcollections,
       getItem,
       getRelatedItems,
       getAvailableFiles,
@@ -181,7 +256,15 @@ function createHarness() {
 
   return {
     services,
-    spies: { search, getCollections, getCollection, getCollectionItems, getItem },
+    spies: {
+      search,
+      getCollections,
+      getCollection,
+      getCollectionItems,
+      getSubcollections,
+      getItem,
+      getRelatedItems,
+    },
   };
 }
 
@@ -266,7 +349,7 @@ describe('discovery home page', () => {
 });
 
 describe('category page', () => {
-  it('lists the category collections with provider attribution and counts', async () => {
+  it('lists the category collections as rows of their items', async () => {
     const { services } = createHarness();
     renderAt('/category/movies', services);
 
@@ -274,9 +357,20 @@ describe('category page', () => {
       await screen.findByRole('heading', { level: 1, name: 'Moving Images' }),
     ).toBeInTheDocument();
 
-    const card = await screen.findByRole('link', { name: /Feature Films/ });
+    expect(await screen.findByText('Night of the Living Dead')).toBeInTheDocument();
+    expect(await screen.findByText('The Twilight Zone')).toBeInTheDocument();
 
-    expect(card).toHaveAttribute('href', `/collection/${ARCHIVE}/feature_films`);
+    const heading = screen.getByRole('heading', { level: 2, name: 'Feature Films' });
+    const shelf = heading.closest('section');
+
+    expect(shelf).not.toBeNull();
+    expect(
+      within(shelf as HTMLElement).getByRole('link', { name: 'Feature Films' }),
+    ).toHaveAttribute('href', `/collection/${ARCHIVE}/feature_films`);
+    expect(within(shelf as HTMLElement).getByRole('link', { name: /view all/i })).toHaveAttribute(
+      'href',
+      `/collection/${ARCHIVE}/feature_films`,
+    );
     expect(screen.getByText('4,210 items')).toBeInTheDocument();
     expect(screen.getAllByText('Internet Archive').length).toBeGreaterThan(0);
   });
@@ -289,13 +383,20 @@ describe('category page', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Category' })).toBeInTheDocument();
   });
 
-  it('pages through collections with links', async () => {
+  it('pages through collections with numbered links', async () => {
     const { services } = createHarness();
     renderAt('/category/movies', services);
 
     const next = await screen.findByRole('link', { name: /Next/ });
 
     expect(next).toHaveAttribute('href', '/category/movies?page=2');
+
+    // The provider reported 40 collections at 6 shelves per page, so there are seven pages of them.
+    expect(screen.getByText('Page 1 of 7')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '2' })).toHaveAttribute(
+      'href',
+      '/category/movies?page=2',
+    );
   });
 });
 
@@ -345,13 +446,40 @@ describe('collection page', () => {
     });
   });
 
-  it('pages items with links and drops filters back to a clean collection', async () => {
+  it('adds the next batch of items when the reader asks for more', async () => {
     const { services } = createHarness();
-    renderAt(`/collection/${ARCHIVE}/feature_films?q=nothing`, services);
+    renderAt(`/collection/${ARCHIVE}/feature_films`, services);
 
-    const next = await screen.findByRole('link', { name: /Next/ });
+    expect(await screen.findByText('Night of the Living Dead')).toBeInTheDocument();
+    expect(screen.getByText('Showing 2 of 30 items')).toBeInTheDocument();
+    expect(screen.queryByText('Third film')).toBeNull();
 
-    expect(next).toHaveAttribute('href', `/collection/${ARCHIVE}/feature_films?q=nothing&page=2`);
+    await userEvent.click(screen.getByRole('button', { name: 'View more items' }));
+
+    // Appended, not replaced: the existing entries stay on screen while the next batch arrives.
+    expect(await screen.findByText('Third film')).toBeInTheDocument();
+    expect(screen.getByText('Night of the Living Dead')).toBeInTheDocument();
+    expect(screen.getByText('Showing 3 of 30 items')).toBeInTheDocument();
+  });
+
+  it('shows the collections nested inside a collection and adds more on request', async () => {
+    const { services, spies } = createHarness();
+    renderAt(`/collection/${ARCHIVE}/softwarelibrary`, services);
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Collections inside' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /DOS Games/ })).toHaveAttribute(
+      'href',
+      `/collection/${ARCHIVE}/dos_games`,
+    );
+    expect(await screen.findByText('Doom')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'View more nested collections' }));
+
+    expect(await screen.findByRole('link', { name: /Windows Applications/ })).toBeInTheDocument();
+    expect(spies.getSubcollections).toHaveBeenCalledTimes(2);
+    expect(spies.getSubcollections.mock.calls.at(-1)?.[1]).toMatchObject({ page: 2 });
   });
 
   it('offers related collections from the same category', async () => {
@@ -396,14 +524,20 @@ describe('item page', () => {
     expect(screen.getByText('Public domain.')).toBeInTheDocument();
   });
 
-  it('shows related content from the same provider', async () => {
-    const { services } = createHarness();
+  it('shows related content from the same provider and can add more', async () => {
+    const { services, spies } = createHarness();
     renderAt(`/item/${ARCHIVE}/night_of_the_living_dead`, services);
 
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Related items' }),
     ).toBeInTheDocument();
     expect(await screen.findByText('A related film')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'View more related items' }));
+
+    expect(await screen.findByText('Another film')).toBeInTheDocument();
+    expect(screen.getByText('A related film')).toBeInTheDocument();
+    expect(spies.getRelatedItems.mock.calls.at(-1)?.[1]).toMatchObject({ page: 2 });
   });
 
   it('says when an item does not exist instead of blaming the network', async () => {

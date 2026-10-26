@@ -1,13 +1,15 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { getProviderName } from '../../config/providers';
 import type { AsyncState } from '../../data/useAsyncValue';
 import type { ContentItem } from '../../models/content';
 import type { PaginatedResult } from '../../models/pagination';
-import { getProviderName } from '../../config/providers';
 import { ErrorState } from '../feedback/ErrorState';
 import { ContentRow } from '../ui/ContentRow';
+import { ArrowRightIcon } from '../ui/icons';
 import { ItemCard } from '../ui/ItemCard';
-import { SkeletonCard, SkeletonGroup } from '../ui/Skeleton';
+import { Skeleton, SkeletonCard, SkeletonGroup } from '../ui/Skeleton';
 import styles from './ItemRow.module.css';
 
 interface ItemRowProps {
@@ -19,6 +21,7 @@ interface ItemRowProps {
   readonly reload: () => void;
   readonly emptyMessage?: ReactNode;
   readonly skeletonCount?: number;
+  readonly headingLevel?: 2 | 3;
 }
 
 /**
@@ -32,22 +35,38 @@ export function ItemRow({
   title,
   description,
   viewAllHref,
-  viewAllLabel,
+  viewAllLabel = 'View all',
   state,
   reload,
   emptyMessage = 'Nothing to show here yet.',
   skeletonCount = 6,
+  headingLevel = 2,
 }: ItemRowProps) {
   const headingId = useId();
+  const Heading = headingLevel === 3 ? 'h3' : 'h2';
 
   if (state.status !== 'ready') {
     return (
       <section className={styles.row} aria-labelledby={headingId}>
         <div className={styles.header}>
-          <h2 id={headingId} className={styles.title}>
-            {title}
-          </h2>
-          {description !== undefined ? <p className={styles.description}>{description}</p> : null}
+          <div>
+            <Heading id={headingId} className={styles.title}>
+              {viewAllHref !== undefined ? (
+                <Link to={viewAllHref} className={styles.titleLink}>
+                  {title}
+                </Link>
+              ) : (
+                title
+              )}
+            </Heading>
+            {description !== undefined ? <p className={styles.description}>{description}</p> : null}
+          </div>
+          {viewAllHref !== undefined ? (
+            <Link to={viewAllHref} className={styles.viewAll}>
+              {viewAllLabel}
+              <ArrowRightIcon width={16} height={16} />
+            </Link>
+          ) : null}
         </div>
 
         {state.status === 'loading' ? (
@@ -71,6 +90,7 @@ export function ItemRow({
   return (
     <ContentRow
       title={title}
+      headingLevel={headingLevel}
       {...(description !== undefined ? { description } : {})}
       {...(viewAllHref !== undefined ? { viewAllHref } : {})}
       {...(viewAllLabel !== undefined ? { viewAllLabel } : {})}
@@ -81,5 +101,36 @@ export function ItemRow({
         <ItemCard key={item.id} item={item} providerName={getProviderName(item.providerId)} />
       ))}
     </ContentRow>
+  );
+}
+
+/**
+ * Placeholder rows matching a loaded shelf's shape so a category page does not jump when the
+ * first collections arrive (design spec 25).
+ */
+export function RowSkeleton({
+  label = 'Loading rows',
+  rows = 3,
+  skeletonCount = 6,
+}: {
+  readonly label?: string;
+  readonly rows?: number;
+  readonly skeletonCount?: number;
+}) {
+  return (
+    <SkeletonGroup label={label}>
+      {Array.from({ length: rows }, (_, row) => (
+        <div key={row} className={styles.row}>
+          <div className={styles.header}>
+            <Skeleton width="10rem" height="1.25rem" />
+          </div>
+          <div className={styles.skeletonTrack}>
+            {Array.from({ length: skeletonCount }, (_, index) => (
+              <SkeletonCard key={index} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </SkeletonGroup>
   );
 }

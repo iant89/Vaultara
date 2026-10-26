@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { ContentCollection } from '../../models/content';
+import { formatItemCount } from '../../utils/format';
 import { buildCollectionPath } from '../../utils/links';
 import { Artwork } from './Artwork';
 import { ProviderBadge } from './ProviderBadge';
@@ -11,27 +12,23 @@ interface CollectionCardProps {
   /** Uses the wider 16:9 crop used for featured collections. */
   readonly wide?: boolean;
   readonly priority?: boolean;
-}
-
-function formatItemCount(count: number | undefined): string | null {
-  if (count === undefined || !Number.isFinite(count) || count < 1) {
-    return null;
-  }
-
-  return `${count.toLocaleString('en-US')} ${count === 1 ? 'item' : 'items'}`;
+  /** Renders the provider badge; hide it when the whole surface is already one provider. */
+  readonly showProvider?: boolean;
 }
 
 /**
  * A provider collection in a row or grid.
  *
- * Opening a collection never marks its items as explored; exploration is item-level only
- * (design spec 7.1), which is why this card records nothing on interaction.
+ * Artwork dominates (design spec 5.3): the title and an item count are enough to identify the
+ * collection, and the long description belongs on its page. Opening a collection never marks its
+ * items as explored; exploration is item-level only (design spec 7.1).
  */
 export function CollectionCard({
   collection,
   providerName,
   wide = false,
   priority = false,
+  showProvider = false,
 }: CollectionCardProps) {
   const itemCount = formatItemCount(collection.itemCount);
 
@@ -57,16 +54,16 @@ export function CollectionCard({
             {collection.title}
           </Link>
         </h3>
-
-        {collection.description ? (
-          <p className={styles.description}>{collection.description}</p>
-        ) : null}
       </div>
 
-      <div className={styles.footer}>
-        <ProviderBadge providerId={collection.providerId} providerName={providerName} compact />
-        {itemCount ? <span className={styles.typeChip}>{itemCount}</span> : null}
-      </div>
+      {showProvider || itemCount !== undefined ? (
+        <div className={styles.footer}>
+          {showProvider ? (
+            <ProviderBadge providerId={collection.providerId} providerName={providerName} compact />
+          ) : null}
+          {itemCount !== undefined ? <span className={styles.typeChip}>{itemCount}</span> : null}
+        </div>
+      ) : null}
     </li>
   );
 }

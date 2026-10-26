@@ -64,6 +64,12 @@ export interface ProviderCapabilities {
   readonly itemDetails: boolean;
   readonly relatedContent: boolean;
   readonly downloadableFiles: boolean;
+  /**
+   * Whether collections may themselves contain collections. The Archive nests them (a media type
+   * holds collections, a collection may hold subcollections), so browsing a collection can offer a
+   * "Collections inside" section before its items.
+   */
+  readonly subcollections: boolean;
   readonly streaming: boolean;
   readonly pagination: boolean;
   /** Adult-classified content requiring opt-in and visibility controls (design spec 13). */
@@ -87,6 +93,7 @@ export function createProviderCapabilities(
     itemDetails: false,
     relatedContent: false,
     downloadableFiles: false,
+    subcollections: false,
     streaming: false,
     pagination: false,
     adultContent: false,
@@ -132,10 +139,20 @@ export interface ContentProvider {
 
   getItem(itemId: string, options?: ProviderRequestOptions): Promise<ContentItem>;
 
-  getRelatedItems(
-    itemId: string,
-    options?: ProviderRequestOptions,
-  ): Promise<readonly ContentItem[]>;
+  /**
+   * Collections nested inside a collection (roadmap 5.3). Optional: a provider with a flat
+   * hierarchy does not implement it, and the interface then shows no such section.
+   */
+  getSubcollections?(
+    collectionId: string,
+    options?: BrowseOptions,
+  ): Promise<PaginatedResult<ContentCollection>>;
+
+  /**
+   * Items that sit beside the given one, paged so the interface can add more on request instead
+   * of either truncating the list or fetching everything up front.
+   */
+  getRelatedItems(itemId: string, options?: BrowseOptions): Promise<PaginatedResult<ContentItem>>;
 
   getAvailableFiles?(
     itemId: string,
@@ -151,4 +168,10 @@ export interface ContentProvider {
 
 /** Capability flags that gate a contract method. */
 export type ProviderCapabilityKey =
-  'search' | 'categories' | 'collections' | 'itemDetails' | 'relatedContent' | 'downloadableFiles';
+  | 'search'
+  | 'categories'
+  | 'collections'
+  | 'subcollections'
+  | 'itemDetails'
+  | 'relatedContent'
+  | 'downloadableFiles';

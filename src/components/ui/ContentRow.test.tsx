@@ -153,6 +153,15 @@ describe('ContentRow', () => {
     );
   });
 
+  it('makes the row title a link to the same destination', () => {
+    renderRow({ viewAllHref: '/category/books' });
+
+    expect(screen.getByRole('link', { name: 'Continue exploring' })).toHaveAttribute(
+      'href',
+      '/category/books',
+    );
+  });
+
   it('reports an empty row honestly instead of rendering an empty track', () => {
     render(
       <MemoryRouter>

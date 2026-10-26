@@ -5,7 +5,9 @@
    * `minmax(0, 1fr)` keeps the column at the available width instead. */
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
-  max-width: 72rem;
+  /* Fill the main column so discovery rows can show a full shelf of posters. Text in the
+   * header is still capped with max-width on `.header` / `.intro`. */
+  max-width: none;
 }
 
 .header {

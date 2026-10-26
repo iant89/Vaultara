@@ -41,7 +41,6 @@ import {
   validateContentCollection,
   validateContentFiles,
   validateContentItem,
-  validateContentItems,
   validateDownloadUrl,
   validatePaginatedResult,
 } from './validate';
@@ -177,11 +176,37 @@ export class ProviderGateway {
     });
   }
 
+  async getSubcollections(
+    providerId: string,
+    collectionId: string,
+    options: BrowseOptions = {},
+  ): Promise<PaginatedResult<ContentCollection>> {
+    const provider = this.registry.require(providerId);
+    const getSubcollections = provider.getSubcollections;
+
+    if (getSubcollections === undefined) {
+      throw createAppError(
+        'unsupported-capability',
+        `Provider ${JSON.stringify(providerId)} does not implement getSubcollections.`,
+        { providerId },
+      );
+    }
+
+    return this.invoke({
+      provider,
+      capability: 'subcollections',
+      options,
+      call: (context) =>
+        getSubcollections.call(provider, collectionId, { ...options, signal: context.signal }),
+      validate: (value, id) => validatePaginatedResult(value, id, validateContentCollection),
+    });
+  }
+
   async getRelatedItems(
     providerId: string,
     itemId: string,
-    options: ProviderRequestOptions = {},
-  ): Promise<readonly ContentItem[]> {
+    options: BrowseOptions = {},
+  ): Promise<PaginatedResult<ContentItem>> {
     const provider = this.registry.require(providerId);
 
     return this.invoke({
@@ -189,7 +214,7 @@ export class ProviderGateway {
       capability: 'relatedContent',
       options,
       call: (context) => provider.getRelatedItems(itemId, { ...options, signal: context.signal }),
-      validate: validateContentItems,
+      validate: (value, id) => validatePaginatedResult(value, id, validateContentItem),
     });
   }
 

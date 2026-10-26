@@ -59,7 +59,7 @@ describe('guard rails before a request', () => {
   });
 
   it('refuses an operation the provider has not declared', async () => {
-    const getRelatedItems = vi.fn(async () => []);
+    const getRelatedItems = vi.fn(async () => createPaginatedResult([], { page: 1, pageSize: 12 }));
     const { gateway } = createGateway({ capabilities: { relatedContent: false }, getRelatedItems });
 
     const error = await errorOf(gateway.getRelatedItems('fake', 'item-1'));
