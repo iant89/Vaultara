@@ -1121,34 +1121,46 @@ discovery experience.
 
 ### 13.1 Provider Integration
 
-- [ ] Select supported Wikipedia API mechanisms.
-- [ ] Implement article search.
-- [ ] Implement article retrieval.
-- [ ] Implement summaries.
-- [ ] Implement thumbnails.
-- [ ] Implement category mapping.
-- [ ] Implement related articles where supported.
-- [ ] Implement source links.
-- [ ] Preserve attribution and licensing metadata.
+- [x] Select supported Wikipedia API mechanisms.
+- [x] Implement article search.
+- [x] Implement article retrieval.
+- [x] Implement summaries.
+- [x] Implement thumbnails.
+- [x] Implement category mapping.
+- [x] Implement related articles where supported.
+- [x] Implement source links.
+- [x] Preserve attribution and licensing metadata.
+
+English Wikipedia via the MediaWiki Action API with `origin=*` (CORS). Search, summaries,
+thumbnails, categories, related (`morelike:`), and parse HTML. Other language editions are
+links to that wiki, not extra adapters. Text is attributed CC BY-SA 4.0.
 
 ### 13.2 Article Reader
 
-- [ ] Implement readable article layout.
-- [ ] Implement table of contents.
-- [ ] Render article content safely.
-- [ ] Implement internal navigation.
-- [ ] Display references.
-- [ ] Display images.
-- [ ] Implement related articles.
-- [ ] Implement favorite action.
+- [x] Implement readable article layout.
+- [x] Implement table of contents.
+- [x] Render article content safely.
+- [x] Implement internal navigation.
+- [x] Display references.
+- [x] Display images.
+- [x] Implement related articles.
+- [x] Implement favorite action.
+
+Parse HTML is sanitised (scripts, `javascript:` URLs, and non-Wikimedia images dropped) before
+insertion. `/wiki/` links become in-app item routes. Related articles and favorites use the
+shared item page / viewer chrome.
 
 ### 13.3 Integration
 
-- [ ] Add Wikipedia discovery rows.
-- [ ] Add Wikipedia search results.
-- [ ] Add Wikipedia items to global favorites.
-- [ ] Track exploration.
-- [ ] Test provider failure isolation.
+- [x] Add Wikipedia discovery rows.
+- [x] Add Wikipedia search results.
+- [x] Add Wikipedia items to global favorites.
+- [x] Track exploration.
+- [x] Test provider failure isolation.
+
+The Wikipedia provider page has a Popular row (most-viewed) plus subject categories that open
+as collections. Global search queries Wikipedia independently of the Archive. A Wikipedia outage
+does not hide Archive results.
 
 ## Deliverable
 
@@ -1167,36 +1179,50 @@ and legally accessible ROM files.
 
 ### 14.1 Emulator Integration
 
-- [ ] Select a maintained emulator implementation.
-- [ ] Define an emulator adapter.
-- [ ] Integrate the emulator with the viewer registry.
-- [ ] Load compatible ROM files.
-- [ ] Validate file formats.
-- [ ] Display initialization errors.
+- [x] Select a maintained emulator implementation.
+- [x] Define an emulator adapter.
+- [x] Integrate the emulator with the viewer registry.
+- [x] Load compatible ROM files.
+- [x] Validate file formats.
+- [x] Display initialization errors.
+
+`@neil-morrison44/gameboy-emulator` behind `EmulatorEngine`. `.gb` only. Sound is off
+(it needs COEP, which would block Archive.org media). ROMs are never `eval`'d.
 
 ### 14.2 Controls
 
-- [ ] Implement keyboard controls.
-- [ ] Implement mobile touch controls.
-- [ ] Implement pause and resume.
-- [ ] Implement fullscreen.
-- [ ] Implement emulator settings.
-- [ ] Support orientation changes.
+- [x] Implement keyboard controls.
+- [x] Implement mobile touch controls.
+- [x] Implement pause and resume.
+- [x] Implement fullscreen.
+- [x] Implement emulator settings.
+- [x] Support orientation changes.
+
+Keyboard (remappable) plus on-screen D-pad / A / B / Start / Select. Fullscreen is the shared
+viewer chrome. Palette and 30/60 fps persist in `localStorage`. Landscape stacks the pad beside
+the screen.
 
 ### 14.3 State Management
 
-- [ ] Implement save states where supported.
-- [ ] Persist compatible emulator settings.
-- [ ] Validate imported save states.
-- [ ] Release emulator resources on exit.
+- [x] Implement save states where supported.
+- [x] Persist compatible emulator settings.
+- [x] Validate imported save states.
+- [x] Release emulator resources on exit.
+
+Battery SRAM is stored as `ViewerProgress.kind = 'emulator'` when the cart has RAM. The core
+does not expose full CPU snapshots. `dispose()` stops the frame loop on unmount.
 
 ### 14.4 Security and Rights
 
-- [ ] Isolate emulation where supported.
-- [ ] Never execute ROMs as JavaScript.
-- [ ] Do not bundle unauthorized commercial ROMs.
-- [ ] Respect download restrictions.
-- [ ] Test invalid and oversized files.
+- [x] Isolate emulation where supported.
+- [x] Never execute ROMs as JavaScript.
+- [x] Do not bundle unauthorized commercial ROMs.
+- [x] Respect download restrictions.
+- [x] Test invalid and oversized files.
+
+Opcode interpreter behind the adapter (not `eval`). COEP isolation is not enabled because it
+would break provider media. Tests use an original 32 KB stub ROM, never a commercial title.
+Restricted files never get Play. HTML, zip, and >8 MB downloads are refused.
 
 ### 14.5 Future Extensions
 

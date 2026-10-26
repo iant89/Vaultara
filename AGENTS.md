@@ -772,14 +772,14 @@ Registered viewers:
 - Audio player (play/pause, seek, volume, speed, tracks, resume; waveform from decoded PCM when CORS and size allow)
 - Video player (play/pause, seek, volume, speed, fullscreen, resume; WebVTT captions when present)
 - Book reader (EPUB and book-like `.txt` as extracted text; typography, themes, TOC, search, focus, resume)
+- Wikipedia reader (sanitized article HTML, TOC, references, images, language links, original article)
+- Game Boy emulator for compatible `.gb` ROMs (pause, keyboard, touch, palette, battery save when the cart has RAM)
 - Generic file details (no specialized preview; download if the provider permits)
 
 Other viewer types remain planned:
 
-- Wikipedia reader
 - Web archive viewer
 - Software information and file viewer
-- Game Boy emulator for compatible ROMs
 
 Use specialized libraries when they provide meaningful functionality, reliability, and acceptable maintenance costs.
 

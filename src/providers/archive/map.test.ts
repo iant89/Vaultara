@@ -95,6 +95,11 @@ describe('taxonomy', () => {
     expect(isAppViewable('application/pdf')).toBe(true);
     expect(isAppViewable('image/jpeg')).toBe(true);
     expect(isAppViewable('application/epub+zip')).toBe(true);
+    expect(isAppViewable('application/x-gameboy-rom')).toBe(true);
+    expect(resolveMimeType('Nintendo GameBoy ROM', 'homebrew.gb')).toBe(
+      'application/x-gameboy-rom',
+    );
+    expect(resolveMimeType(undefined, 'homebrew.gb')).toBe('application/x-gameboy-rom');
   });
 });
 

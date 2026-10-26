@@ -254,6 +254,7 @@ describe('local account backend', () => {
       { kind: 'audio' as const, positionSeconds: 12, durationSeconds: 90, updatedAt: now },
       { kind: 'video' as const, positionSeconds: 8, durationSeconds: 60, updatedAt: now },
       { kind: 'image' as const, fileId: 'still.jpg', index: 2, updatedAt: now },
+      { kind: 'emulator' as const, system: 'gb', saveState: 'AQID', updatedAt: now },
     ];
 
     for (const progress of kinds) {

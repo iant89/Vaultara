@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCategoryBrowsePath,
   buildCategoryPath,
   buildCollectionPath,
   buildDiscoverablePath,
@@ -64,6 +65,8 @@ describe('other paths', () => {
   it('builds provider and category paths', () => {
     expect(buildProviderPath('archive')).toBe('/provider/archive');
     expect(buildCategoryPath('books')).toBe('/category/books');
+    expect(buildCategoryBrowsePath('movies', 'archive')).toBe('/category/movies');
+    expect(buildCategoryBrowsePath('Science', 'wikipedia')).toBe('/collection/wikipedia/Science');
     expect(buildFavoritesPath()).toBe('/favorites');
     expect(buildOnboardingPath()).toBe('/onboarding');
   });

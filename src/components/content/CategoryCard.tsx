@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { ContentCategory } from '../../models/content';
-import { buildCategoryPath } from '../../utils/links';
+import { buildCategoryBrowsePath } from '../../utils/links';
 import { Artwork } from '../ui/Artwork';
 import styles from './CategoryCard.module.css';
 
@@ -18,7 +18,7 @@ interface CategoryCardProps {
 export function CategoryCard({ category }: CategoryCardProps) {
   return (
     <li className={styles.card}>
-      <Link to={buildCategoryPath(category.id)} className={styles.link}>
+      <Link to={buildCategoryBrowsePath(category.id, category.providerId)} className={styles.link}>
         <Artwork
           src={category.artworkUrl}
           alt=""

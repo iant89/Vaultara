@@ -53,6 +53,17 @@ describe('provider catalogue', () => {
     });
   });
 
+  it('marks Wikipedia as available now that its adapter exists', async () => {
+    const { PROVIDER_CATALOG } = await loadProviders(false);
+    const wikipedia = PROVIDER_CATALOG.find((provider) => provider.id === 'wikipedia');
+
+    expect(wikipedia).toMatchObject({
+      availability: 'available',
+      roadmapPhase: 'Phase 13',
+      browsingPhase: 'Phase 13',
+    });
+  });
+
   it('finds providers by id and returns undefined otherwise', async () => {
     const { findProvider } = await loadProviders(false);
 

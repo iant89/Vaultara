@@ -43,8 +43,9 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     id: 'wikipedia',
     name: 'Wikipedia',
     description: 'Articles and reference material read in a document-oriented reader.',
-    availability: 'planned',
+    availability: 'available',
     roadmapPhase: 'Phase 13',
+    browsingPhase: 'Phase 13',
   },
   {
     id: 'adult',

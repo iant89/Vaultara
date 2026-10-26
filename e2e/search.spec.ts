@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 import { appUrl, appUrlPattern } from './appBase';
+import { mockWikipedia } from './wikipedia';
 
 const JSON_HEADERS = { 'content-type': 'application/json', 'access-control-allow-origin': '*' };
 
@@ -36,6 +37,7 @@ test('an empty search page asks for a query', async ({ page }) => {
 
 test('submitting the header search lists provider results', async ({ page }) => {
   await mockArchiveSearch(page);
+  await mockWikipedia(page);
   await page.goto(appUrl('/'));
 
   await page.getByRole('searchbox', { name: 'Search all providers' }).fill('vampire');

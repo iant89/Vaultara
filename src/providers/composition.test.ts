@@ -17,11 +17,12 @@ function archiveHandler() {
 }
 
 describe('provider composition root', () => {
-  it('registers the Archive provider and nothing else by default', () => {
+  it('registers the Archive and Wikipedia providers by default', () => {
     const runtime = createProviderRuntime();
 
-    expect(runtime.registry.ids()).toEqual(['archive']);
+    expect(runtime.registry.ids()).toEqual(['archive', 'wikipedia']);
     expect(runtime.registry.get('archive')?.name).toBe('Internet Archive');
+    expect(runtime.registry.get('wikipedia')?.name).toBe('Wikipedia');
   });
 
   it('routes application calls through the gateway to the adapter', async () => {
@@ -38,7 +39,7 @@ describe('provider composition root', () => {
     const factories = defaultProviderFactories();
     const ids = factories.map((factory) => factory().id);
 
-    expect(ids).toEqual(['archive']);
+    expect(ids).toEqual(['archive', 'wikipedia']);
   });
 
   it('accepts a replacement provider set', async () => {
@@ -68,7 +69,7 @@ describe('provider composition root', () => {
     const second = getProviderRuntime();
 
     expect(second).not.toBe(first);
-    expect(second.registry.ids()).toEqual(['archive']);
+    expect(second.registry.ids()).toEqual(['archive', 'wikipedia']);
 
     // Leave no shared runtime behind for other test files.
     resetProviderRuntime();

@@ -38,11 +38,11 @@ describe('Navigation', () => {
     );
   });
 
-  it('marks providers without an adapter as not yet available in their accessible name', () => {
+  it('does not mark providers that have an adapter as unavailable', () => {
     renderNavigation();
 
-    expect(screen.getByRole('link', { name: 'Wikipedia (not yet available)' })).toBeInTheDocument();
-    // The Archive adapter exists, so announcing it as unavailable would be false.
+    expect(screen.getByRole('link', { name: 'Wikipedia' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Wikipedia (not yet available)' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Internet Archive' })).not.toHaveAccessibleName(
       /not yet available/,
     );
@@ -140,7 +140,7 @@ describe('Navigation', () => {
 
     expect(await screen.findByRole('link', { name: 'Internet Archive' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.queryByRole('link', { name: 'Wikipedia (not yet available)' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Wikipedia' })).toBeNull();
     });
   });
 

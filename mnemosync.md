@@ -7,7 +7,7 @@ development sessions, including sessions performed by different AI agents.
 Record verification results honestly using `PASS` / `FAIL` / `BLOCKED` / `NOT RUN` / `PARTIAL`.
 Never record secrets, credentials, or private user information.
 
-Last updated: 2026-10-26 (Phase 12.6 testing; see Session Handoff Log)
+Last updated: 2026-10-26 (Phase 14 Game Boy emulator; see Session Handoff Log)
 
 ---
 
@@ -35,7 +35,7 @@ Fixed product decisions already established by
 
 ## Current Development Status
 
-**Phase: 12 core viewers and 12.6 testing implemented. Deployment to GitHub Pages configured.**
+**Phase: 14 Game Boy emulator implemented (after Wikipedia in Phase 13). Deployment to GitHub Pages configured.**
 
 The Internet Archive adapter is now driven by the interface. Home shows a featured item, one row
 per content family (24 cards each) and the provider's category grid; provider pages list categories;
@@ -61,8 +61,9 @@ and keeps explored items. **Downloads open the provider's file in a new tab** an
 in, write an `opened` or `unavailable` row to IndexedDB. This app does not fetch the file and
 does not claim it arrived. Category onboarding, exploration history, and home-page filtering
 remain. Downloadable PDFs can be opened with Read; EPUB and book-like text with Read in the book
-reader; photographs with View in the gallery; audio with Listen in the player; video with Watch.
-Other formats get file details rather than a fake player.
+reader; photographs with View in the gallery; audio with Listen in the player; video with Watch;
+Wikipedia articles with Read; Game Boy `.gb` ROMs with Play. Other formats get file details rather
+than a fake player.
 
 The application is published as a static site to GitHub Pages by
 `.github/workflows/deploy-pages.yml`. Discovery requires a network route to `archive.org`; without
@@ -362,12 +363,12 @@ Points that are easy to get wrong:
 
 ## Provider Integrations
 
-One adapter implemented and wired to discovery; the rest are planned.
+Two adapters implemented and wired to discovery; Adult remains planned.
 
 | Provider         | Status              | Notes / constraints                                                                                                                                                                                      |
 | ---------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Internet Archive | Adapter implemented | Phase 4. Official APIs only. Metadata + thumbnails may be cached per provider policy. Never download full media just to show metadata; prefer streaming/range requests (Spec §11.4). No browsing UI yet. |
-| Wikipedia        | Not started         | Phase 13. Respect attribution/licensing and API requirements. Document-oriented reader, not a poster grid (Spec §12.2).                                                                                  |
+| Internet Archive | Adapter implemented | Phase 4. Official APIs only. Metadata + thumbnails may be cached per provider policy. Never download full media just to show metadata; prefer streaming/range requests (Spec §11.4). Discovery UI is live. |
+| Wikipedia        | Adapter implemented | Phase 13. MediaWiki Action API. Document-oriented reader (sanitized HTML, TOC, references). Not a poster grid (Spec §12.2).                                                                               |
 | Adult            | Not started         | Phase 16, opt-in, independently configurable. Must not surface in ordinary Archive/Wikipedia recommendations. Favorites may contain Adult items but visibility settings must be honored (Spec §13).      |
 
 Cross-cutting provider requirements: timeouts, cancellation, rate limiting, retries/backoff,
@@ -377,8 +378,8 @@ malformed-response handling, capability honesty, and failure isolation (Spec §2
 
 ## Viewer Integrations
 
-Core Phase 12 viewers are registered modules. Wikipedia, emulator, and web-archive viewers remain
-later phases.
+Core Phase 12 viewers, the Wikipedia reader, and the Game Boy emulator are registered modules.
+Web-archive remains Phase 15.
 
 | Viewer                 | Phase | Key constraints                                                                                                                                        |
 | ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -454,17 +455,16 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 | Route table for every documented route, error boundary, not-found                          | Implemented                                         | `src/app/routes.tsx`                                              |
 | Shared models and provider/viewer contracts                                                | Implemented; viewers registered                     | `src/models/`, `src/viewers/`                                     |
 
-Not implemented anywhere: Wikipedia/web-archive/emulator viewers.
+Not implemented anywhere: web-archive viewer, software/disk-image execution, Adult adapter.
 Accounts, category preferences, exploration history, favorites, likes, recent searches, and
-download history persist locally. The Wikipedia and Adult adapters do not exist. Adult visibility
-stays Phase 16. There is no download proxy.
+download history persist locally. Adult visibility stays Phase 16. There is no download proxy.
 
 ---
 
 ## Features in Progress
 
-Phase 12 core viewers and 12.6 testing are complete. Next is Phase 13 (Wikipedia) on the user's
-instruction. Do not start Wikipedia, the emulator, or web-archive unprompted.
+Phases 13 (Wikipedia) and 14 (Game Boy emulator) are complete. Next is Phase 15 (web archives and
+software) only on the user's instruction. Do not start web-archive or Adult unprompted.
 
 ---
 
@@ -739,12 +739,12 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 | Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                                                      |
 | Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                                                  |
 | Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                                                    |
-| Unit and component tests                                    | `npm test`                    | PASS    | 90 files, 892 tests                                                                                                                                      |
-| Production build                                            | `npm run build`               | PASS    | Main 475.63 kB (144.69 kB gzip); BookReader code-split 13.71 kB (4.92 kB gzip)                                                                            |
+| Unit and component tests                                    | `npm test`                    | PASS    | 103 files, 954 tests                                                                                                                                     |
+| Production build                                            | `npm run build`               | NOT RUN | Last PASS after Phase 12.6 (main 475.63 kB / 144.69 kB gzip). Not re-run after Wikipedia or the emulator.                                                |
 | Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1                                       |
 | Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                                                              |
 | Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                                                     |
-| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 49 tests, Chromium; 4 viewports, keyboard, mobile search, discovery, search, downloads, PDF, gallery, audio, video, book, phone viewers                  |
+| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 53 tests, Chromium; previous surfaces plus Wikipedia reader and Game Boy Play / invalid HTML / oversized Content-Length                                  |
 | Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                                                     |
 | Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed                                |
 | Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                                                       |
@@ -1102,14 +1102,15 @@ Previous entry:
 
 ## Next Steps
 
-Phases 0–12.6 are complete for the Archive-backed app: the shell, the design system, static
-deployment, the provider architecture, the Archive adapter, the discovery workflow, a PDF reader,
-local accounts, category onboarding, exploration history, discovery filtering, global favorites and
-likes, global search, the download manager, the viewer registry, the photo gallery, the audio player
-with a decoded-PCM waveform, the video player, the book reader (EPUB and book-like text as extracted
-chapters), and the Phase 12.6 format / large-resource / cleanup / progress / phone tests.
+Phases 0–14 are complete for the Archive-backed app plus Wikipedia: the shell, the design system,
+static deployment, the provider architecture, the Archive adapter, the discovery workflow, a PDF
+reader, local accounts, category onboarding, exploration history, discovery filtering, global
+favorites and likes, global search, the download manager, the viewer registry, the photo gallery,
+the audio player with a decoded-PCM waveform, the video player, the book reader, the Wikipedia
+article reader, the Game Boy emulator, and the Phase 12.6 format / large-resource / cleanup /
+progress / phone tests.
 
-1. **Phase 13 Wikipedia** — only on the user's instruction. Do not start the emulator or web-archive.
+1. **Phase 15 web archives and software** — only on the user's instruction. Do not start Adult.
 2. **Verify the hierarchy against the live service:** confirm `mediatype:collection AND
 collection:<media type>` returns the expected collections (and not every collection on the
    Archive), that `-mediatype:collection` behaves as a filter on the live index, and that `numFound`
@@ -1124,6 +1125,41 @@ collection:<media type>` returns the expected collections (and not every collect
 6. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
 
 ## Session Handoff Log
+
+### Session 2026-10-26 (Phase 14 Game Boy emulator)
+
+1. **Objective:** Phase 14 Game Boy emulator, on the user's instruction to continue to the next
+   phase after the Wikipedia report.
+2. **Specification references:** design spec 18.6; roadmap 14.1–14.4; `AGENTS.md` 10.3.
+3. **Changes made:** `@neil-morrison44/gameboy-emulator@1.3.0` behind `EmulatorEngine`. Dynamic
+   `import()` so the UMD's `document` key listeners are not bound at app start. `{ sound: false }`
+   — APU needs SharedArrayBuffer/COEP, which would break Archive.org media. Pause uses `stopped` +
+   `runFrame`; `run()` re-inits CPU. Match `.gb` / `application/x-gameboy-rom` only. Fetch is CORS,
+   8 MiB cap, HTML/zip/etc. rejected. File list Play; describe "In-app emulator". Taxonomy maps
+   Nintendo GameBoy ROM / `.gb` and `isAppViewable`. Battery SRAM as `ViewerProgress.kind =
+   'emulator'`. Tests inject a fake engine; unit tests never import the UMD. Stub ROM is 32 KB,
+   original, not a commercial title.
+4. **Implementation status:** `.gb` opens from the file list. GBC/GBA/NES/SMS/zip are generic.
+   14.5 (other systems) remains design-only. No download proxy. No COOP/COEP.
+5. **Verification:** `npm run check` PASS (103 files / 954 tests). `npx playwright test` PASS 53
+   tests including Play homebrew.gb → Pause/Resume, invalid HTML refused, 9 MiB Content-Length
+   refused. `npm run build` and `verify:pages` NOT RUN this session. Live Archive.org ROMs NOT
+   VERIFIED.
+6. **Outstanding work:** Phase 15 web archives on instruction. Git commit/PR only if asked.
+
+### Session 2026-10-26 (Phase 13 Wikipedia)
+
+1. **Objective:** Phase 13 Wikipedia provider and article reader, on the user's instruction to
+   continue after PR #9 merged.
+2. **Specification references:** design spec 12.2; roadmap Phase 13; `AGENTS.md` 7, 10.2.
+3. **Changes made:** Wikipedia adapter (MediaWiki Action API), document-oriented reader with
+   sanitized HTML (scripts stripped), TOC, references, language links. Registered after Archive.
+   Category browse uses `buildCategoryBrowsePath`, not `/category/:id`.
+4. **Implementation status:** Wikipedia discovery and Read are live. Adult and web-archive remain
+   later phases.
+5. **Verification:** last dedicated Wikipedia gate was `npm run check` PASS (934 tests) and e2e
+   50/50 including `e2e/wikipedia.spec.ts`. Combined with Phase 14: 954 unit, 53 e2e.
+6. **Outstanding work:** completed; emulator followed in the same session.
 
 ### Session 2026-10-26 (Phase 12.6 testing)
 

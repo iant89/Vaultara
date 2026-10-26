@@ -678,3 +678,52 @@ describe('viewer page', () => {
     );
   });
 });
+
+describe('Wikipedia provider page', () => {
+  it('shows a popular row and subject categories that open as collections', async () => {
+    const ada = makeItem({
+      id: 'Ada_Lovelace',
+      providerId: 'wikipedia',
+      title: 'Ada Lovelace',
+      type: 'article',
+    });
+    const registry = new ProviderRegistry();
+    registry.register(
+      createFakeProvider({
+        id: 'wikipedia',
+        name: 'Wikipedia',
+        capabilities: { contentTypes: ['article'] },
+        search: async () => createPaginatedResult([ada], { page: 1, pageSize: 24, total: 1 }),
+        getCategories: async () => [
+          makeCategory({
+            id: 'Science',
+            name: 'Science',
+            providerId: 'wikipedia',
+            description: 'The natural sciences.',
+          }),
+        ],
+      }),
+    );
+    const gateway = new ProviderGateway(registry, {
+      retry: { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
+      sleep: () => Promise.resolve(),
+    });
+    const services: ProviderServices = {
+      runtime: { registry, gateway },
+      queries: createContentQueries(gateway),
+    };
+
+    renderAt('/provider/wikipedia', services);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Wikipedia' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Popular now' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ada Lovelace/ })).toHaveAttribute(
+      'href',
+      '/item/wikipedia/Ada_Lovelace',
+    );
+    expect(screen.getByRole('link', { name: /Science/ })).toHaveAttribute(
+      'href',
+      '/collection/wikipedia/Science',
+    );
+  });
+});
