@@ -476,6 +476,12 @@ Pages read content through `src/data/`, never through an adapter and never throu
 | Explored-item discovery predicate      | `src/personalization/discoveryFilter.ts` |
 | Favorite and like mutations            | `src/personalization/savedContent.ts`    |
 | Favorites page listing                 | `src/personalization/favoriteList.ts`    |
+| Searchable-provider set                | `src/personalization/searchProviders.ts` |
+| Download URL safety and status copy    | `src/downloads/describe.ts`         |
+| Download attempt records               | `src/downloads/record.ts`           |
+| Viewer registry and selection          | `src/viewers/{registry,select,composition}.ts` |
+| Shared viewer container                | `src/viewers/ViewerContainer.tsx`   |
+| Recent search queries                  | `src/personalization/recentSearches.ts`  |
 | Capability lookups used by the UI      | `src/data/providerCapabilities.ts`  |
 | Rows, sorts, and page-size constants   | `src/config/discovery.ts`           |
 
@@ -488,8 +494,10 @@ Rules:
 - **A key and its loader live together.** Never share a cache key through a module-level mutable
   singleton; express the shared loader as a hook that closes over `queries`. Identical arguments
   already de-duplicate, which is how the featured slot and its row share one request.
-- **Every request is reachable from the URL.** Paging, sorting, filtering, and in-collection search
-  live in the query string; the parsers are total and fall back to defaults instead of throwing.
+- **Every request is reachable from the URL.** Paging, sorting, filtering, in-collection search,
+  and global search live in the query string; the parsers are total and fall back to defaults
+  instead of throwing. Global search submits on enter, then the page reads `q`, `type`, `category`,
+  `provider`, and `sort`. Requests are not fired per keystroke.
 - **Failures are local; retries are real.** A row or section reports its own failure and offers a
   retry that passes `fresh: true` and bypasses the cache — re-reading a cached failure would look
   like a broken button.
@@ -501,6 +509,16 @@ Rules:
 - **Accounts are local.** GitHub Pages cannot host a backend, so `src/persistence/` stores accounts
   in IndexedDB on this device. Passwords are PBKDF2 verifiers, never the password, and never in
   localStorage. Sign-in does not mean cross-device sync. Tests inject a memory store.
+- **Downloads open the provider's URL.** `FileList` and the PDF reader use `target="_blank"` on an
+  http(s) address the provider already exposed. This app does not fetch the file, does not proxy
+  it, and does not record `completed`. A signed-in click writes an `opened` (or `unavailable`)
+  row to IndexedDB; `/downloads` is that log. `javascript:` and other non-http(s) URLs are not
+  offered. Lending/`nodownload` files stay listed with the restriction instead of a Download
+  control. Pause and resume are not implemented: there is no transfer this client owns.
+- **Viewers are registered, not hardcoded on the route.** `src/viewers/composition.ts` is the only
+  place modules are registered. Selection scores (file, viewer) pairs; `?file=` is honoured;
+  nothing specialized falls back to file details. Pages must not import an adapter or construct
+  a registry except in tests.
 - **Exploration filtering is one predicate.** `isHiddenFromDiscovery` hides explored-not-liked-not-
   favorited items from home-page rows only. Search results and collection pages must not call it.
   Opening a collection never marks its children explored; only an item details page or viewer start
@@ -735,6 +753,10 @@ Downloads must respect provider permissions and browser security restrictions.
 - Handle interrupted, failed, unavailable, and unsupported downloads.
 - Distinguish a download link from a file that has actually been downloaded.
 
+This app has no download proxy (GitHub Pages cannot host one). The download action is a
+browser navigation to the provider URL. History status is only `opened` or `unavailable`.
+Never invent a `completed` state from `target="_blank"` or the HTML `download` attribute.
+
 Where relevant, display source attribution, licensing information, and provider links.
 
 ---
@@ -743,19 +765,21 @@ Where relevant, display source attribution, licensing information, and provider 
 
 Vaultara must use a viewer registry that selects viewers based on content type, format, and provider capabilities.
 
-The PDF reader is implemented and selected directly from downloadable PDF files until the Phase 11
-registry exists. Other viewer types remain planned:
+Registered viewers:
 
-- PDF viewer (implemented: book/page/grid layouts, auto scale, on-device then MyMemory translation)
+- PDF viewer (book/page/grid layouts, auto scale, on-device then MyMemory translation)
+- Photo gallery (JPEG, PNG, GIF, WebP: zoom, pan, fit, previous/next; current image only)
+- Audio player (play/pause, seek, volume, speed, tracks, resume; waveform from decoded PCM when CORS and size allow)
+- Generic file details (no specialized preview; download if the provider permits)
+
+Other viewer types remain planned:
+
 - EPUB and book reader
-- Image viewer
-- Audio player
 - Video player
 - Wikipedia reader
 - Web archive viewer
 - Software information and file viewer
 - Game Boy emulator for compatible ROMs
-- Generic fallback viewer
 
 Use specialized libraries when they provide meaningful functionality, reliability, and acceptable maintenance costs.
 

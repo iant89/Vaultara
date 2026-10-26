@@ -13,12 +13,16 @@ import type {
   SignInInput,
   UserPreferences,
 } from '../models/account';
+import type { DownloadRecord } from '../models/download';
 import type { ContentIdentity } from '../models/identity';
 import type { UserContentState } from '../models/userState';
 
 export interface StoredContentState extends UserContentState {
   readonly updatedAt: string;
 }
+
+/** A download attempt stored for the signed-in account. Local only; not synced. */
+export type StoredDownloadRecord = DownloadRecord;
 
 export type PendingOperationKind = 'set-preferences' | 'put-content-state';
 
@@ -58,6 +62,8 @@ export interface AccountBackend {
   ): Promise<UserPreferences>;
 
   listContentState(sessionId: string): Promise<readonly StoredContentState[]>;
+  listDownloads(sessionId: string): Promise<readonly StoredDownloadRecord[]>;
+  putDownload(sessionId: string, record: StoredDownloadRecord): Promise<StoredDownloadRecord>;
   getContentState(
     sessionId: string,
     identity: ContentIdentity,

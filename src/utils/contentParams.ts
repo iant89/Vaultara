@@ -37,6 +37,23 @@ export function parseSortParam(value: string | null): SearchSort | undefined {
   return value !== null && SORT_VALUES.has(value) ? (value as SearchSort) : undefined;
 }
 
+/** Orderings a global search offers. Relevance is the provider's own ranking. */
+export const SEARCH_SORT_OPTIONS: readonly { value: SearchSort; label: string }[] = [
+  { value: 'relevance', label: 'Relevance' },
+  { value: 'added-desc', label: 'Recently added' },
+  { value: 'date-desc', label: 'Newest by date' },
+  { value: 'date-asc', label: 'Oldest first' },
+  { value: 'title-asc', label: 'Title A–Z' },
+];
+
+const SEARCH_SORT_VALUES: ReadonlySet<string> = new Set(
+  SEARCH_SORT_OPTIONS.map((option) => option.value),
+);
+
+export function parseSearchSortParam(value: string | null): SearchSort {
+  return value !== null && SEARCH_SORT_VALUES.has(value) ? (value as SearchSort) : 'relevance';
+}
+
 export function parseContentTypeParam(value: string | null): ContentType | undefined {
   return value !== null && isContentType(value) ? value : undefined;
 }

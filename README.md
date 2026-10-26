@@ -8,27 +8,28 @@ Built with React and TypeScript, designed around a provider plugin system so tha
 
 ## Project status
 
-**Phases 1–8 are implemented.** Discovery runs against the Internet Archive provider. Accounts, category preferences, exploration history, favorites, and likes persist in this browser.
+**Phases 1–11 are implemented**, plus the photo gallery and audio player from Phase 12. Discovery and global search run against the Internet Archive provider. Accounts, category preferences, exploration history, favorites, likes, and download history persist in this browser.
 
 What works today: the application shell and its visual language (route table, design tokens, responsive navigation, shared components, loading/empty/error states); shared data models and provider/viewer contracts; the Internet Archive adapter behind the registry, gateway, and reliability layer; and the discovery surfaces that read from it — a home page with a featured item, one row per category and a category grid, category pages that show each collection as a row of its items, collection pages with nested-collection shelves plus an item shelf (sorting, filtering, in-collection search, "View more"), breadcrumbs and related collections, and item pages with artwork, metadata, available files, related content, and source attribution. Downloadable PDFs can be opened with Read into an in-app reader (book and grid layouts, auto scale, on-device translation when the browser provides it, otherwise MyMemory). Accounts can be created and signed in; category onboarding, exploration history, and privacy controls persist in this browser (IndexedDB), not on a server.
 
 Discovery needs a network route to `archive.org`. Where the provider cannot be reached, each surface says so and offers a retry rather than showing an empty page.
 
-Search results, the download manager, and viewers other than PDF are still unimplemented, and the interface says so. Downloadable PDFs can be opened with Read. Favorites and likes persist on this device; they do not sync across devices. See `mnemosync.md` for exactly what is and is not verified.
+Downloadable PDFs open with Read; photographs open with View in the in-app gallery; audio opens with Listen in the in-app player (waveform from decoded samples when the provider allows a fetch and the file is small enough). Other formats land on file details instead of a fake player. Download on a file list opens the provider's copy in a new tab; `/downloads` logs that attempt without claiming the file arrived. Favorites, likes, recent searches, and download history persist on this device; they do not sync across devices. See `mnemosync.md` for exactly what is and is not verified.
 
 Every route renders a real page. Pages whose feature is not implemented say so explicitly instead of showing inactive controls that look functional. This is a deliberate project rule: no placeholder may masquerade as a working feature.
 
-| Area                                                                | State                                             |
-| ------------------------------------------------------------------- | ------------------------------------------------- |
-| Build, type check, lint, format, unit tests                         | Implemented and passing                           |
-| Routing, layout, navigation, shell                                  | Implemented                                       |
-| Shared models and provider/viewer contracts                         | Defined and implemented against                   |
-| Provider registry and adapters (Internet Archive, Wikipedia, Adult) | Archive adapter wired to the UI; rest planned     |
-| Discovery: home, category, collection, item details                 | Implemented against the Archive provider          |
-| Onboarding, category preferences, exploration history               | Implemented; Adult visibility stays Phase 16      |
-| Favourites and likes                                                | Implemented; device-local only                    |
-| Search results, downloads                                           | Not started                                       |
-| Content viewers                                                     | PDF reader implemented; other formats not started |
+| Area                                                                | State                                                 |
+| ------------------------------------------------------------------- | ----------------------------------------------------- |
+| Build, type check, lint, format, unit tests                         | Implemented and passing                               |
+| Routing, layout, navigation, shell                                  | Implemented                                           |
+| Shared models and provider/viewer contracts                         | Defined and implemented against                       |
+| Provider registry and adapters (Internet Archive, Wikipedia, Adult) | Archive adapter wired to the UI; rest planned         |
+| Discovery: home, category, collection, item details                 | Implemented against the Archive provider              |
+| Onboarding, category preferences, exploration history               | Implemented; Adult visibility stays Phase 16          |
+| Favourites and likes                                                | Implemented; device-local only                        |
+| Search results                                                      | Implemented against enabled providers                 |
+| Downloads                                                           | Implemented: provider URL in a new tab; local log     |
+| Content viewers                                                     | Registry + PDF + gallery + audio player; others later |
 
 See `DEVELOPMENT_ROADMAP.md` for the full phase plan.
 

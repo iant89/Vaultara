@@ -631,12 +631,12 @@ describe('item page', () => {
 });
 
 describe('viewer page', () => {
-  it('says when the item has no PDF the app can read', async () => {
+  it('falls back when no specialized viewer matches', async () => {
     const { services } = createHarness();
     renderAt(`/viewer/${ARCHIVE}/${ITEM.id}`, services);
 
-    expect(await screen.findByText('No PDF this app can read')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Back to item details' })).toHaveAttribute(
+    expect(await screen.findByText(/no specialized viewer/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to item' })).toHaveAttribute(
       'href',
       `/item/${ARCHIVE}/${ITEM.id}`,
     );

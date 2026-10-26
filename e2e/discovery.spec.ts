@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 import { appUrl } from './appBase';
+import { MINIMAL_JPEG } from './minimalJpeg';
 import { buildMinimalPdf } from './minimalPdf';
+import { buildMinimalWav } from './minimalWav';
 
 /**
  * Discovery experience coverage with provider data (roadmap Phase 5).
@@ -180,6 +182,20 @@ async function mockArchive(page: Page): Promise<void> {
             md5: 'd41d8cd98f00b204e9800998ecf8427e',
           },
           { name: 'notes.pdf', source: 'derivative', format: 'Text PDF', size: '204800' },
+          {
+            name: 'still.jpg',
+            source: 'original',
+            format: 'JPEG',
+            size: '409600',
+            width: '800',
+            height: '600',
+          },
+          {
+            name: 'theme.wav',
+            source: 'original',
+            format: 'WAVE',
+            size: '8192',
+          },
         ],
       }),
     });
@@ -316,6 +332,10 @@ test('an item page shows files, attribution, and related content', async ({ page
     'href',
     /\/viewer\/archive\/night_of_the_living_dead\?file=notes\.pdf$/,
   );
+  await expect(page.getByRole('link', { name: /Listen theme.wav/ })).toHaveAttribute(
+    'href',
+    /\/viewer\/archive\/night_of_the_living_dead\?file=theme\.wav$/,
+  );
   await expect(
     page.getByRole('link', { name: 'View this item on Internet Archive' }),
   ).toHaveAttribute('href', 'https://archive.org/details/night_of_the_living_dead');
@@ -363,4 +383,109 @@ test('a PDF file opens in the in-app reader', async ({ page }) => {
   await page.getByRole('button', { name: '2 by 2 grid' }).click();
   await page.getByRole('button', { name: 'Page 3, open full screen' }).click();
   await expect(page.getByRole('dialog', { name: 'Full screen page' })).toBeVisible();
+});
+
+test('a photograph opens in the in-app gallery', async ({ page }) => {
+  await mockArchive(page);
+  await page.route('**/download/**/*.jpg', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'image/jpeg',
+        'access-control-allow-origin': '*',
+      },
+      body: MINIMAL_JPEG,
+    });
+  });
+
+  await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+  await page.getByRole('link', { name: /View still.jpg/ }).click();
+
+  await expect(page.getByRole('toolbar', { name: 'Viewer' })).toBeVisible();
+  await expect(page.getByRole('toolbar', { name: 'Photo gallery' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'still.jpg' })).toBeVisible();
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(page.getByRole('button', { name: 'Fit to screen' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await page.getByRole('button', { name: 'Fit to screen' }).click();
+  await expect(page.getByRole('button', { name: 'Fit to screen' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
+function fulfillWav(route: Route, cors: boolean): Promise<void> {
+  const headers: Record<string, string> = {
+    'content-type': 'audio/wav',
+  };
+
+  if (cors) {
+    headers['access-control-allow-origin'] = '*';
+    headers['access-control-expose-headers'] = 'Accept-Ranges,Content-Length';
+  }
+
+  if (route.request().method() === 'OPTIONS') {
+    return route.fulfill({
+      status: 204,
+      headers: cors
+        ? {
+            'access-control-allow-origin': '*',
+            'access-control-allow-methods': 'GET,HEAD,OPTIONS',
+            'access-control-allow-headers': '*',
+          }
+        : {},
+    });
+  }
+
+  return route.fulfill({
+    status: 200,
+    headers,
+    body: buildMinimalWav(),
+  });
+}
+
+test('an audio file opens in the in-app player with a decoded waveform', async ({ page }) => {
+  await mockArchive(page);
+  await page.route('**/download/**/*.wav', async (route: Route) => {
+    await fulfillWav(route, true);
+  });
+
+  await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+  await page.getByRole('link', { name: /Listen theme.wav/ }).click();
+
+  await expect(page.getByRole('toolbar', { name: 'Audio player' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.getByText(/Playback streams from the provider/i)).toBeVisible();
+});
+
+test('audio still plays when the waveform fetch is blocked by CORS', async ({ page }) => {
+  await mockArchive(page);
+  await page.route('**/download/**/*.wav', async (route: Route) => {
+    // Playwright's fulfill does not emulate a CORS failure. Abort the `fetch()` the waveform
+    // uses (resource type fetch/xhr) the way a missing Access-Control-Allow-Origin fails it.
+    // The `<audio>` element is a media request and still receives the file.
+    const type = route.request().resourceType();
+
+    if (type === 'fetch' || type === 'xhr') {
+      await route.abort('failed');
+      return;
+    }
+
+    await fulfillWav(route, false);
+  });
+
+  await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+  await page.getByRole('link', { name: /Listen theme.wav/ }).click();
+
+  await expect(page.getByRole('toolbar', { name: 'Audio player' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+  await expect(page.getByText(/Waveform needs permission to fetch this file/i)).toBeVisible();
+  await expect(page.locator('canvas')).toHaveCount(0);
+  await expect(page.locator('audio')).toHaveAttribute(
+    'src',
+    'https://archive.org/download/night_of_the_living_dead/theme.wav',
+  );
 });

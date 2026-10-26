@@ -20,6 +20,9 @@ interface CollectionToolbarProps {
   readonly provider?: string;
   readonly providerOptions?: readonly ToolbarOption[];
   readonly onProviderChange?: (providerId: string) => void;
+  readonly category?: string;
+  readonly categoryOptions?: readonly ToolbarOption[];
+  readonly onCategoryChange?: (categoryId: string) => void;
 }
 
 /**
@@ -42,6 +45,9 @@ export function CollectionToolbar({
   provider = '',
   providerOptions,
   onProviderChange,
+  category = '',
+  categoryOptions,
+  onCategoryChange,
 }: CollectionToolbarProps) {
   // The field holds an unsubmitted draft. It is derived from the URL parameter that produced it,
   // so a new link, the back button, or the browser's own reset replace the draft instead of the
@@ -54,6 +60,7 @@ export function CollectionToolbar({
   const sortId = useId();
   const typeId = useId();
   const providerId = useId();
+  const categoryFieldId = useId();
 
   return (
     <div className={styles.toolbar}>
@@ -119,6 +126,28 @@ export function CollectionToolbar({
             }}
           >
             {providerOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {categoryOptions !== undefined && categoryOptions.length > 1 && onCategoryChange ? (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor={categoryFieldId}>
+            Category
+          </label>
+          <select
+            id={categoryFieldId}
+            className={styles.select}
+            value={category}
+            onChange={(event) => {
+              onCategoryChange(event.target.value);
+            }}
+          >
+            {categoryOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

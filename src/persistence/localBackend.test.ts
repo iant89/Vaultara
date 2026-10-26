@@ -256,4 +256,45 @@ describe('local account backend', () => {
     expect(result).toEqual({ mode: 'local', applied: 1, remaining: 0 });
     expect(await backend.pendingOperations(session.sessionId)).toEqual([]);
   });
+
+  it('stores download attempts for the signed-in account and rejects unsafe URLs', async () => {
+    const backend = createTestPersistence();
+    const session = await backend.createAccount({
+      email: 'alex@example.com',
+      password: PASSWORD,
+      displayName: 'Alex',
+    });
+    const opened = await backend.putDownload(session.sessionId, {
+      id: 'dl-1',
+      providerId: 'archive',
+      itemId: 'night',
+      itemTitle: 'Night of the Living Dead',
+      fileId: 'night.mp4',
+      fileName: 'night.mp4',
+      downloadUrl: 'https://archive.org/download/night/night.mp4',
+      startedAt: '2026-10-26T12:00:00.000Z',
+      status: 'opened',
+    });
+
+    expect(opened.status).toBe('opened');
+    expect(await backend.listDownloads(session.sessionId)).toEqual([opened]);
+
+    const other = await backend.createAccount({
+      email: 'sam@example.com',
+      password: PASSWORD,
+      displayName: 'Sam',
+    });
+    expect(await backend.listDownloads(other.sessionId)).toEqual([]);
+
+    try {
+      await backend.putDownload(session.sessionId, {
+        ...opened,
+        id: 'dl-bad',
+        downloadUrl: 'javascript:alert(1)',
+      });
+      expect.unreachable();
+    } catch (error) {
+      expect(isPersistenceError(error) && error.message).toMatch(/http or https/i);
+    }
+  });
 });
