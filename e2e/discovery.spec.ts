@@ -28,8 +28,6 @@ const COLLECTIONS_BY_PARENT: Readonly<
   movies: [
     { identifier: 'feature_films', title: 'Feature Films' },
     { identifier: 'classic_tv', title: 'Classic TV' },
-    // Nested under Feature Films; must not appear as a sibling on the media type page.
-    { identifier: 'feature_films_noir', title: 'Film Noir' },
   ],
   feature_films: [{ identifier: 'feature_films_noir', title: 'Film Noir' }],
   software: [{ identifier: 'softwarelibrary', title: 'Software Library' }],
@@ -221,7 +219,6 @@ test('a category page lists collections and pages through them', async ({ page }
 
   await expect(page.getByRole('heading', { level: 1, name: 'Moving Images' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Feature Films' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Film Noir' })).toHaveCount(0);
   // Collections list their provider; an item count needs a separate count request and is only
   // claimed where the provider reports one.
   await expect(page.getByText('Internet Archive').first()).toBeVisible();

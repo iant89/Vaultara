@@ -502,10 +502,11 @@ Rules:
   result, send collection-typed cards to the collection route, and redirect `/item/...` when the
   loaded record is a collection.
 - **Detect containers from metadata, never a curated identifier list.** `is_collection` and
-  `mediatype:collection` are what make Sci-Fi / Horror a collection rather than an item. Nested
-  collections are too many to add by hand: a listing under parent P keeps only records whose
-  `collection` field names P and P's ancestors, not an intermediate collection. `/collection/...`
-  redirects when the record is an item.
+  `mediatype:collection` decide whether a record is a collection or an item, which is how nested
+  collections are recognised without adding each identifier by hand. That classification is for
+  routing (cards, `/item/...`, `/collection/...`), not for emptying a category list: extra values
+  in the `collection` field are memberships, not a parent-child tree, and dropping them hid every
+  live collection. The search `mediatype:collection AND collection:<id>` is the listing.
 - **A collection on a browse surface is a row of its items, not a folder card.** Category pages and
   "Collections inside" show each collection as a horizontal shelf with a View all link to its page.
   The collection page remains the place to sort, filter, and ask for more. Neighbouring shelves
