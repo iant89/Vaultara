@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { ContentItem } from '../../models/content';
 import { formatCanonicalId } from '../../models/identity';
-import { buildItemPath } from '../../utils/links';
+import { buildDiscoverablePath } from '../../utils/links';
 import { Artwork } from '../ui/Artwork';
 import { CONTENT_TYPE_LABELS } from '../ui/ItemCard';
 import styles from './FeaturedItem.module.css';
@@ -53,7 +53,7 @@ export function FeaturedItem({ item, label = 'Featured', badge }: FeaturedItemPr
       <div className={styles.body}>
         <p className={styles.eyebrow}>{label}</p>
         <h2 id={headingId} className={styles.title}>
-          <Link to={buildItemPath(identity)} className={styles.titleLink}>
+          <Link to={buildDiscoverablePath(item)} className={styles.titleLink}>
             {item.title}
           </Link>
         </h2>

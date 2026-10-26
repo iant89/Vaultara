@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import type { ContentItem } from '../../models/content';
 import { formatCanonicalId } from '../../models/identity';
 import type { ContentIdentity } from '../../models/identity';
-import { buildItemPath } from '../../utils/links';
+import { buildDiscoverablePath } from '../../utils/links';
 import { Artwork } from './Artwork';
 import { ProviderBadge } from './ProviderBadge';
 import { FavoriteButton } from './ToggleButton';
@@ -79,7 +79,7 @@ export function ItemCard({
 
       <div className={styles.body}>
         <h3 className={styles.title}>
-          <Link to={buildItemPath(identity)} className={styles.titleLink}>
+          <Link to={buildDiscoverablePath(item)} className={styles.titleLink}>
             {item.title}
           </Link>
         </h3>

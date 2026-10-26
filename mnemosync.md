@@ -603,6 +603,8 @@ do not exist.
 | 57 | Two paging models, chosen per list: numbered URLs for collections, "View more" for items | Readers compare categories page by page but scan items and stop early; a `?page=7` of a 4,210-item collection is a bookmark nobody wants | Phase 5 |
 | 58 | An append failure never discards the entries already on screen | Turning a readable list into an error page punishes the reader for asking for more | Phase 5 |
 | 59 | A collection on a browse surface is a shelf of its items, not a folder card | The user asked for the Netflix row layout; folder cards hid the content behind an extra tap and filled the phone with descriptions | Phase 5 |
+| 60 | Search, related items, and item cards never treat a collection as content | Decision 55 excluded collections only from `getCollectionItems`; related and search still returned them, and every card opened `/item/...`. Exclude unless collections were asked for, drop any that arrive, route collection-typed cards to `/collection/...`, and redirect `/item/...` when the loaded record is a collection | Phase 5 |
+| 61 | Nested collections are detected from metadata, never curated by identifier | Too many to add by hand. `is_collection` / `mediatype:collection` classifies a record; a listing under parent P keeps only documents whose `collection` field names P and P's ancestors. `/collection/...` redirects when the record is an item | Phase 5 |
 
 Resolved by user decision on 2026-10-25: file naming (issue 3, decision 18) and the
 roadmap's authoritative status (issue 2, decision 19).
@@ -695,12 +697,12 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 | Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                                                      |
 | Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                                                  |
 | Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                                                    |
-| Unit and component tests                                    | `npm test`                    | PASS    | 40 files, 622 tests                                                                                                                                      |
-| Production build                                            | `npm run build`               | PASS    | Main 414.62 kB (128.74 kB gzip); dev chunk split out                                                                                                     |
+| Unit and component tests                                    | `npm test`                    | PASS    | 41 files, 640 tests                                                                                                                                      |
+| Production build                                            | `npm run build`               | PASS    | Main 417.76 kB (129.40 kB gzip); dev chunk split out                                                                                                     |
 | Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1                                       |
 | Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                                                              |
 | Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                                                     |
-| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 34 tests, Chromium 153.0.8010.0; 4 viewports, keyboard, mobile search, discovery workflow, hierarchy                                                     |
+| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 35 tests, Chromium 153.0.8010.0; 4 viewports, keyboard, mobile search, discovery workflow, hierarchy, collection-as-item redirect                        |
 | Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                                                     |
 | Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed                                |
 | Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                                                       |
@@ -840,6 +842,23 @@ never had a chance to answer. The request moved into an extracted component that
 ---
 
 ## Recent Changes
+
+### 2026-10-26 - Detect collections instead of listing them
+
+- Classification is `is_collection` or `mediatype:collection`, not a hardcoded identifier list.
+- A collection listing under parent P keeps only direct children (the `collection` field names P
+  and P's ancestors, not an intermediate collection). Sci-Fi / Horror appears inside Feature
+  Films, not as a sibling of Feature Films and not as an item.
+- `/collection/...` redirects when the loaded record is an item. Decision 61.
+
+### 2026-10-26 - Collections are not items
+
+- Search and related-item queries now add `-mediatype:collection` unless the caller asked for
+  collections. `getCollectionItems` already did this; related content and site search did not, so
+  a collection such as `SciFi_Horror` appeared on an item page with a Collection type chip.
+- Item mapping drops collection documents that still arrive. Collection-typed cards and the
+  featured hero open `/collection/...`. An `/item/...` URL whose record is a collection redirects.
+- Decision 60; `AGENTS.md` 5.8.
 
 ### 2026-10-26 - Collection hierarchy, pagination, and incremental lists
 
@@ -1051,6 +1070,31 @@ collection:<media type>` returns the expected collections (and not every collect
 7. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
 
 ## Session Handoff Log
+
+### Session 2026-10-26 (detect collection vs item)
+
+1. **Objective:** nested collections are too many to add by hand; detect whether a record is a
+   collection or an item from Archive metadata.
+2. **Changes made:** `isArchiveCollection`, `isDirectChildCollection`, bidirectional redirects,
+   collection listings filtered to the immediate parent.
+3. **Verification:** `npm run check` PASS (41 files, 640 tests); `npm run test:e2e` PASS (35
+   tests); `npm run build` PASS (main 417.76 kB / 129.40 kB gzip); `npm run verify:pages` PASS.
+4. **Next steps:** user-driven. Do not start Phase 6. Git operations need explicit authorisation.
+
+### Session 2026-10-26 (collections listed as items)
+
+1. **Objective:** live Pages still opened Sci-Fi / Horror (`SciFi_Horror`) as an item. Fix the
+   leak; do not commit or start Phase 6.
+2. **Cause:** only `getCollectionItems` sent `-mediatype:collection`. Search and related items
+   returned collection documents, and every card used `buildItemPath`.
+3. **Changes made:** search and related queries exclude collections; mapping drops any that
+   still arrive; collection-typed cards use `buildDiscoverablePath`; ItemPage redirects to the
+   collection route.
+4. **Verification:** `npm run check` PASS (40 files, 630 tests); `npm run test:e2e` PASS (35 tests);
+   `npm run build` PASS (main 416.56 kB / 129.02 kB gzip); `npm run verify:pages` PASS.
+5. **Next steps:** user-driven. Do not start Phase 6. Git operations need explicit authorisation.
+6. **Relevant files:** `src/providers/archive/{query,adapter}.ts`, `src/utils/links.ts`,
+   `src/components/ui/ItemCard.tsx`, `src/pages/ItemPage.tsx`, `e2e/discovery.spec.ts`.
 
 ### Session 2026-10-26 (Netflix shelves)
 

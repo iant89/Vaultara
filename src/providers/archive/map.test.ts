@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCHIVE_PROVIDER_ID,
+  isArchiveCollection,
   mapCollection,
   mapFiles,
   mapItem,
@@ -205,6 +206,20 @@ describe('mapItem', () => {
       attributionUrl: 'https://archive.org/details/nosferatu',
     });
     expect(item?.metadata['downloads']).toBe(128);
+  });
+
+  it('classifies a collection from mediatype without a hardcoded identifier list', () => {
+    const item = mapItem(
+      {
+        metadata: { identifier: 'SciFi_Horror', title: 'Sci-Fi / Horror', mediatype: 'collection' },
+      },
+      urls,
+    );
+
+    expect(item?.type).toBe('collection');
+    expect(isArchiveCollection({ mediatype: 'collection' })).toBe(true);
+    expect(isArchiveCollection({ mediatype: 'movies' }, { isCollection: true })).toBe(true);
+    expect(isArchiveCollection({ mediatype: 'movies' })).toBe(false);
   });
 
   it('accepts single-value fields where other items use arrays', () => {
@@ -428,6 +443,7 @@ describe('mapCollection', () => {
       thumbnailUrl: 'https://archive.org/services/img/feature_films',
       sourceUrl: 'https://archive.org/details/feature_films',
     });
+    expect(collection?.metadata['is_collection']).toBe(true);
   });
 
   it('omits an unknown item count rather than reporting zero', () => {

@@ -1,4 +1,4 @@
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { AsyncContent } from '../components/content/AsyncContent';
 import { Breadcrumbs } from '../components/content/Breadcrumbs';
 import { CollectionShelf } from '../components/content/CollectionShelf';
@@ -32,6 +32,7 @@ import {
   buildCategoryPath,
   buildCollectionPath,
   buildHomePath,
+  buildItemPath,
   buildProviderPath,
 } from '../utils/links';
 import styles from './CollectionPage.module.css';
@@ -158,6 +159,12 @@ export function CollectionPage() {
   const updateParams = (changes: Readonly<Record<string, string | undefined>>) => {
     setSearchParams(nextSearchParams(searchParams, changes));
   };
+
+  // The Archive uses the same identifier space for containers and items. Metadata, not a
+  // curated list, decides which route a record belongs on.
+  if (collectionValue !== undefined && collectionValue.metadata['is_collection'] === false) {
+    return <Navigate to={buildItemPath({ providerId, itemId: collectionValue.id })} replace />;
+  }
 
   return (
     <Page

@@ -44,6 +44,20 @@ describe('ItemCard', () => {
     );
   });
 
+  it('opens a collection-typed result on the collection route', () => {
+    renderWithRouter(
+      <ItemCard
+        item={{ ...ITEM, id: 'SciFi_Horror', title: 'Sci-Fi / Horror', type: 'collection' }}
+        providerName="Internet Archive"
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: 'Sci-Fi / Horror' })).toHaveAttribute(
+      'href',
+      '/collection/archive/SciFi_Horror',
+    );
+  });
+
   it('shows the content type and creator', () => {
     renderWithRouter(<ItemCard item={ITEM} providerName="Internet Archive" />);
 

@@ -104,3 +104,54 @@ export function findArchiveCategoryByCollection(
 
   return ARCHIVE_CATEGORIES.find((category) => category.collectionId === normalized);
 }
+
+/**
+ * Whether a collection document is a direct child of `parentId`.
+ *
+ * The Archive copies every ancestor into `collection`, so `collection:movies` matches Feature
+ * Films and also Sci-Fi / Horror nested inside it. That tree is too large to curate. A direct
+ * child lists the parent and only the parent's own ancestors (media types included); an
+ * intermediate collection in the field means the document belongs one level further down.
+ *
+ * A missing `collection` field is treated as direct: the search already scoped to this parent,
+ * and some records omit ancestry in the returned fields.
+ */
+export function isDirectChildCollection(
+  parentId: string,
+  listedParents: readonly string[],
+  options: {
+    readonly childId?: string;
+    readonly parentAncestors?: readonly string[];
+  } = {},
+): boolean {
+  const parent = parentId.trim().toLowerCase();
+
+  if (parent === '') {
+    return false;
+  }
+
+  const childId = options.childId?.trim().toLowerCase() ?? '';
+  const allowed = new Set<string>([parent]);
+
+  for (const ancestor of options.parentAncestors ?? []) {
+    const normalized = ancestor.trim().toLowerCase();
+
+    if (normalized !== '') {
+      allowed.add(normalized);
+    }
+  }
+
+  for (const category of ARCHIVE_CATEGORIES) {
+    allowed.add(category.collectionId);
+  }
+
+  const listed = listedParents
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry !== '' && entry !== childId);
+
+  if (listed.length === 0) {
+    return true;
+  }
+
+  return listed.every((entry) => allowed.has(entry));
+}
