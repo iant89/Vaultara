@@ -604,7 +604,7 @@ do not exist.
 | 58 | An append failure never discards the entries already on screen | Turning a readable list into an error page punishes the reader for asking for more | Phase 5 |
 | 59 | A collection on a browse surface is a shelf of its items, not a folder card | The user asked for the Netflix row layout; folder cards hid the content behind an extra tap and filled the phone with descriptions | Phase 5 |
 | 60 | Search, related items, and item cards never treat a collection as content | Decision 55 excluded collections only from `getCollectionItems`; related and search still returned them, and every card opened `/item/...`. Exclude unless collections were asked for, drop any that arrive, route collection-typed cards to `/collection/...`, and redirect `/item/...` when the loaded record is a collection | Phase 5 |
-| 61 | Nested collections are detected from metadata, never curated by identifier | Too many to add by hand. `is_collection` / `mediatype:collection` classifies a record; a listing under parent P keeps only documents whose `collection` field names P and P's ancestors. `/collection/...` redirects when the record is an item | Phase 5 |
+| 61 | Nested collections are detected from metadata, never curated by identifier | Too many to add by hand. `is_collection` / `mediatype:collection` classifies a record for routing. Listings trust `mediatype:collection AND collection:<id>`: extra `collection` memberships are not a parent-child tree, and filtering them emptied live category pages | Phase 5 |
 
 Resolved by user decision on 2026-10-25: file naming (issue 3, decision 18) and the
 roadmap's authoritative status (issue 2, decision 19).
@@ -697,8 +697,8 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 | Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                                                      |
 | Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                                                  |
 | Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                                                    |
-| Unit and component tests                                    | `npm test`                    | PASS    | 41 files, 640 tests                                                                                                                                      |
-| Production build                                            | `npm run build`               | PASS    | Main 417.76 kB (129.40 kB gzip); dev chunk split out                                                                                                     |
+| Unit and component tests                                    | `npm test`                    | PASS    | 40 files, 635 tests                                                                                                                                      |
+| Production build                                            | `npm run build`               | PASS    | Main 416.99 kB (129.17 kB gzip); dev chunk split out                                                                                                     |
 | Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1                                       |
 | Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                                                              |
 | Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                                                     |
@@ -843,12 +843,16 @@ never had a chance to answer. The request moved into an extracted component that
 
 ## Recent Changes
 
+### 2026-10-26 - Category pages emptied by a parent-child filter
+
+- Live Archive collections list extra memberships (`community_media`, sibling collections) in
+  `collection`. Treating that field as a strict parent chain dropped every document on a category
+  page of six, so clicking Moving Images showed nothing.
+- Listings trust the search again. Classification still decides collection vs item for routing.
+
 ### 2026-10-26 - Detect collections instead of listing them
 
 - Classification is `is_collection` or `mediatype:collection`, not a hardcoded identifier list.
-- A collection listing under parent P keeps only direct children (the `collection` field names P
-  and P's ancestors, not an intermediate collection). Sci-Fi / Horror appears inside Feature
-  Films, not as a sibling of Feature Films and not as an item.
 - `/collection/...` redirects when the loaded record is an item. Decision 61.
 
 ### 2026-10-26 - Collections are not items
@@ -1071,12 +1075,24 @@ collection:<media type>` returns the expected collections (and not every collect
 
 ## Session Handoff Log
 
+### Session 2026-10-26 (empty category pages)
+
+1. **Objective:** after PR #4, clicking a category showed no collections. Restore listings;
+   keep collection-vs-item detection.
+2. **Cause:** `isDirectChildCollection` required every `collection` value to be the parent or a
+   media type. Live records include extra memberships, so a page of six results filtered to zero.
+3. **Changes made:** stop filtering listings by that heuristic; search remains the source of
+   collections. Routing and item-list exclusion are unchanged.
+4. **Verification:** `npm run check` PASS (40 files, 635 tests); `npm run test:e2e` PASS (35
+   tests); `npm run build` PASS (main 416.99 kB / 129.17 kB gzip); `npm run verify:pages` PASS.
+5. **Next steps:** user-driven. Do not start Phase 6. Git operations need explicit authorisation.
+
 ### Session 2026-10-26 (detect collection vs item)
 
 1. **Objective:** nested collections are too many to add by hand; detect whether a record is a
    collection or an item from Archive metadata.
-2. **Changes made:** `isArchiveCollection`, `isDirectChildCollection`, bidirectional redirects,
-   collection listings filtered to the immediate parent.
+2. **Changes made:** `isArchiveCollection`, bidirectional redirects, item lists exclude
+   collections. A subsequent session removed the listing filter that emptied category pages.
 3. **Verification:** `npm run check` PASS (41 files, 640 tests); `npm run test:e2e` PASS (35
    tests); `npm run build` PASS (main 417.76 kB / 129.40 kB gzip); `npm run verify:pages` PASS.
 4. **Next steps:** user-driven. Do not start Phase 6. Git operations need explicit authorisation.

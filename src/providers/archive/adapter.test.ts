@@ -375,30 +375,26 @@ describe('collections', () => {
     expect(result.items[0]?.categoryIds).toEqual(['software']);
   });
 
-  it('keeps only collections immediately inside the parent, not the rest of the subtree', async () => {
+  it('still lists a collection that is filed in more than its media type', async () => {
     const { provider } = createRoutedProvider({
       response: {
-        numFound: 2,
+        numFound: 1,
         docs: [
           {
-            identifier: 'softwarelibrary',
-            title: 'Software Library',
+            identifier: 'feature_films',
+            title: 'Feature Films',
             mediatype: 'collection',
-            collection: ['software'],
-          },
-          {
-            identifier: 'softwarelibrary_msdos_games',
-            title: 'Software Library: MS-DOS Games',
-            mediatype: 'collection',
-            collection: ['softwarelibrary', 'software'],
+            // Live records carry extra memberships (community lists, sibling collections).
+            // Those are not a parent-child tree; dropping them emptied category pages.
+            collection: ['movies', 'community_media', 'opensource_movies'],
           },
         ],
       },
     });
 
-    const result = await provider.getCollections('software');
+    const result = await provider.getCollections('movies');
 
-    expect(result.items.map((collection) => collection.id)).toEqual(['softwarelibrary']);
+    expect(result.items.map((collection) => collection.id)).toEqual(['feature_films']);
   });
 
   it('reports a provider failure instead of pretending the category is empty', async () => {
@@ -426,12 +422,7 @@ describe('collections', () => {
     expect(result.items.map((collection) => collection.id)).toEqual(['feature_films', 'prelinger']);
     expect(result).toMatchObject({ page: 1, total: 2 });
 
-    const search = stub.requests.find(
-      (request) => new URL(request.url).pathname === '/advancedsearch.php',
-    );
-
-    expect(search).toBeDefined();
-    expect(new URL(search?.url ?? '').searchParams.get('q')).toBe(
+    expect(requestUrl(stub).searchParams.get('q')).toBe(
       'mediatype:collection AND collection:softwarelibrary',
     );
   });

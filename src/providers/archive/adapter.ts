@@ -38,7 +38,6 @@ import {
   ARCHIVE_CATEGORIES,
   findArchiveCategory,
   findArchiveCategoryByCollection,
-  isDirectChildCollection,
 } from './catalog';
 import {
   ARCHIVE_PROVIDER_ID,
@@ -305,7 +304,6 @@ export class ArchiveProvider implements ContentProvider {
       { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
       [category.id],
       options,
-      { parentId: category.collectionId, parentAncestors: [] },
     );
   }
 
@@ -323,14 +321,12 @@ export class ArchiveProvider implements ContentProvider {
     this.ensureActive(options.signal);
 
     const identifier = this.requireIdentifier(collectionId, 'collection');
-    const parentAncestors = await this.loadCollectionAncestors(identifier, options);
 
     return this.searchCollections(
       [COLLECTION_MEDIATYPE_CLAUSE, buildCollectionClause(identifier)],
       { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
       [],
       options,
-      { parentId: identifier, parentAncestors },
     );
   }
 
@@ -642,29 +638,6 @@ export class ArchiveProvider implements ContentProvider {
     return { response, metadata };
   }
 
-  /**
-   * Ancestors of a collection, used to tell its direct children from the rest of the subtree.
-   *
-   * A missing parent record is not fatal: the search is already scoped to that identifier, and
-   * media types are always treated as allowed ancestors.
-   */
-  private async loadCollectionAncestors(
-    identifier: string,
-    options: ProviderRequestOptions,
-  ): Promise<readonly string[]> {
-    try {
-      const { metadata } = await this.loadItem(identifier, options);
-
-      return normalizeStringList(metadata['collection'], { maxItems: 24, maxLength: 80 });
-    } catch (error) {
-      if (isCancelled(error)) {
-        throw error;
-      }
-
-      return [];
-    }
-  }
-
   private async fetchItemCount(
     identifier: string,
     options: ProviderRequestOptions,
@@ -697,7 +670,6 @@ export class ArchiveProvider implements ContentProvider {
     },
     fallbackCategoryIds: readonly string[],
     options: ProviderRequestOptions,
-    parent: { readonly parentId: string; readonly parentAncestors: readonly string[] },
   ): Promise<PaginatedResult<ContentCollection>> {
     const { page, pageSize } = resolvePaginationOptions({
       page: paging.page,
@@ -720,21 +692,10 @@ export class ArchiveProvider implements ContentProvider {
     const collections: ContentCollection[] = [];
 
     for (const document of readDocuments(response)) {
+      // The search already asked for containers. Extra `collection` memberships (community
+      // media, fav-* lists, sibling collections) are not a parent-child tree — dropping a
+      // document because of them emptied live category pages.
       if (!isArchiveCollection(document)) {
-        continue;
-      }
-
-      const listedParents = normalizeStringList(document['collection'], {
-        maxItems: 24,
-        maxLength: 80,
-      });
-
-      if (
-        !isDirectChildCollection(parent.parentId, listedParents, {
-          childId: readIdentifier(document),
-          parentAncestors: parent.parentAncestors,
-        })
-      ) {
         continue;
       }
 
