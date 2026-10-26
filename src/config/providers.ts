@@ -3,8 +3,12 @@
  *
  * Design spec 7.1 requires provider configuration to stay separate from provider
  * implementation. This catalog holds presentation metadata only: no fetching logic and no
- * provider SDK details. Adapters arrive in roadmap Phases 4, 13, and 16; until then every
- * entry is marked `planned` so the interface never implies working functionality.
+ * provider SDK details.
+ *
+ * `availability` reports whether an adapter exists, not whether a screen exists for it: the
+ * Internet Archive adapter is complete (roadmap Phase 4) while its browsing interface arrives
+ * with the discovery experience (Phase 5). `browsingPhase` keeps that distinction visible so the
+ * interface never implies working functionality it does not have.
  */
 
 import { appEnvironment } from './env';
@@ -16,8 +20,13 @@ export interface ProviderCatalogEntry {
   readonly name: string;
   readonly description: string;
   readonly availability: ProviderAvailability;
-  /** Roadmap phase that will deliver the adapter, shown to users as an honest status. */
+  /** Roadmap phase that will deliver (or delivered) the adapter, shown as an honest status. */
   readonly roadmapPhase: string;
+  /**
+   * Roadmap phase that will deliver in-app browsing. Only meaningful once an adapter exists;
+   * before that, the adapter itself is what is missing.
+   */
+  readonly browsingPhase?: string;
 }
 
 export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
@@ -26,8 +35,9 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     name: 'Internet Archive',
     description:
       'Books, film, audio, software, and historical archives from archive.org. The primary provider.',
-    availability: 'planned',
+    availability: 'available',
     roadmapPhase: 'Phase 4',
+    browsingPhase: 'Phase 5',
   },
   {
     id: 'wikipedia',
@@ -48,6 +58,16 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
 
 export function findProvider(providerId: string): ProviderCatalogEntry | undefined {
   return PROVIDER_CATALOG.find((provider) => provider.id === providerId);
+}
+
+/**
+ * Display name for a provider id.
+ *
+ * Falls back to the id itself: content from a provider missing from the catalogue is still
+ * attributable, and showing the raw id is more honest than inventing a name.
+ */
+export function getProviderName(providerId: string): string {
+  return findProvider(providerId)?.name ?? providerId;
 }
 
 /**

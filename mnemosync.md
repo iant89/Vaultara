@@ -35,40 +35,50 @@ Fixed product decisions already established by
 
 ## Current Development Status
 
-**Phase: 2 (visual design system) implemented and validated. Deployment to GitHub Pages
-configured.**
+**Phase: 5 (discovery experience) implemented. Deployment to GitHub Pages configured.**
 
-The application shell now carries a full design token layer and a set of shared components:
-cards, badges, toggles, metadata, grids, rows, dialogs, menus, buttons, and skeletons. The
-navigation was rebuilt around the design spec's desktop and mobile layouts.
+The Internet Archive adapter is now driven by the interface. Home shows a featured item, one row
+per content family (24 cards each) and the provider's category grid; provider and category pages list
+collections; collection pages show a paginated item grid with sorting, a content-type filter and
+in-collection search; item pages show artwork, description, files with per-file download links,
+metadata, licence, source link and related items. Every list is a URL-reachable state, and breadcrumbs
+connect the hierarchy.
 
-**Still no provider, viewer, persistence, search-results, favourites, or download
-functionality.** Components that imply state (favourite/like toggles) are controlled
-primitives with no storage behind them; the only place they hold state is the development-only
-reference page.
+Reads go through `src/data/`: a TTL cache with in-flight de-duplication, a concurrency limiter, a
+`useAsyncValue` hook that binds one key to one component, and a `ProviderServices` context. Pages
+never import an adapter; `getProviderRuntime()` is reached only through that context.
+
+**Still no favourites, likes, history, search results, download manager, or viewer.** Cards render no
+favourite control because no favourite state exists; the item page says so in words. Personalisation
+is a stated placeholder on the home page.
 
 The application is published as a static site to GitHub Pages by
-`.github/workflows/deploy-pages.yml`. Nothing beyond the shell exists to deploy; a provider,
-viewer, persistence, search-results, favourites, or download feature would have to be built
-first.
+`.github/workflows/deploy-pages.yml`. Discovery requires a network route to `archive.org`; without
+one, each surface reports the failure and offers a retry.
 
-Verified 2026-10-25 after Phase 2 and the deployment work:
+Verified 2026-10-26 after Phase 5:
 
 | Fact                                                       | Evidence                                                                                  |
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Every quality gate passes                                  | `npm run check` (typecheck, lint, format, 238 tests): PASS                                |
-| Production build succeeds                                  | `npm run build`: main 336.10 kB (106.26 kB gzip); design-system chunk 20.71 kB, split out |
+| Every quality gate passes                                  | `npm run check` (typecheck, lint, format, 598 tests in 37 files): PASS                    |
+| Production build succeeds                                  | `npm run build`: main 408.78 kB (127.38 kB gzip); design-system chunk 12.39 kB, split out |
+| Provider data layer                                        | 26 tests in `src/data/`: cache TTL, de-duplication, limiter, keys, async state: PASS      |
+| Archive adapter behaviour                                  | 135 tests in `src/providers/archive/`: search, collections, items, files, failures: PASS  |
+| Discovery pages against provider data                      | 14 tests in `src/pages/discovery.test.tsx` with a stubbed gateway: PASS                   |
+| Discovery workflow in a real browser                       | `e2e/discovery.spec.ts`: 4 tests with stubbed Archive JSON, 360-1440 px: PASS             |
+| No horizontal overflow with real content                   | `e2e/`: eight routes at four viewports plus data-driven pages: PASS                       |
+| End-to-end suite                                           | `npm run test:e2e`: 33 tests, Chromium, 25.1 s: PASS                                      |
 | Contrast of every used pairing                             | `src/styles/contrast.test.ts` computes ratios from `tokens.css`: PASS                     |
 | Touch target floor                                         | `--touch-target: 2.75rem` (44px) asserted; `Button` enforces it: PASS                     |
 | Dev-only page is code-split and unregistered in production | no sample-content strings in the main chunk; route absent from `createRoutes()`: PASS     |
-| Visual layout at desktop/tablet/mobile                     | `e2e/responsive.spec.ts` at 360/414/768/1440 px, real Chromium: PASS                      |
 | Keyboard traversal, focus ring, skip link, Escape          | `e2e/responsive.spec.ts`: PASS                                                            |
-| Native `<dialog>` modal behaviour                          | PARTIAL: jsdom lacks `showModal`; browser suite renders it, but no test asserts it yet    |
 | Build output is deployable as a Pages site                 | `npm run verify:pages`: base path, assets, `404.html`, deep links: PASS                   |
 | Deployed-style bundle boots and routes in a real browser   | Chromium against `dist/` served with Pages semantics: PASS                                |
-| Workflow runs successfully on GitHub                       | NOT RUN: never executed; first push to `main` will be its first run                       |
+| Native `<dialog>` modal behaviour                          | PARTIAL: jsdom lacks `showModal`; browser suite renders it, but no test asserts it yet    |
+| Behaviour against the live service                         | NOT VERIFIED: the sandbox has no route to archive.org; browser tests stub the JSON        |
+| Real provider artwork, Safari/Firefox/iOS, screen readers  | NOT VERIFIED: no such environment is available here                                       |
 
-Do not describe provider browsing, discovery, search, favourites, downloads, or viewing as
+Do not describe favourites, likes, history, search results, downloads, personalisation, or viewing as
 working. They do not exist.
 
 ---
@@ -90,7 +100,7 @@ working. They do not exist.
 | Type-aware lint rules    | typescript-eslint                   | 8.72.0          | Recommended set plus explicit bans on `any` and `eval`                                                                                         |
 | Accessibility lint       | eslint-plugin-jsx-a11y              | 6.10.2          | Catches missing labels, bad roles, and non-interactive handlers                                                                                |
 | Formatting               | Prettier                            | 3.9.10          | Application code only; governing prose documents are excluded                                                                                  |
-| End-to-end tests         | @playwright/test                    | 1.64.1          | 27 tests in a real Chromium; browsers provisioned by `scripts/setup-deps.sh`, not by `npm install`                                             |
+| End-to-end tests         | @playwright/test                    | 1.64.1          | 33 tests in a real Chromium; browsers provisioned by `scripts/setup-deps.sh`, not by `npm install`                                             |
 | Styling                  | CSS Modules + CSS custom properties | none            | The specification permits CSS Modules and no styling dependency is warranted                                                                   |
 
 ### Design system (Phase 2)
@@ -148,7 +158,7 @@ Current layout:
 ```
 AGENTS.md                            Engineering rules, standards, agent workflow
 APPLICATION_DESIGN_SPECIFICATION.md  Authoritative product requirements (v1.0)
-DEVELOPMENT_ROADMAP.md               Authoritative 20-phase delivery plan (v1.0); Phase 1 complete
+DEVELOPMENT_ROADMAP.md               Authoritative 20-phase delivery plan (v1.0); Phases 0-4 complete
 TESTING_AND_REGRESSION_GUIDELINES.md Authoritative testing and regression process
 README.md                            Onboarding: setup, scripts, configuration, structure
 mnemosync.md                         This notebook
@@ -184,7 +194,7 @@ src/
   components/feedback/               LoadingState, EmptyState, ErrorState, NotYetImplemented
   components/layout/                 AppLayout, Navigation, Page (+ CSS Modules)
   config/env.ts                      Validated environment configuration (pure parser + loader)
-  config/providers.ts                Provider presentation catalogue (all `planned`)
+  config/providers.ts                Provider catalogue: availability and phase per provider
   models/content.ts                  ContentItem, ContentCollection, ContentFile, ContentCategory
   models/provider.ts                 ContentProvider, ProviderCapabilities, SearchOptions
   models/viewer.ts                   ContentViewerProps, ViewerDescriptor, ViewerError
@@ -193,6 +203,20 @@ src/
   models/pagination.ts               Pagination options/results and helpers
   models/errors.ts                   AppError, kinds, normalization
   pages/                             One module per route; `pages/settings/` for subsections
+  providers/registry.ts              Registration, state, health, enable/disable, capabilities
+  providers/gateway.ts               The only caller of an adapter; applies one call policy
+  providers/reliability.ts           Timeouts, cancellation, retries, backoff, rate limits
+  providers/normalize.ts             Untrusted payload -> shared model
+  providers/validate.ts              Response shape checks before the core uses a result
+  providers/composition.ts           Composition root: builds the registry and the gateway
+  providers/archive/api.ts           Archive HTTP: URLs, status translation, JSON parsing
+  providers/archive/types.ts         Raw Archive response shapes (all fields `unknown`)
+  providers/archive/taxonomy.ts      Mediatype, format and MIME-type vocabulary
+  providers/archive/query.ts         Lucene escaping, filters, sort mapping
+  providers/archive/map.ts           Archive payload -> shared models (pure, no I/O)
+  providers/archive/catalog.ts       Curated categories and collections
+  providers/archive/adapter.ts       ContentProvider implementation
+  providers/archive/fixtures.ts      Hand-written payloads and fetch stubs for tests
   styles/tokens.css                  Design tokens (Phase 2 builds on these)
   styles/global.css                  Minimal global baseline
   test/setup.ts                      Testing Library and jest-dom setup
@@ -260,9 +284,9 @@ All commands are defined in `package.json` (Phase 1). Nothing here is guessed.
 | `npm run lint:fix`     | ESLint with safe fixes                                                |
 | `npm run format`       | Prettier write (application code; docs excluded)                      |
 | `npm run format:check` | Prettier check without writing                                        |
-| `npm test`             | Vitest run once (231 tests in 21 files)                               |
+| `npm test`             | Vitest run once (598 tests in 37 files)                               |
 | `npm run test:watch`   | Vitest watch mode                                                     |
-| `npm run test:e2e`     | Playwright (27 tests); browser provisioned by `scripts/setup-deps.sh` |
+| `npm run test:e2e`     | Playwright (33 tests); browser provisioned by `scripts/setup-deps.sh` |
 | `npm run check`        | The full gate: typecheck, lint, format check, unit tests              |
 
 `npm install` is required once. There is no CI workflow yet (see Known Issues).
@@ -315,13 +339,13 @@ Points that are easy to get wrong:
 
 ## Provider Integrations
 
-All planned. None implemented.
+One adapter implemented; the rest are planned. None is wired to the interface.
 
-| Provider         | Status      | Notes / constraints                                                                                                                                                                                    |
-| ---------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Internet Archive | Not started | Primary provider, Phase 4. Official APIs only. Metadata + thumbnails may be cached per provider policy. Never download full media just to show metadata; prefer streaming/range requests (Spec §11.4). |
-| Wikipedia        | Not started | Phase 13. Respect attribution/licensing and API requirements. Document-oriented reader, not a poster grid (Spec §12.2).                                                                                |
-| Adult            | Not started | Phase 16, opt-in, independently configurable. Must not surface in ordinary Archive/Wikipedia recommendations. Favorites may contain Adult items but visibility settings must be honored (Spec §13).    |
+| Provider         | Status              | Notes / constraints                                                                                                                                                                                      |
+| ---------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Internet Archive | Adapter implemented | Phase 4. Official APIs only. Metadata + thumbnails may be cached per provider policy. Never download full media just to show metadata; prefer streaming/range requests (Spec §11.4). No browsing UI yet. |
+| Wikipedia        | Not started         | Phase 13. Respect attribution/licensing and API requirements. Document-oriented reader, not a poster grid (Spec §12.2).                                                                                  |
+| Adult            | Not started         | Phase 16, opt-in, independently configurable. Must not surface in ordinary Archive/Wikipedia recommendations. Favorites may contain Adult items but visibility settings must be honored (Spec §13).      |
 
 Cross-cutting provider requirements: timeouts, cancellation, rate limiting, retries/backoff,
 malformed-response handling, capability honesty, and failure isolation (Spec §25; `AGENTS.md` §7).
@@ -352,35 +376,56 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 
 ## Implemented Features
 
-| Area                                                                                 | State                                                | Evidence                                               |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------ |
-| Design tokens: colour, type, space, radii, elevation, motion, layout, z-index        | Implemented                                          | `src/styles/tokens.css`                                |
-| Reduced-motion support (CSS + JS smooth-scroll guard)                                | Implemented                                          | `tokens.css`, `src/utils/motion.ts`                    |
-| Global baseline: focus rings, selection, scrollbars, `.sr-only`, typography defaults | Implemented                                          | `src/styles/global.css`                                |
-| Brand lockup with decorative vault mark                                              | Implemented                                          | `src/components/layout/Logo.tsx`                       |
-| Provider tabs (Adult hidden unless enabled)                                          | Implemented                                          | `Navigation.tsx`, `src/config/providers.test.ts`       |
-| Global search control (navigates to `/search?q=`)                                    | Implemented                                          | `SearchControl.tsx`; results are Phase 9               |
-| Favourites control, directly reachable at all widths                                 | Implemented                                          | `Navigation.tsx`                                       |
-| Account menu (library + settings groups, honest "not signed in" status)              | Implemented                                          | `AccountMenu.tsx`, `Disclosure.tsx`                    |
-| Responsive navigation (collapsible search, wrapping provider strip)                  | Implemented; verified at 4 viewports in Chromium     | `Navigation.module.css`, `e2e/responsive.spec.ts`      |
-| Item cards, collection cards, provider badges                                        | Implemented                                          | `src/components/ui/`                                   |
-| Favourite and like toggle primitives                                                 | Implemented as controlled components; no persistence | `ToggleButton.tsx`                                     |
-| Metadata list, responsive grid, horizontal content row                               | Implemented                                          | `src/components/ui/`                                   |
-| Dialog, disclosure menu, button primitive, skeletons                                 | Implemented                                          | `src/components/ui/`                                   |
-| Development-only design system reference                                             | Implemented, dev-only, code-split                    | `/design-system`, `src/pages/DesignSystemPage.tsx`     |
-| SPA focus management on navigation + skip link + footer attribution                  | Implemented                                          | `AppLayout.tsx`, `src/hooks/useFocusMainOnNavigate.ts` |
-| Route table for every documented route, error boundary, not-found                    | Implemented                                          | `src/app/routes.tsx`                                   |
-| Shared models and provider/viewer contracts                                          | Defined, not implemented against                     | `src/models/`                                          |
+| Area                                                                                 | State                                                | Evidence                                                   |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------- |
+| Provider contract (`ContentProvider`, capabilities, request options)                 | Implemented                                          | `src/models/provider.ts`                                   |
+| Provider registry (registration, duplicates, lookup, enable/disable, capabilities)   | Implemented                                          | `src/providers/registry.ts`                                |
+| Provider lifecycle, health and availability circuit                                  | Implemented                                          | `registry.ts`, `recordSuccess`/`recordFailure`             |
+| Gateway enforcing one call policy for every operation                                | Implemented                                          | `src/providers/gateway.ts`                                 |
+| Timeouts, cancellation, retries, jittered backoff, rate-limit hints                  | Implemented                                          | `src/providers/reliability.ts`                             |
+| Payload normalization (types, URLs, text, dates, metadata, entities)                 | Implemented                                          | `src/providers/normalize.ts`                               |
+| Response validation and malformed-payload rejection                                  | Implemented                                          | `src/providers/validate.ts`                                |
+| Archive adapter: search, categories, collections, collection items, item metadata    | Implemented; drives the discovery pages              | `src/providers/archive/adapter.ts`                         |
+| Archive normalization: mediatype/format taxonomy, dates, rights, artwork, access     | Implemented                                          | `src/providers/archive/{taxonomy,map}.ts`                  |
+| Archive available files, access restrictions, download URLs                          | Implemented                                          | `mapFiles`, `getDownloadUrl`                               |
+| Provider composition root (single registration point)                                | Implemented; reached through `ProviderServices`      | `src/providers/composition.ts`                             |
+| Wikipedia and Adult adapters                                                         | **Not implemented** — Phases 13, 16                  | catalogue entries remain `planned`                         |
+| Discovery query layer: TTL cache, in-flight de-duplication, concurrency limiter      | Implemented                                          | `src/data/{contentQueries,requestCache,requestLimiter}.ts` |
+| `useAsyncValue`: one request key to one component, abort on change, fresh reload     | Implemented                                          | `src/data/useAsyncValue.ts`                                |
+| Provider context (`ProviderServices`, shared lazy runtime)                           | Implemented                                          | `src/data/ProviderServices.tsx`                            |
+| Home page: featured item, six category rows, category grid, personalisation notice   | Implemented                                          | `src/pages/HomePage.tsx`                                   |
+| Provider page: categories for an available provider, honest status otherwise         | Implemented                                          | `src/pages/ProviderPage.tsx`                               |
+| Category page: collections, paginated, breadcrumbs                                   | Implemented                                          | `src/pages/CategoryPage.tsx`                               |
+| Collection page: item grid, sorting, type filter, in-collection search, paging       | Implemented                                          | `src/pages/CollectionPage.tsx`                             |
+| Item page: hero, description, files with download links, metadata, rights, related   | Implemented                                          | `src/pages/ItemPage.tsx`                                   |
+| Discovery components: rows, breadcrumbs, pagination, files, toolbar, category card   | Implemented                                          | `src/components/content/`                                  |
+| Design tokens: colour, type, space, radii, elevation, motion, layout, z-index        | Implemented                                          | `src/styles/tokens.css`                                    |
+| Reduced-motion support (CSS + JS smooth-scroll guard)                                | Implemented                                          | `tokens.css`, `src/utils/motion.ts`                        |
+| Global baseline: focus rings, selection, scrollbars, `.sr-only`, typography defaults | Implemented                                          | `src/styles/global.css`                                    |
+| Brand lockup with decorative vault mark                                              | Implemented                                          | `src/components/layout/Logo.tsx`                           |
+| Provider tabs (Adult hidden unless enabled)                                          | Implemented                                          | `Navigation.tsx`, `src/config/providers.test.ts`           |
+| Global search control (navigates to `/search?q=`)                                    | Implemented                                          | `SearchControl.tsx`; results are Phase 9                   |
+| Favourites control, directly reachable at all widths                                 | Implemented                                          | `Navigation.tsx`                                           |
+| Account menu (library + settings groups, honest "not signed in" status)              | Implemented                                          | `AccountMenu.tsx`, `Disclosure.tsx`                        |
+| Responsive navigation (collapsible search, wrapping provider strip)                  | Implemented; verified at 4 viewports in Chromium     | `Navigation.module.css`, `e2e/responsive.spec.ts`          |
+| Item cards, collection cards, provider badges                                        | Implemented                                          | `src/components/ui/`                                       |
+| Favourite and like toggle primitives                                                 | Implemented as controlled components; no persistence | `ToggleButton.tsx`                                         |
+| Metadata list, responsive grid, horizontal content row                               | Implemented                                          | `src/components/ui/`                                       |
+| Dialog, disclosure menu, button primitive, skeletons                                 | Implemented                                          | `src/components/ui/`                                       |
+| Development-only design system reference                                             | Implemented, dev-only, code-split                    | `/design-system`, `src/pages/DesignSystemPage.tsx`         |
+| SPA focus management on navigation + skip link + footer attribution                  | Implemented                                          | `AppLayout.tsx`, `src/hooks/useFocusMainOnNavigate.ts`     |
+| Route table for every documented route, error boundary, not-found                    | Implemented                                          | `src/app/routes.tsx`                                       |
+| Shared models and provider/viewer contracts                                          | Provider contract implemented against; viewers not   | `src/models/`                                              |
 
-Not implemented anywhere: provider registry, adapters, search results, discovery, collections,
-item details, accounts, favourites persistence, likes persistence, history, downloads, viewer
-registry, and every viewer.
+Not implemented anywhere: search results, accounts, favourites and likes persistence, history,
+downloads, personalisation, the viewer registry, and every viewer. The Wikipedia and Adult adapters
+do not exist.
 
 ---
 
 ## Features in Progress
 
-**None.**
+**None.** Phase 5 is complete; Phase 6 has not been authorised.
 
 ---
 
@@ -523,6 +568,27 @@ registry, and every viewer.
 | 30 | One base path for development, build, and preview, defaulting to `/Vaultara/` | Developing at the root hides base-path bugs until after deployment. The dev server redirects `/` to the base, so the local URL still works | Deployment |
 | 31 | Router `basename` derived from `import.meta.env.BASE_URL`, never hardcoded | A single `VITE_BASE_PATH` must be able to move the whole app, including routing | Deployment |
 | 32 | Deep links are served through a generated `404.html` rather than hash routing | Pages has no rewrites. The 404 status is honest, links stay clean and shareable, and the router resolves the route on boot | Deployment |
+| 33 | The registry performs no fetching; the gateway imports no adapter | Adding a provider touches neither. Both files stay provider-agnostic, which is the whole point of spec 10.1 | Phase 3 |
+| 34 | Timeouts enforced by racing the call, not by trusting the adapter signal | An adapter that ignores cancellation still cannot hang the caller; the abandoned promise is drained to avoid unhandled rejections | Phase 3 |
+| 35 | Cancellation is never recorded as a provider failure | Otherwise a user who changes their mind three times trips the availability circuit and hides a healthy provider | Phase 3 |
+| 36 | Availability is a consecutive-failure circuit, and a probe answering "unhealthy" is decisive | Transient failures should not take a provider offline, but a provider that says it cannot serve should not be asked again | Phase 3 |
+| 37 | Retries limited to transient kinds; malformed payloads never retried | Retrying an invalid response just fetches the same invalid response | Phase 3 |
+| 38 | Unsafe URL schemes are dropped during normalization rather than sanitized | A provider has no legitimate reason to return `javascript:` or `data:`; dropping is auditable, rewriting is not | Phase 3 |
+| 39 | Archive adapter split into transport, taxonomy, query, mapping, and contract modules | Mapping is pure, so it is tested without a network or a clock; the adapter only sequences calls | Phase 4 |
+| 40 | Content type comes from `mediatype` alone (`texts` -> `document`, `etree` -> `music`) | Inferring "book" from a collection label would make an item's type depend on which request produced it | Phase 4 |
+| 41 | The Archive's 10,000-result ceiling is reported as the total | Otherwise `hasMore` keeps offering pages the provider will refuse, and the UI promises results that cannot exist | Phase 4 |
+| 42 | An unknown identifier (`200` + `{}`) and `is_dark` both become `not-found`; `getDownloadUrl` returns `null` instead | The provider has no 404 for missing items, and `null` is the contract's channel for "nothing to offer" | Phase 4 |
+| 43 | Administrative files are dropped, originals listed first, restrictions expressed per file | `_meta.xml` and CDX indexes are not content; a lending scan's files exist but must not look downloadable (spec 11.3) | Phase 4 |
+| 44 | `viewable` means "the browser can render it unaided" — no PDF, EPUB, or DjVu yet | Claiming otherwise would advertise a viewer that arrives in Phase 8 | Phase 4 |
+| 45 | Categories are curated configuration, and collection titles are merged from one identifier lookup | The Archive exposes no category endpoint; a failed lookup falls back to catalogue names instead of an empty screen | Phase 4 |
+| 46 | Related content means sibling collections, and a missing item reports `not-found` rather than an empty list | Personalization does not exist yet; "no related content" is a statement about an item that exists | Phase 4 |
+| 47 | Discovery rows are defined by shared content type in `src/config/discovery.ts` | A row is a product decision, not provider knowledge; a second provider fills the same row instead of needing new UI | Phase 5 |
+| 48 | Reads go through a cache/limiter/async-state layer (`src/data/`), never the adapter | Caching, de-duplication and cancellation belong above the gateway so every surface gets them (roadmap 5.5, `AGENTS.md` 5.8) | Phase 5 |
+| 49 | The featured slot reuses its row's cache entry | Same key, same query: promoting an item costs no extra request, and the two cannot disagree | Phase 5 |
+| 50 | Paging, sorting, filtering and in-collection search live in the URL | Every view is linkable, bookmarkable and back-button friendly; parsers fall back instead of throwing | Phase 5 |
+| 51 | "View all" renders only for categories the provider reports | A dead link is worse than no link; provider swaps must not break navigation | Phase 5 |
+| 52 | Item counts appear only where the provider reports one | A count per collection card would cost one request per card; inventing one would be a lie (design spec 9.3) | Phase 5 |
+| 53 | Favourite controls stay absent until favourite state exists | Quality gate: never render a control that cannot work | Phase 5, revisit Phase 8 |
 
 Resolved by user decision on 2026-10-25: file naming (issue 3, decision 18) and the
 roadmap's authoritative status (issue 2, decision 19).
@@ -608,25 +674,43 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 
 ## Testing and Verification
 
-### Executed checks (2026-10-25, Phase 2)
+### Executed checks (2026-10-26, latest gate)
 
 | Check                                                       | Command                       | Status  | Detail                                                                                                                    |
 | ----------------------------------------------------------- | ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                       |
 | Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                   |
 | Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                     |
-| Unit and component tests                                    | `npm test`                    | PASS    | 20 files, 231 tests                                                                                                       |
-| Production build                                            | `npm run build`               | PASS    | Main 336.10 kB (106.26 kB gzip); dev chunk split out                                                                      |
+| Unit and component tests                                    | `npm test`                    | PASS    | 37 files, 598 tests                                                                                                       |
+| Production build                                            | `npm run build`               | PASS    | Main 408.78 kB (127.38 kB gzip); dev chunk split out                                                                      |
 | Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1        |
 | Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                               |
 | Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                      |
-| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 27 tests, Chromium 153.0.8010.0, 14.1 s; 4 viewports, keyboard, mobile search                                             |
-| Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px                                                                                           |
-| Visual review of rendered UI                                | screenshots                   | PASS    | Shell, design-system gallery, and cards inspected at 360/768/1200/1440 px; 2 defects found and fixed                      |
+| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 33 tests, Chromium 153.0.8010.0, 25.1 s; 4 viewports, keyboard, mobile search, discovery workflow                         |
+| Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                      |
+| Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed |
 | Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                        |
 | Native modal path                                           | manual                        | PARTIAL | Renders in Chromium, but no test asserts `showModal` behaviour yet                                                        |
+| Provider architecture unit and integration tests            | `npm test`                    | PASS    | 174 new tests across registry, gateway, reliability, normalization, validation                                            |
+| Archive adapter tests                                       | `npm test`                    | PASS    | 135 tests: API, mapping, adapter behaviour, and behaviour through registry + gateway                                      |
+| Discovery page tests against stubbed provider data          | `npm test`                    | PASS    | 14 tests: home, provider, category, collection (sort/filter/search/page), item (files, rights, related)                   |
+| Discovery workflow in a real browser                        | `e2e/discovery.spec.ts`       | PASS    | 4 tests at 390/768/1440 px with stubbed Archive JSON; no horizontal overflow on any route                                 |
+| Adapter against the live archive.org service                | none                          | N/A     | No route from the sandbox. Fixtures follow documented shapes; not a substitute for a live run                             |
 | Pages artefact: base path, assets, 404 fallback, deep links | `npm run verify:pages`        | PASS    | Verified for base `/Vaultara/` and `/`; emulates Pages serving without a browser                                          |
 | Deployed build in a real browser                            | Chromium against `dist/`      | PASS    | `/Vaultara/favorites`, `/settings/privacy`, `/item/...` boot and route correctly; client navigation stays inside the base |
+
+### Tests added in Phase 5
+
+| File                              | Coverage                                                                                                                                                                                      |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/data/requestCache.test.ts`   | TTL expiry, 120-entry bound, in-flight de-duplication, `fresh` bypass, failures not cached                                                                                                    |
+| `src/data/requestLimiter.test.ts` | Concurrency ceiling, queue order, rejection does not leak a slot                                                                                                                              |
+| `src/data/contentQueries.test.ts` | Query keys include every argument; gateway calls; no adapter import                                                                                                                           |
+| `src/data/useAsyncValue.test.tsx` | Loading/success/error, abort on key change and unmount, `reload()` bypassing the cache, no state update after unmount                                                                         |
+| `src/utils/contentParams.test.ts` | Total parsers for page/sort/type/query; defaults for junk input; parameter serialisation clears `page`                                                                                        |
+| `src/utils/format.test.ts`        | Item counts, durations, byte sizes, dates, and truncation of provider text                                                                                                                    |
+| `src/pages/discovery.test.tsx`    | Home rows and featured item, provider status branches, category collections, collection sort/filter/search/pagination, item files, rights, missing item, related failure not failing the page |
+| `e2e/discovery.spec.ts`           | Home, collection (sort/search/page), item, and category flows in Chromium with stubbed provider JSON; overflow at 390/768/1440 px                                                             |
 
 ### Tests added in Phase 2
 
@@ -698,9 +782,93 @@ inline `style` for layout; it flagged only legitimate dynamic values (caller-sup
 sizes, a CSS custom property for the provider swatch, and demo sizing in the dev page). The
 check was dropped rather than the code being contorted to satisfy it.
 
+**A grid track sized `auto` floors at its content's min-content width.** Twice in Phase 5 a page
+grew wider than the viewport for that reason: an item page widened to 456 px at 390 px because a
+long licence URL could not break, and the home page overflowed by 3720 px at 1440 px because the
+horizontal row's implicit `auto` column resolved to the full 24-card track (`scrollWidth` and
+`clientWidth` both reported the inflated value, so the scroll container looked healthy).
+`minmax(0, 1fr)` on the grid plus `min-width: 0` down to the scrolling child fixes both. Bisecting
+with `display: none` does not narrow such a page — measure `scrollWidth`/`clientWidth` and each
+child's `getBoundingClientRect().right` instead.
+
+**Playwright's strict mode is strict about the app's own chrome.** `getByRole('button', { name:
+'Search' })` also matches the header's "Open search" control, and `getByText('public domain')`
+matched both a metadata value and the rights paragraph; the fixes were `exact: true` and asserting
+the full sentence. A scratch probe script left in the repository root is linted as application
+code, so it fails `npm run check` on `no-undef` — write probes outside the repository or delete
+them in the same session.
+
+**A hook cannot be called after a conditional return, and a route should not fetch for a provider
+that has no adapter.** The first provider page issued its categories request before deciding
+whether the provider existed, which would have recorded a health failure against a provider that
+never had a chance to answer. The request moved into an extracted component that only mounts for
+`availability === 'available'`.
+
 ---
 
 ## Recent Changes
+
+### 2026-10-26 - Phase 5: discovery experience
+
+- Added `src/data/`: a TTL cache with in-flight de-duplication, a concurrency limiter, a
+  `useAsyncValue` hook (abort on key change, `fresh` reload that bypasses the cache), a
+  capability lookup module, and a `ProviderServices` context that owns one lazily built runtime.
+- Added `src/config/discovery.ts` (rows, page size, featured category, provider id) and
+  `src/utils/{format,contentParams}.ts` (display formatting; total URL parsers for page, sort,
+  type and query).
+- Added `src/components/content/`: `ItemRow`, `CategoryCard`, `Section`, `FeaturedItem`,
+  `Breadcrumbs`, `Pagination`, `CollectionToolbar`, `FileList`, `AsyncContent`.
+- Added the five discovery pages: home (featured item, six rows, category grid, personalisation
+  notice), provider (categories or an honest status), category (collections), collection (item grid
+  with sorting, type filter, in-collection search, paging, related collections), and item (hero,
+  description, files with download links, metadata, rights, source link, related items).
+- Extended `src/components/layout/Page.tsx` with breadcrumbs, an optional media slot, and a meta
+  slot; extended the provider contract's browse options with `sort`, `contentTypes` and `query`.
+- Added `src/pages/discovery.test.tsx` (14 page tests) and `e2e/discovery.spec.ts` (4 browser
+  tests with stubbed Archive JSON), and rewrote `src/app/routes.test.tsx` for the real pages.
+- Fixed two layout defects found by the new browser tests: `ContentRow`/`ItemRow` grids narrowed to
+  `minmax(0, 1fr)` with `min-width: 0` down to the scrolling track, and `Page` media capped at
+  10rem on small screens.
+
+### 2026-10-25 - Phase 4: Internet Archive adapter
+
+- Added `src/providers/archive/`: an HTTP client that owns URLs and status translation, raw
+  response types, a mediatype/format/MIME taxonomy, Lucene query construction, a pure mapping
+  layer, a curated category catalogue, and the `ContentProvider` implementation.
+- Implemented search (escaped text, content-type filters, shared sorts, page clamping), categories,
+  collections (catalogue order merged with real titles), collection metadata with an item count
+  from a `rows=0` request, collection items, item metadata, related items, available files, and
+  download URLs.
+- Normalized content types, file formats and MIME types, publication dates, collections, rights,
+  artwork, and access state; administrative files are dropped and restrictions travel per file.
+- Added `src/providers/composition.ts`: the single place adapters are registered and the gateway is
+  constructed. Nothing else may build a registry.
+- Flipped the catalogue entry for the Internet Archive to `available` and added `browsingPhase`, so
+  the provider page and the navigation announce the adapter and the still-missing interface
+  separately.
+- Added 135 tests (search, collections, items, pagination, missing items, rate limits, provider
+  failures, cancellation, attribution) plus hand-written fixtures — no test touches the network.
+- Ticked roadmap 4.1-4.3 and documented the adapter in `AGENTS.md` section 5.7 and `README.md`.
+
+### 2026-10-25 - Phase 3: provider architecture
+
+- Added `ProviderRegistry`: registration with duplicate and malformed-id rejection, lookup,
+  per-provider initialization with isolated failures, health and a consecutive-failure
+  availability circuit, enable/disable, capability exposure, and change subscriptions.
+- Added `ProviderGateway`: the only caller of an adapter. It enforces declared capabilities,
+  applies one request policy, validates every response, and records outcomes as health.
+- Added `src/providers/reliability.ts`: timeouts enforced by racing the call, cancellation that
+  is never counted as a failure, jittered exponential backoff, and provider-supplied rate-limit
+  hints.
+- Added `src/providers/normalize.ts` and `validate.ts`: untrusted provider payloads become shared
+  models, unsafe URL schemes are dropped, and malformed responses are rejected as
+  `invalid-response`.
+- Extended the contract with per-call request options, optional `initialize`/`checkHealth`, and a
+  `createProviderCapabilities` helper; added the `unsupported-capability` error kind.
+- Added 174 tests, including malformed responses, failure isolation, and cancellation.
+- Documented integration rules in `AGENTS.md` section 5.7 and `README.md`.
+
+### 2026-10-25 - GitHub Pages deployment
 
 ### 2026-10-25 - GitHub Pages deployment
 
@@ -806,30 +974,131 @@ Previous entry:
 
 ## Next Steps
 
-Phase 2 is implemented **and validated**: roadmap 2.4 is checked off, with 27 end-to-end tests
-running in a real Chromium at four viewports. Deployment to GitHub Pages is configured.
+Phases 0-5 are complete: the shell, the design system, static deployment, the provider
+architecture, the Archive adapter, and the discovery workflow that consumes it.
 
-1. **Confirm the first Pages deployment.** The workflow has never run on GitHub's runners; the
-   first push to `main` is its first execution. The repository setting
-   Settings -> Pages -> Source must be "GitHub Actions".
-2. **Phase 3: provider architecture.** Wait for the user to start it. Registry with
-   duplicate-registration protection, capability declarations, per-provider error isolation,
-   and contract tests against fixtures. Introduce the data-fetching library at the same time,
-   and only if the registry genuinely needs it.
-3. **Add a native-modal E2E test.** The `<dialog>` path renders in Chromium but nothing asserts
+1. **Phase 6: accounts and persistence** — only on the user's instruction. It brings IndexedDB,
+   accounts, and the state that favourites currently lack.
+2. **Wire the favourite controls when their state exists (Phase 8).** `ItemCard` already accepts
+   `onFavoriteToggle`; discovery pages pass nothing, so no control renders. Do not add controls to
+   the API contract before the store exists.
+3. **Verify the discovery flow against the live service** when a network is available: the curated
+   collection identifiers in `catalog.ts`, the CORS behaviour of `advancedsearch.php`, real
+   artwork (the Archive serves a placeholder rather than a 404 for items without a thumbnail), and
+   the item counts taken from `numFound`.
+4. **Add a native-modal E2E test.** The `<dialog>` path renders in Chromium but nothing asserts
    `showModal` semantics, focus trapping, or background inertness.
-4. **Extend CI** to run `npm run test:e2e`, not just `npm run check`. The browser is provisioned by
-   `scripts/setup-deps.sh` on a runner with CDN access, so this is mostly a workflow step; it
-   would close the last gap between local and deployed verification.
-5. **When favourites and likes get real state (Phase 8),** wire the existing
-   `FavoriteButton`/`LikeButton` primitives to the store rather than creating new controls;
-   they already carry the accessible contract.
+5. **Extend CI** to run `npm run test:e2e`, not just `npm run check`.
 6. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
-   It renders correctly in Chromium but reads slightly heavy on the account menu.
-
----
 
 ## Session Handoff Log
+
+### Session 2026-10-26 (Phase 5 discovery experience)
+
+1. **Objective:** execute roadmap Phase 5 — the discovery workflow `Home -> Category ->
+Collection -> Item details` — on the user's instruction to continue with the next phase.
+   Nothing was committed, by standing rule.
+2. **Specification references:** design spec 7.1 (exploration is item-level), 9.1-9.5 (discovery,
+   cards, collection and item pages), 11.4 (never download media to show metadata), 15.3 (every
+   result identifies its provider), 9.3 (render a section only when data exists); roadmap 5.1-5.5,
+   `AGENTS.md` 5.8.
+3. **Changes made:**
+   - `src/data/`: `requestCache` (5 min TTL, 120 entries, in-flight de-duplication, failures not
+     cached), `requestLimiter` (4 concurrent), `contentQueries`, `useAsyncValue`,
+     `providerCapabilities`, `ProviderServices`.
+   - `src/config/discovery.ts`; `src/utils/{format,contentParams}.ts`; extended
+     `src/components/layout/Page.tsx` with breadcrumbs, a media slot, and a meta slot.
+   - `src/components/content/`: `ItemRow`, `CategoryCard`, `Section`, `FeaturedItem`,
+     `Breadcrumbs`, `Pagination`, `CollectionToolbar`, `FileList`, `AsyncContent`.
+   - Pages: `HomePage`, `ProviderPage`, `CategoryPage`, `CollectionPage`, `ItemPage` (plus one CSS
+     module each).
+   - Contract additions: `BrowseOptions` gained `sort`, `contentTypes` and `query`; `SearchSort`
+     gained `added-desc` (Archive `publicdate desc`); the adapter's `getCollectionItems` now honours
+     all three.
+   - Tests: `src/data/*.test.ts`, `src/utils/{format,contentParams}.test.ts`,
+     `src/pages/discovery.test.tsx`, `e2e/discovery.spec.ts`; `src/app/routes.test.tsx` rewritten
+     for the real pages.
+4. **Implementation status:** 5.1, 5.3, 5.4 and 5.5 complete. 5.2 is complete except favourite
+   actions, which need favourite state (Phase 8) and are left unrendered rather than shown as dead
+   controls. Search results, downloads, viewers, accounts and personalisation remain unimplemented
+   and say so.
+5. **Verification:** `npm run check` PASS (37 files, 598 tests); `npm run test:e2e` PASS (33 tests,
+   25.1 s); `npm run build` PASS (main 408.78 kB, 127.38 kB gzip); `npm run verify:pages` PASS.
+   Screenshots of the four discovery pages at 390 px and 1440 px were reviewed.
+6. **Failures found by the tests:** the home page overflowed by 3720 px at 1440 px because the
+   row's `auto` grid track resolved to the full 24-card width (fixed with `minmax(0, 1fr)` and
+   `min-width: 0`); the item page reached 456 px at 390 px because a licence URL could not break
+   (fixed the same way plus a shortened licence summary); Playwright strict-mode collisions on
+   "Search" and "public domain" needed `exact` matching; a scratch probe script in the repository
+   root failed `npm run check` on `no-undef` and was deleted.
+7. **Outstanding work:** favourite controls (Phase 8), per-collection item counts in the category
+   grid (one request per card, deliberately omitted), the search-results page (Phase 9), every
+   viewer (Phase 8), and live verification against archive.org.
+8. **Known risks:** the Archive's CORS behaviour for `advancedsearch.php` and `metadata` is
+   unverified from this sandbox, so the browser path has only ever run against stubbed JSON; the
+   curated collection identifiers in `catalog.ts` may name collections the Archive has renamed
+   (the code falls back to catalogue names); item counts come from `numFound`, so they are as fresh
+   as the request; and the discovery configuration assumes one provider id.
+9. **Next steps:** Phase 6 (accounts and persistence) only on the user's instruction.
+10. **Relevant files:** `src/data/`, `src/config/discovery.ts`, `src/components/content/`,
+    `src/pages/{Home,Provider,Category,Collection,Item}Page.tsx`, `src/utils/contentParams.ts`,
+    `e2e/discovery.spec.ts`, `DEVELOPMENT_ROADMAP.md` Phase 5, `AGENTS.md` 5.8, `README.md`.
+
+### Session 2026-10-25 (Phase 4 Internet Archive adapter)
+
+1. **Objective:** execute roadmap Phase 4 on the user's instruction to start the next phase — a
+   functional Archive.org provider returning normalized, validated data through the shared
+   contract. No UI work, and nothing committed.
+2. **Specification references:** design spec 11.1-11.4 (supported operations, content types, file
+   metadata, large resources), 10.2-10.5, 20, 28; roadmap Phase 4; `AGENTS.md` section 5.7.
+3. **Changes made:** `src/providers/archive/{types,api,taxonomy,query,map,catalog,adapter,fixtures}.ts`
+   and five test files; `src/providers/composition.ts`; `src/config/providers.ts` (Archive now
+   `available`, new `browsingPhase`); `ProviderPage.tsx` copy; `Navigation.test.tsx` and
+   `providers.test.ts` expectations; roadmap 4.1-4.3; `AGENTS.md` 5.7; `README.md`; this notebook.
+4. **Implementation status:** Phase 4 sections 4.1-4.3 complete. The adapter is registered but no
+   component calls it; browsing is Phase 5 and the UI says so.
+5. **Verification:** `npm run check` PASS (32 files, 554 tests); `npm run test:e2e` PASS (27 tests,
+   12.9 s); `npm run build` PASS; `npm run verify:pages` PASS; `grep dist` confirms no adapter code
+   in any chunk.
+6. **Environment limits:** archive.org is unreachable from the sandbox (`curl` returns `000`), so
+   the payload fixtures are hand-written from documented response shapes. Live behaviour — CORS
+   headers, real collection identifiers, actual pagination ceilings — is unverified.
+7. **Decisions worth remembering:** escape and parenthesize user text so a typed `OR` cannot slip
+   past a content-type filter; treat `200` + `{}` and `is_dark` as `not-found`; keep `viewable`
+   to browser-native formats until a viewer exists.
+8. **Known risks:** `catalog.ts` identifiers are curated guesses and may name collections the
+   Archive no longer has (the code falls back to catalogue names, so navigation still works);
+   nothing exercises the base-path/browser path until Phase 5 wires the UI.
+9. **Next steps:** Phase 5 on the user's instruction. Do not start it unprompted.
+10. **Relevant files:** `src/providers/archive/`, `src/providers/composition.ts`,
+    `src/config/providers.ts`, `src/pages/ProviderPage.tsx`, `DEVELOPMENT_ROADMAP.md` Phase 4,
+    `AGENTS.md` 5.7, `README.md`.
+
+### Session 2026-10-25 (Phase 3 provider architecture)
+
+1. **Objective:** execute roadmap Phase 3 — registry, contract, normalization, reliability — on
+   the user's instruction to start the next phase. No provider adapter, so no fetching.
+2. **Specification references:** design spec 10.1-10.5 (provider design, contract, capabilities,
+   registry, isolation), 11.3 (file metadata), 25 (reliability), 28 (errors); roadmap Phase 3.
+3. **Changes made:** `src/providers/{registry,gateway,reliability,normalize,validate}.ts`;
+   contract extension in `src/models/provider.ts`; `unsupported-capability` kind and
+   `retryAfterMs` in `src/models/errors.ts`; `src/test/fakeProvider.ts` fixtures; five test files.
+4. **Implementation status:** Phase 3 sections 3.1-3.4 complete. No adapter exists, so discovery,
+   search, item pages, favourites and downloads remain unimplemented and say so.
+5. **Verification:** `npm run check` PASS (27 files, 412 tests); `npm run build` PASS;
+   `npm run verify:pages` PASS; `npm run test:e2e` PASS (27 tests, 12.9 s) — unchanged, since no
+   UI was touched, but run rather than assumed.
+6. **Failures found by the tests:** an aborted request was still invoking the adapter on the next
+   loop iteration, and that abandoned rejection surfaced as an unhandled rejection; both fixed by
+   checking the signal before starting an attempt. A health probe answering "unhealthy" was
+   counted like any other failure, needing three strikes; it is now decisive.
+7. **Outstanding work:** Phase 4 (Archive.org adapter). Nothing in Phase 3 depends on it.
+8. **Known risks:** the gateway imports no adapter and nothing constructs a registry yet, so the
+   wiring is proven only by tests; Phase 4 must register through the gateway rather than calling
+   an adapter directly.
+9. **Next steps:** Phase 4 on the user's instruction.
+10. **Relevant files:** `src/providers/`, `src/models/provider.ts`, `src/models/errors.ts`,
+    `AGENTS.md` section 5.7, `README.md`.
 
 ### Session 2026-10-25 (GitHub Pages deployment)
 

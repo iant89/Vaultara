@@ -390,6 +390,112 @@ ordinary application code, not a deployment detail.
   routing, or the build output. The workflow runs the same check before publishing, so a broken
   base path fails the deployment rather than shipping.
 
+### 5.7 Provider Integration
+
+The provider layer is split so that adding a provider touches one file, not the application:
+
+| Concern                | Module                         | Who changes it      |
+| ---------------------- | ------------------------------ | ------------------- |
+| Contract types         | `src/models/provider.ts`       | Rarely, by design   |
+| Registration and state | `src/providers/registry.ts`    | Never per provider  |
+| Call policy            | `src/providers/gateway.ts`     | Never per provider  |
+| Reliability            | `src/providers/reliability.ts` | Never per provider  |
+| Normalization          | `src/providers/normalize.ts`   | When a shape is new |
+| Response validation    | `src/providers/validate.ts`    | Never per provider  |
+| Composition root       | `src/providers/composition.ts` | Per provider        |
+| Archive adapter        | `src/providers/archive/`       | Archive only        |
+
+Rules for an adapter:
+
+- Implement `ContentProvider`. Fetch and normalize only; do not import React, application state,
+  routes, or other providers.
+- Declare capabilities honestly. A capability that is advertised but not implemented turns into a
+  broken control, which is worse than an absent feature. Unsupported capabilities never block
+  registration.
+- Normalize every field with `src/providers/normalize.ts` before returning it. Never return a
+  provider payload directly: untrusted `javascript:` URLs, control characters, and prototype
+  keys must not reach the core.
+- Forward the `AbortSignal` to the transport. The gateway still enforces the timeout, but a
+  request that keeps running wastes the provider's quota and the user's bandwidth.
+- Throw `AppError` (or let the gateway normalize what you throw). Do not invent error shapes:
+  retry, cancellation, and user-facing messaging all key off `kind`.
+- Preserve provider-specific detail in `metadata` rather than discarding it, and keep the
+  original `sourceUrl` for attribution.
+- Never evaluate provider content as code, and never inject provider HTML. Provider text is data.
+
+Rules for everything else:
+
+- Application code calls providers through the gateway, never `fetch`, never an adapter object.
+  A direct call skips timeouts, retries, validation, and health tracking.
+- Never treat an unavailable provider as a reason to fail the whole page. Providers fail
+  independently by design; surface the failure for that provider and keep the rest working.
+- A provider is not "available" until its adapter exists. Until then the catalogue entry stays
+  `planned` and the UI says so. `availability` describes the adapter, not the screen:
+  `browsingPhase` records which phase delivers in-app browsing, so an adapter that exists without a
+  browsing interface is never reported as a working one.
+- Every adapter needs contract tests against recorded fixtures plus malformed-response cases.
+  Network access in tests is forbidden; fixtures are the provider.
+- Register adapters only in `src/providers/composition.ts`. Do not construct a `ProviderRegistry`
+  anywhere else, do not import an adapter from a component, and do not add a second gateway.
+
+The Archive adapter (Phase 4) is the reference implementation:
+
+| Concern                       | Module                                  |
+| ----------------------------- | --------------------------------------- |
+| HTTP and status translation   | `src/providers/archive/api.ts`          |
+| Raw response shapes           | `src/providers/archive/types.ts`        |
+| Mediatype and format taxonomy | `src/providers/archive/taxonomy.ts`     |
+| Query construction            | `src/providers/archive/query.ts`        |
+| Payload mapping               | `src/providers/archive/map.ts`          |
+| Browsable categories          | `src/providers/archive/catalog.ts`      |
+| Contract implementation       | `src/providers/archive/adapter.ts`      |
+| Test payloads and stubs       | `src/providers/archive/fixtures.ts`     |
+
+Two habits from that adapter are worth copying:
+
+- Separate transport, mapping, and contract code. Mapping is pure, so it is tested without a
+  network or a clock; the adapter then only sequences calls.
+- Treat "absent" and "wrong type" as the same input. `unknown` in, model out, and an unusable
+  optional field is dropped rather than defaulted to something plausible.
+
+### 5.8 Discovery and Data Access
+
+Pages read content through `src/data/`, never through an adapter and never through `fetch`:
+
+| Concern                                | Module                              |
+| -------------------------------------- | ----------------------------------- |
+| Cached, de-duplicated reads            | `src/data/contentQueries.ts`        |
+| Cache lifetime and in-flight sharing   | `src/data/requestCache.ts`          |
+| Concurrency ceiling                    | `src/data/requestLimiter.ts`        |
+| One request to one component           | `src/data/useAsyncValue.ts`         |
+| Provider context for the tree          | `src/data/ProviderServices.tsx`     |
+| Capability lookups used by the UI      | `src/data/providerCapabilities.ts`  |
+| Rows, sorts, and page-size constants   | `src/config/discovery.ts`           |
+
+Rules:
+
+- A page never imports an adapter, constructs a registry, or calls `fetch`. `ProviderServices` wraps
+  the composition root; a test wraps a subtree with its own services instead of mocking modules.
+- **Cache keys include every argument that changes the result.** A key that omits one serves
+  another page's data — a defect that only appears once someone paginates.
+- **A key and its loader live together.** Never share a cache key through a module-level mutable
+  singleton; express the shared loader as a hook that closes over `queries`. Identical arguments
+  already de-duplicate, which is how the featured slot and its row share one request.
+- **Every request is reachable from the URL.** Paging, sorting, filtering, and in-collection search
+  live in the query string; the parsers are total and fall back to defaults instead of throwing.
+- **Failures are local; retries are real.** A row or section reports its own failure and offers a
+  retry that passes `fresh: true` and bypasses the cache — re-reading a cached failure would look
+  like a broken button.
+- **Only render a section when its data exists** (design spec 9.3). No description, no files, or no
+  related content means no section, not an empty one.
+- **Never render a control that cannot work.** Favourite and like buttons stay absent until their
+  state exists (Phase 8); the page states the gap in words instead of showing a dead control.
+- **Artwork is a URL with reserved space.** Fixed aspect ratios plus a labelled fallback keep the
+  layout stable, and no media is fetched to render metadata (design spec 11.4).
+- **Keep the layout from widening.** A grid track sized `auto` floors at its content's min-content
+  width, so one long unbreakable string can push a page sideways; use `minmax(0, 1fr)` and let
+  provider text wrap.
+
 ---
 
 ## 6. Architectural Boundaries

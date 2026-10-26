@@ -1,0 +1,35 @@
+/* Mirrors ContentRow's header and card sizing so a row does not change shape when it finishes
+ * loading (design spec 25: prevent layout shifts). */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.description {
+  color: var(--color-text-subtle);
+  font-size: var(--text-sm);
+}
+
+.skeletonTrack {
+  display: grid;
+  grid-auto-flow: column;
+  min-width: 0;
+  grid-auto-columns: minmax(var(--card-min-width), 1fr);
+  gap: var(--row-gap);
+  padding: var(--space-2);
+  overflow: hidden;
+}

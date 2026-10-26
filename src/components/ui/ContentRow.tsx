@@ -15,7 +15,7 @@ interface ContentRowProps {
   readonly children: ReactNode;
   readonly headingLevel?: 2 | 3;
   /** Shown instead of the track when there is nothing to display. */
-  readonly emptyMessage?: string;
+  readonly emptyMessage?: ReactNode;
   readonly itemCount?: number;
 }
 
@@ -152,7 +152,7 @@ export function ContentRow({
           ) : null}
         </div>
       ) : (
-        <p className={styles.emptyTrack}>{emptyMessage}</p>
+        <div className={styles.emptyTrack}>{emptyMessage}</div>
       )}
     </section>
   );

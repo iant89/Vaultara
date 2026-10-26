@@ -8,23 +8,25 @@ Built with React and TypeScript, designed around a provider plugin system so tha
 
 ## Project status
 
-**Phases 1 (project foundation) and 2 (visual design system) are implemented. No content provider, discovery feed, search results, favourites, or viewer is implemented yet.**
+**Phases 1-4 are implemented and roadmap Phase 5 (the discovery experience) is implemented against the Internet Archive provider.**
 
-What exists today is the application shell and its visual language: the full route table, shared data models and provider/viewer contracts, an expanded design token layer, a rebuilt responsive navigation, a library of shared components (cards, badges, toggles, metadata, grids, scrollable rows, dialogs, menus, skeletons), reusable loading/empty/error states, environment validation, and a working quality-gate toolchain.
+What works today: the application shell and its visual language (route table, design tokens, responsive navigation, shared components, loading/empty/error states); shared data models and provider/viewer contracts; the Internet Archive adapter behind the registry, gateway, and reliability layer; and the discovery surfaces that read from it — a home page with a featured item, one row per category and a category grid, category pages listing collections, collection pages with a paginated item grid plus sorting, filtering, in-collection search, breadcrumbs and related collections, and item pages with artwork, metadata, available files, related content, and source attribution.
 
-Phase 2 implementation is complete but **not yet visually validated in a browser**; see `mnemosync.md` for exactly what is and is not verified.
+Discovery needs a network route to `archive.org`. Where the provider cannot be reached, each surface says so and offers a retry rather than showing an empty page.
+
+Personalisation and recommendations, favourites and likes, exploration history, search results, the download manager, and every content viewer are still unimplemented, and the interface says so. See `mnemosync.md` for exactly what is and is not verified.
 
 Every route renders a real page. Pages whose feature is not implemented say so explicitly instead of showing inactive controls that look functional. This is a deliberate project rule: no placeholder may masquerade as a working feature.
 
-| Area                                                                | State                                |
-| ------------------------------------------------------------------- | ------------------------------------ |
-| Build, type check, lint, format, unit tests                         | Implemented and passing              |
-| Routing, layout, navigation, shell                                  | Implemented                          |
-| Shared models and provider/viewer contracts                         | Defined, not yet implemented against |
-| Provider registry and adapters (Internet Archive, Wikipedia, Adult) | Not started                          |
-| Discovery feed, collections, item details                           | Not started                          |
-| Accounts, favorites, likes, history, search, downloads              | Not started                          |
-| Content viewers (PDF, EPUB, image, audio, video, emulator, …)       | Not started                          |
+| Area                                                                | State                                         |
+| ------------------------------------------------------------------- | --------------------------------------------- |
+| Build, type check, lint, format, unit tests                         | Implemented and passing                       |
+| Routing, layout, navigation, shell                                  | Implemented                                   |
+| Shared models and provider/viewer contracts                         | Defined and implemented against               |
+| Provider registry and adapters (Internet Archive, Wikipedia, Adult) | Archive adapter wired to the UI; rest planned |
+| Discovery: home, category, collection, item details                 | Implemented against the Archive provider      |
+| Favourites, likes, history, search results, downloads               | Not started                                   |
+| Content viewers (PDF, EPUB, image, audio, video, emulator, …)       | Not started                                   |
 
 See `DEVELOPMENT_ROADMAP.md` for the full phase plan.
 
@@ -181,14 +183,17 @@ covered by tests rather than only by the deployment. The suite is not run in the
 ├── src/
 │   ├── app/                  Router configuration and application root
 │   ├── components/
+│   │   ├── content/          Discovery pieces: rows, breadcrumbs, pagination, files, toolbar
 │   │   ├── feedback/         Loading, empty, error, and status states
 │   │   ├── layout/           App shell, navigation, search control, account menu, page frame
 │   │   └── ui/               Cards, badges, toggles, rows, grids, dialog, skeletons, icons
-│   ├── config/               Validated environment and provider catalog
+│   ├── config/               Validated environment, provider catalog, discovery rows
+│   ├── data/                 Cached query layer, request limiter, async state, provider context
 │   ├── dev/                  Dev-only route registration and synthetic sample content
 │   ├── hooks/                Shared React hooks (route focus management)
 │   ├── models/               Shared content, provider, viewer, error, pagination types
 │   ├── pages/                One module per route (settings sections nested)
+│   ├── providers/            Registry, gateway, reliability, normalization, and the Archive adapter
 │   ├── styles/               Design tokens, global baseline, and the contrast test
 │   ├── test/                 Test setup (runs before every test file)
 │   ├── utils/                Path builders, class naming, reduced-motion helpers
@@ -202,6 +207,87 @@ covered by tests rather than only by the deployment. The suite is not run in the
 ├── tsconfig.e2e.json         E2E type checking (DOM types for page.evaluate)
 └── vite.config.ts            Build, base path, and test configuration
 ```
+
+---
+
+## Provider architecture
+
+Content comes from providers: independent adapters behind one contract. The application core
+never contains provider-specific fetching logic, so adding a provider does not touch discovery,
+search, item pages, favourites, or viewers.
+
+| Module                         | Responsibility                                                 |
+| ------------------------------ | -------------------------------------------------------------- |
+| `src/models/provider.ts`       | The `ContentProvider` contract and capability declarations     |
+| `src/providers/registry.ts`    | Registration, duplicate rejection, state, health, enablement   |
+| `src/providers/gateway.ts`     | The only caller of an adapter: capability check, then the call |
+| `src/providers/reliability.ts` | Timeouts, cancellation, retries, rate-limit backoff            |
+| `src/providers/normalize.ts`   | Untrusted payload → shared model                               |
+| `src/providers/validate.ts`    | Response shape checks before the core uses a result            |
+| `src/providers/composition.ts` | The composition root: builds the registry and gateway          |
+| `src/providers/archive/`       | The Internet Archive adapter                                   |
+
+**The Internet Archive adapter is implemented** (roadmap Phase 4) and is what the discovery pages
+read from (roadmap Phase 5). Its data path is covered by 135 adapter tests — search, categories,
+collections, collection items, item metadata, related items, thumbnail and source links, available
+files, and download URLs — plus the page tests and browser tests that render its output. Wikipedia
+and the Adult provider remain `planned`, and the catalogue in `src/config/providers.ts` says so.
+
+Between the gateway and the pages sits the interface's data layer in `src/data/`: `contentQueries`
+caches and de-duplicates reads, `requestLimiter` bounds concurrency, `useAsyncValue` binds one
+request to one component, `providerCapabilities` reports what the UI may ask for, and
+`ProviderServices` supplies all of it through React context. Pages use that layer and never import
+an adapter; only `src/providers/composition.ts` constructs a registry.
+
+The adapter is registered in exactly one place, `src/providers/composition.ts`; nothing else may
+construct a registry or call an adapter. Request timeouts, retries, cancellation, and health
+accounting are not the adapter's concern — the gateway applies them uniformly.
+
+### Adding a provider
+
+1. Implement `ContentProvider` in `src/providers/<name>/`. Fetch and normalize only — no React,
+   no application state, no imports from other providers.
+2. Normalize every payload field with the helpers in `src/providers/normalize.ts`. Only
+   `http`/`https` URLs survive; control characters are stripped; provider-specific detail is kept
+   in `metadata`.
+3. Declare capabilities **honestly**. Advertising something unimplemented produces a control that
+   breaks when used.
+4. Forward the `AbortSignal` to your transport.
+5. Add a factory to `defaultProviderFactories` in `src/providers/composition.ts`. That root builds
+   the registry and gateway; call providers only through the gateway, which adds timeouts,
+   retries, validation, and health tracking. Never call `fetch` from a component, and never create
+   a second `ProviderRegistry`.
+6. Add contract tests against recorded fixtures, plus malformed-response and failure-isolation
+   cases. Tests must not touch the network.
+
+Provider failures are isolated by construction: a provider that fails to initialize, or that
+fails repeatedly, stops receiving requests while the others keep serving.
+
+---
+
+## Discovery experience
+
+The discovery flow is `Home -> Category -> Collection -> Item details`, and every step is a real
+route built from URL state so it can be linked, bookmarked, and reached with the back button.
+
+| Route                         | What it shows                                                                |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `/`                           | Featured item, one row per discovery row (24 cards), category grid           |
+| `/provider/:providerId`       | That provider's categories                                                   |
+| `/category/:categoryId`       | The category's collections, paginated                                        |
+| `/collection/:providerId/:id` | Item grid with sorting, content-type filter, in-collection search, paging    |
+| `/item/:providerId/:itemId`   | Item hero, description, files with download links, metadata, related content |
+
+Rules the pages follow:
+
+- **One request per visible surface.** Rows are backed by `src/config/discovery.ts`; the featured
+  slot and its row issue identical query arguments, so the cache serves both from one request.
+- **Every failure is local.** A row that cannot load reports it and offers a retry while the rest
+  of the page keeps working; an item that does not exist says so instead of blaming the network.
+- **Only render what exists.** Sections whose data is absent (no description, no files, no related
+  content) are omitted rather than filled with placeholders.
+- **Nothing is downloaded to show metadata.** Artwork is a provider URL with a fixed aspect ratio
+  and a labelled fallback; layout is reserved before it loads.
 
 ---
 

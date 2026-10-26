@@ -1,14 +1,56 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+import { ProviderServicesProvider, type ProviderServices } from '../data/ProviderServices';
+import { createContentQueries } from '../data/contentQueries';
+import { ProviderGateway } from '../providers/gateway';
+import { ProviderRegistry } from '../providers/registry';
+import { createFakeProvider } from '../test/fakeProvider';
 import { createRoutes } from './routes';
+
+/**
+ * Routing is asserted without data: every discovery page is wired to a provider whose requests
+ * never settle, so a route renders its loading state, issues no network traffic, and cannot
+ * produce a late state update after the test ends.
+ */
+function createPendingServices(): ProviderServices {
+  const pending = <T,>(): Promise<T> => new Promise<T>(() => {});
+
+  const registry = new ProviderRegistry();
+  registry.register(
+    createFakeProvider({
+      id: 'archive',
+      name: 'Internet Archive',
+      getCategories: () => pending(),
+      getCollections: () => pending(),
+      getCollection: () => pending(),
+      getCollectionItems: () => pending(),
+      getItem: () => pending(),
+      getRelatedItems: () => pending(),
+      getAvailableFiles: () => pending(),
+      search: () => pending(),
+    }),
+  );
+
+  const gateway = new ProviderGateway(registry, {
+    retry: { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
+    sleep: () => Promise.resolve(),
+  });
+
+  return { runtime: { registry, gateway }, queries: createContentQueries(gateway) };
+}
 
 function renderPath(path: string, { includeDevRoutes = false } = {}) {
   const router = createMemoryRouter(createRoutes({ includeDevRoutes }), {
     initialEntries: [path],
   });
-  return render(<RouterProvider router={router} />);
+
+  return render(
+    <ProviderServicesProvider services={createPendingServices()}>
+      <RouterProvider router={router} />
+    </ProviderServicesProvider>,
+  );
 }
 
 const ROUTE_CASES: ReadonlyArray<readonly [path: string, heading: string]> = [
@@ -108,17 +150,25 @@ describe('provider routes', () => {
 });
 
 describe('honest feature status', () => {
-  it('states that discovery is not implemented', () => {
+  // Discovery reads real provider data now, so the remaining status claim on the home page is
+  // personalisation: it must still say it is not implemented rather than imply recommendations
+  // are merely empty (roadmap 5.1).
+  it('states that personalisation is not implemented on the discovery page', () => {
     renderPath('/');
 
-    expect(screen.getByText('Discovery is not available yet')).toBeInTheDocument();
+    expect(screen.getByText('Personal recommendations is not available yet')).toBeInTheDocument();
     expect(screen.getByText('Not implemented')).toBeInTheDocument();
   });
 
-  it('shows the canonical content identity on the item route', () => {
+  it('offers a trail back to the provider from an item', () => {
     renderPath('/item/archive/example-item');
 
-    expect(screen.getByText(/"archive:example-item"/)).toBeInTheDocument();
+    const crumbs = within(screen.getByRole('navigation', { name: 'Breadcrumb' }));
+
+    expect(crumbs.getByRole('link', { name: 'Internet Archive' })).toHaveAttribute(
+      'href',
+      '/provider/archive',
+    );
   });
 
   it('shows the canonical content identity on the viewer route', () => {

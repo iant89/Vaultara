@@ -35,12 +35,14 @@ describe('Navigation', () => {
     );
   });
 
-  it('marks planned providers as not yet available in their accessible name', () => {
+  it('marks providers without an adapter as not yet available in their accessible name', () => {
     renderNavigation();
 
-    expect(
-      screen.getByRole('link', { name: 'Internet Archive (not yet available)' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Wikipedia (not yet available)' })).toBeInTheDocument();
+    // The Archive adapter exists, so announcing it as unavailable would be false.
+    expect(screen.getByRole('link', { name: 'Internet Archive' })).not.toHaveAccessibleName(
+      /not yet available/,
+    );
   });
 
   it('hides the Adult provider while it is disabled', () => {

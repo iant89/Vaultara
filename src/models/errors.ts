@@ -17,6 +17,7 @@ export type AppErrorKind =
   | 'invalid-response'
   | 'unsupported-format'
   | 'download-unavailable'
+  | 'unsupported-capability'
   | 'unknown';
 
 const APP_ERROR_KINDS: ReadonlySet<string> = new Set<AppErrorKind>([
@@ -30,6 +31,7 @@ const APP_ERROR_KINDS: ReadonlySet<string> = new Set<AppErrorKind>([
   'invalid-response',
   'unsupported-format',
   'download-unavailable',
+  'unsupported-capability',
   'unknown',
 ]);
 
@@ -45,12 +47,18 @@ const DEFAULT_MESSAGES: Readonly<Record<AppErrorKind, string>> = {
   'invalid-response': 'The provider returned data that could not be understood.',
   'unsupported-format': 'This content format is not supported by any available viewer.',
   'download-unavailable': 'This file cannot be downloaded.',
+  'unsupported-capability': 'This provider does not support that operation.',
   unknown: 'Something went wrong. Please try again.',
 };
 
 export interface AppErrorOptions {
   readonly providerId?: string;
   readonly cause?: unknown;
+  /**
+   * Milliseconds the provider asked callers to wait, parsed from a rate-limit response. The
+   * reliability layer honours this instead of guessing an exponential delay.
+   */
+  readonly retryAfterMs?: number;
 }
 
 export interface AppError {
@@ -58,6 +66,7 @@ export interface AppError {
   readonly message: string;
   readonly providerId?: string;
   readonly cause?: unknown;
+  readonly retryAfterMs?: number;
 }
 
 export function createAppError(
@@ -72,7 +81,23 @@ export function createAppError(
     message: trimmed.length > 0 ? trimmed : DEFAULT_MESSAGES[kind],
     ...(options.providerId !== undefined ? { providerId: options.providerId } : {}),
     ...(options.cause !== undefined ? { cause: options.cause } : {}),
+    ...(options.retryAfterMs !== undefined && Number.isFinite(options.retryAfterMs)
+      ? { retryAfterMs: Math.max(0, options.retryAfterMs) }
+      : {}),
   };
+}
+
+/**
+ * Stamp an error with the provider it came from. The innermost attribution wins: an adapter
+ * that already named its provider keeps that name, because the gateway may be calling on
+ * behalf of a caller that does not know which adapter failed.
+ */
+export function attachProviderId(error: AppError, providerId: string): AppError {
+  if (error.providerId !== undefined) {
+    return error;
+  }
+
+  return { ...error, providerId };
 }
 
 export function getDefaultErrorMessage(kind: AppErrorKind): string {

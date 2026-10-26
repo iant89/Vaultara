@@ -4,6 +4,9 @@
  * The core must never contain provider-specific fetching logic. Adapters implement this
  * interface, declare their real capabilities, and normalize results into shared models.
  * Optional methods exist only for genuinely optional provider functionality.
+ *
+ * Every operation accepts request options so the gateway can apply one policy — timeout,
+ * cancellation, retries — to all of them rather than each adapter inventing its own.
  */
 
 import type {
@@ -15,18 +18,44 @@ import type {
 } from './content';
 import type { PaginatedResult, PaginationOptions } from './pagination';
 
-export type SearchSort = 'relevance' | 'date-desc' | 'date-asc' | 'title-asc';
+/**
+ * Ordering a provider may be asked for.
+ *
+ * `added-desc` means "newest additions to the collection first". Providers that cannot distinguish
+ * an item's own date from the date it was added fall back to `date-desc` or ignore the request.
+ */
+export type SearchSort = 'relevance' | 'date-desc' | 'date-asc' | 'added-desc' | 'title-asc';
 
-export interface SearchOptions extends PaginationOptions {
-  readonly contentTypes?: readonly ContentType[];
-  readonly sort?: SearchSort;
-  /** Allows the caller to cancel obsolete requests (design spec 25). */
+/** Options accepted by any single provider operation. */
+export interface ProviderRequestOptions {
+  /**
+   * Cancels an in-flight request (design spec 25). Adapters must forward this to their
+   * transport so an abandoned request is actually released, not merely ignored.
+   */
   readonly signal?: AbortSignal;
+  /** Per-call override of the gateway's default timeout, in milliseconds. */
+  readonly timeoutMs?: number;
 }
 
 /**
+ * Options shared by every operation that returns a page of content.
+ *
+ * `sort`, `contentTypes`, and `query` are narrowing controls: a provider that cannot honour one
+ * ignores it rather than failing, because a filter the provider does not support must not break a
+ * browse. Collections use them for ordering, type filtering, and searching inside a collection.
+ */
+export interface BrowseOptions extends PaginationOptions, ProviderRequestOptions {
+  readonly sort?: SearchSort;
+  readonly contentTypes?: readonly ContentType[];
+  /** Free-text narrowing within the browse scope, e.g. inside one collection. */
+  readonly query?: string;
+}
+
+export type SearchOptions = BrowseOptions;
+
+/**
  * Capabilities a provider may advertise. Only advertise what is actually supported;
- * an unsupported capability must not prevent registration.
+ * an unsupported capability must not prevent registration (design spec 10.3).
  */
 export interface ProviderCapabilities {
   readonly search: boolean;
@@ -43,34 +72,83 @@ export interface ProviderCapabilities {
   readonly contentTypes: readonly ContentType[];
 }
 
+/**
+ * Errors degrade rather than throw: an adapter that omits `streaming` from a partial
+ * capability description is treated as "does not support it", because guessing the other way
+ * would advertise functionality that does not exist.
+ */
+export function createProviderCapabilities(
+  overrides: Partial<ProviderCapabilities> = {},
+): ProviderCapabilities {
+  return {
+    search: false,
+    categories: false,
+    collections: false,
+    itemDetails: false,
+    relatedContent: false,
+    downloadableFiles: false,
+    streaming: false,
+    pagination: false,
+    adultContent: false,
+    contentTypes: [],
+    ...overrides,
+  };
+}
+
 export interface ContentProvider {
   readonly id: string;
   readonly name: string;
   readonly version: string;
 
+  /**
+   * Optional one-off setup (authentication, index warm-up). The registry runs it once per
+   * provider and isolates failures, so one adapter cannot prevent the others from starting.
+   */
+  initialize?(): Promise<void>;
+
+  /**
+   * Optional cheap liveness probe. Must not perform expensive work; the registry uses it to
+   * refresh reported availability.
+   */
+  checkHealth?(): Promise<boolean>;
+
   getCapabilities(): ProviderCapabilities;
 
   search(query: string, options?: SearchOptions): Promise<PaginatedResult<ContentItem>>;
 
-  getCategories(): Promise<readonly ContentCategory[]>;
+  getCategories(options?: ProviderRequestOptions): Promise<readonly ContentCategory[]>;
 
   getCollections(
     categoryId: string,
-    options?: PaginationOptions,
+    options?: BrowseOptions,
   ): Promise<PaginatedResult<ContentCollection>>;
 
-  getCollection(collectionId: string): Promise<ContentCollection>;
+  getCollection(collectionId: string, options?: ProviderRequestOptions): Promise<ContentCollection>;
 
   getCollectionItems(
     collectionId: string,
-    options?: PaginationOptions,
+    options?: BrowseOptions,
   ): Promise<PaginatedResult<ContentItem>>;
 
-  getItem(itemId: string): Promise<ContentItem>;
+  getItem(itemId: string, options?: ProviderRequestOptions): Promise<ContentItem>;
 
-  getRelatedItems(itemId: string): Promise<readonly ContentItem[]>;
+  getRelatedItems(
+    itemId: string,
+    options?: ProviderRequestOptions,
+  ): Promise<readonly ContentItem[]>;
 
-  getAvailableFiles?(itemId: string): Promise<readonly ContentFile[]>;
+  getAvailableFiles?(
+    itemId: string,
+    options?: ProviderRequestOptions,
+  ): Promise<readonly ContentFile[]>;
 
-  getDownloadUrl?(itemId: string, fileId: string): Promise<string | null>;
+  getDownloadUrl?(
+    itemId: string,
+    fileId: string,
+    options?: ProviderRequestOptions,
+  ): Promise<string | null>;
 }
+
+/** Capability flags that gate a contract method. */
+export type ProviderCapabilityKey =
+  'search' | 'categories' | 'collections' | 'itemDetails' | 'relatedContent' | 'downloadableFiles';
