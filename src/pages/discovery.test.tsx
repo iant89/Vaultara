@@ -6,7 +6,7 @@
  * and that paging, sorting, filtering, and searching all travel through the URL.
  */
 
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -140,15 +140,23 @@ function createHarness() {
   });
 
   const getCollection = vi.fn(async (collectionId: string) =>
-    makeCollection({
-      id: collectionId,
-      providerId: ARCHIVE,
-      title: 'Feature Films',
-      description: 'Feature-length films from the Archive.',
-      itemCount: 4_210,
-      categoryIds: ['movies'],
-      sourceUrl: `https://archive.org/details/${collectionId}`,
-    }),
+    collectionId === ITEM.id
+      ? makeCollection({
+          id: collectionId,
+          providerId: ARCHIVE,
+          title: ITEM.title,
+          metadata: { mediatype: 'movies', is_collection: false },
+        })
+      : makeCollection({
+          id: collectionId,
+          providerId: ARCHIVE,
+          title: 'Feature Films',
+          description: 'Feature-length films from the Archive.',
+          itemCount: 4_210,
+          categoryIds: ['movies'],
+          sourceUrl: `https://archive.org/details/${collectionId}`,
+          metadata: { mediatype: 'collection', is_collection: true },
+        }),
   );
 
   const getCollectionItems = vi.fn(
@@ -192,7 +200,17 @@ function createHarness() {
     },
   );
 
-  const getItem = vi.fn(async () => ITEM);
+  const getItem = vi.fn(async (itemId: string) =>
+    itemId === 'SciFi_Horror'
+      ? makeItem({
+          id: 'SciFi_Horror',
+          providerId: ARCHIVE,
+          title: 'Sci-Fi / Horror',
+          type: 'collection',
+          categories: ['feature_films'],
+        })
+      : ITEM,
+  );
   const getRelatedItems = vi.fn(async (_itemId: string, options?: { page?: number }) => {
     const page = options?.page ?? 1;
 
@@ -477,7 +495,14 @@ describe('collection page', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'View more nested collections' }));
 
-    expect(await screen.findByRole('link', { name: /Windows Applications/ })).toBeInTheDocument();
+    // Wait for the appended shelf's items, not just its heading: the heading link remounts
+    // when the row leaves the loading state, and asserting it the instant it appears can
+    // catch a node that React has already replaced.
+    expect(await screen.findByText('Notepad')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Windows Applications/ })).toHaveAttribute(
+      'href',
+      `/collection/${ARCHIVE}/windows_apps`,
+    );
     expect(spies.getSubcollections).toHaveBeenCalledTimes(2);
     expect(spies.getSubcollections.mock.calls.at(-1)?.[1]).toMatchObject({ page: 2 });
   });
@@ -538,6 +563,24 @@ describe('item page', () => {
     expect(await screen.findByText('Another film')).toBeInTheDocument();
     expect(screen.getByText('A related film')).toBeInTheDocument();
     expect(spies.getRelatedItems.mock.calls.at(-1)?.[1]).toMatchObject({ page: 2 });
+  });
+
+  it('sends a collection opened as an item to the collection page', async () => {
+    const { services } = createHarness();
+    const router = renderAt(`/item/${ARCHIVE}/SciFi_Horror`, services);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/collection/${ARCHIVE}/SciFi_Horror`);
+    });
+  });
+
+  it('sends an item opened as a collection to the item page', async () => {
+    const { services } = createHarness();
+    const router = renderAt(`/collection/${ARCHIVE}/${ITEM.id}`, services);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/item/${ARCHIVE}/${ITEM.id}`);
+    });
   });
 
   it('says when an item does not exist instead of blaming the network', async () => {

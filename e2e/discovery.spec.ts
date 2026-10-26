@@ -28,6 +28,8 @@ const COLLECTIONS_BY_PARENT: Readonly<
   movies: [
     { identifier: 'feature_films', title: 'Feature Films' },
     { identifier: 'classic_tv', title: 'Classic TV' },
+    // Nested under Feature Films; must not appear as a sibling on the media type page.
+    { identifier: 'feature_films_noir', title: 'Film Noir' },
   ],
   feature_films: [{ identifier: 'feature_films_noir', title: 'Film Noir' }],
   software: [{ identifier: 'softwarelibrary', title: 'Software Library' }],
@@ -41,6 +43,7 @@ const COLLECTION_TITLES: Readonly<Record<string, string>> = {
   feature_films_noir: 'Film Noir',
   softwarelibrary: 'Software Library',
   softwarelibrary_msdos_games: 'MS-DOS Games',
+  SciFi_Horror: 'Sci-Fi / Horror',
 };
 
 /** Every collection rises to its media type, exactly as the Archive flattens ancestry. */
@@ -50,6 +53,28 @@ function ancestorsOf(identifier: string): readonly string[] {
   }
 
   return ['feature_films', 'movies'];
+}
+
+/**
+ * Immediate parent chain for a *collection* document. Nested identifiers list the intermediate
+ * parent; top-level ones list only the media type. The adapter uses this to detect direct
+ * children instead of a hardcoded tree.
+ */
+function collectionParents(identifier: string): readonly string[] {
+  switch (identifier) {
+    case 'feature_films':
+    case 'classic_tv':
+      return ['movies'];
+    case 'feature_films_noir':
+    case 'SciFi_Horror':
+      return ['feature_films', 'movies'];
+    case 'softwarelibrary':
+      return ['software'];
+    case 'softwarelibrary_msdos_games':
+      return ['softwarelibrary', 'software'];
+    default:
+      return ['movies'];
+  }
 }
 
 function parentOf(query: string): string {
@@ -64,7 +89,7 @@ function collectionDocs(query: string): readonly Record<string, unknown>[] {
     title: entry.title,
     mediatype: 'collection',
     description: 'A curated group of items.',
-    collection: ancestorsOf(entry.identifier),
+    collection: collectionParents(entry.identifier),
   }));
 }
 
@@ -196,6 +221,7 @@ test('a category page lists collections and pages through them', async ({ page }
 
   await expect(page.getByRole('heading', { level: 1, name: 'Moving Images' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Feature Films' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Film Noir' })).toHaveCount(0);
   // Collections list their provider; an item count needs a separate count request and is only
   // claimed where the provider reports one.
   await expect(page.getByText('Internet Archive').first()).toBeVisible();
@@ -263,6 +289,14 @@ test('the collection hierarchy descends from a media type into nested collection
   await page.getByRole('link', { name: 'MS-DOS Games' }).click();
   await expect(page).toHaveURL(/\/collection\/archive\/softwarelibrary_msdos_games/);
   await expect(page.getByRole('heading', { level: 1, name: 'MS-DOS Games' })).toBeVisible();
+});
+
+test('a collection opened as an item is sent to the collection page', async ({ page }) => {
+  await mockArchive(page);
+  await page.goto(appUrl('/item/archive/SciFi_Horror'));
+
+  await expect(page).toHaveURL(/\/collection\/archive\/SciFi_Horror/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Sci-Fi / Horror' })).toBeVisible();
 });
 
 test('an item page shows files, attribution, and related content', async ({ page }) => {

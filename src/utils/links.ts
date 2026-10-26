@@ -32,6 +32,22 @@ export function buildItemPath(identity: ContentIdentity): string {
   return `/item/${encodeSegment(identity.providerId)}/${encodeSegment(identity.itemId)}`;
 }
 
+/**
+ * Collections are items in the Archive's index, but they have their own route. A card or hero
+ * that received a collection-typed result must not send the reader to `/item/...`.
+ */
+export function buildDiscoverablePath(item: {
+  readonly providerId: string;
+  readonly id: string;
+  readonly type: string;
+}): string {
+  if (item.type === 'collection') {
+    return buildCollectionPath(item.providerId, item.id);
+  }
+
+  return buildItemPath({ providerId: item.providerId, itemId: item.id });
+}
+
 export function buildViewerPath(identity: ContentIdentity): string {
   return `/viewer/${encodeSegment(identity.providerId)}/${encodeSegment(identity.itemId)}`;
 }

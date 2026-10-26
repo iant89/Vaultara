@@ -99,9 +99,18 @@ describe('search', () => {
 
     const url = requestUrl(stub);
 
-    expect(url.searchParams.get('q')).toBe('vampire');
+    expect(url.searchParams.get('q')).toBe('(vampire) AND -mediatype:collection');
     expect(url.searchParams.get('page')).toBe('1');
     expect(url.searchParams.get('rows')).toBe('24');
+  });
+
+  it('drops collections even if the index returned them as documents', async () => {
+    const { provider } = createRoutedProvider();
+
+    const result = await provider.search('vampire');
+
+    expect(result.items.map((item) => item.id)).not.toContain('SciFi_Horror');
+    expect(result.items.every((item) => item.type !== 'collection')).toBe(true);
   });
 
   it('requests the page the caller asked for', async () => {
@@ -119,7 +128,9 @@ describe('search', () => {
 
     await provider.search('mediatype:movies AND (x)');
 
-    expect(requestUrl(stub).searchParams.get('q')).toBe('mediatype\\:movies AND \\(x\\)');
+    expect(requestUrl(stub).searchParams.get('q')).toBe(
+      '(mediatype\\:movies AND \\(x\\)) AND -mediatype:collection',
+    );
   });
 
   it('binds the user query so an operator cannot escape a content-type filter', async () => {
@@ -128,7 +139,7 @@ describe('search', () => {
     await provider.search('cats OR dogs', { contentTypes: ['book', 'audio'] });
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      '(cats OR dogs) AND mediatype:(texts OR audio OR etree)',
+      '(cats OR dogs) AND mediatype:(texts OR audio OR etree) AND -mediatype:collection',
     );
   });
 
@@ -137,7 +148,18 @@ describe('search', () => {
 
     await provider.search('   ', { contentTypes: ['movie'] });
 
-    expect(requestUrl(stub).searchParams.get('q')).toBe('mediatype:(movies)');
+    expect(requestUrl(stub).searchParams.get('q')).toBe(
+      'mediatype:(movies) AND -mediatype:collection',
+    );
+  });
+
+  it('keeps collections when the caller asked for them', async () => {
+    const { provider, stub } = createRoutedProvider();
+
+    const result = await provider.search('vampire', { contentTypes: ['collection'] });
+
+    expect(requestUrl(stub).searchParams.get('q')).toBe('(vampire) AND mediatype:(collection)');
+    expect(result.items.map((item) => item.id)).toContain('SciFi_Horror');
   });
 
   it('makes no request for an empty unfiltered query', async () => {
@@ -333,17 +355,16 @@ describe('collections', () => {
     expect(url.searchParams.getAll('sort[]')).toEqual(['titleSorter asc']);
   });
 
-  it('places a nested collection under the media type it descends from', async () => {
+  it('places a collection in the media type it descends from', async () => {
     const { provider } = createRoutedProvider({
       response: {
         numFound: 1,
         docs: [
           {
-            identifier: 'softwarelibrary_msdos_games',
-            title: 'Software Library: MS-DOS Games',
+            identifier: 'softwarelibrary',
+            title: 'Software Library',
             mediatype: 'collection',
-            // The Archive lists the whole ancestor chain, media type included.
-            collection: ['softwarelibrary', 'software', 'softwarelibrary_msdos_games'],
+            collection: ['software'],
           },
         ],
       },
@@ -352,6 +373,32 @@ describe('collections', () => {
     const result = await provider.getCollections('software');
 
     expect(result.items[0]?.categoryIds).toEqual(['software']);
+  });
+
+  it('keeps only collections immediately inside the parent, not the rest of the subtree', async () => {
+    const { provider } = createRoutedProvider({
+      response: {
+        numFound: 2,
+        docs: [
+          {
+            identifier: 'softwarelibrary',
+            title: 'Software Library',
+            mediatype: 'collection',
+            collection: ['software'],
+          },
+          {
+            identifier: 'softwarelibrary_msdos_games',
+            title: 'Software Library: MS-DOS Games',
+            mediatype: 'collection',
+            collection: ['softwarelibrary', 'software'],
+          },
+        ],
+      },
+    });
+
+    const result = await provider.getCollections('software');
+
+    expect(result.items.map((collection) => collection.id)).toEqual(['softwarelibrary']);
   });
 
   it('reports a provider failure instead of pretending the category is empty', async () => {
@@ -379,9 +426,34 @@ describe('collections', () => {
     expect(result.items.map((collection) => collection.id)).toEqual(['feature_films', 'prelinger']);
     expect(result).toMatchObject({ page: 1, total: 2 });
 
-    expect(requestUrl(stub).searchParams.get('q')).toBe(
+    const search = stub.requests.find(
+      (request) => new URL(request.url).pathname === '/advancedsearch.php',
+    );
+
+    expect(search).toBeDefined();
+    expect(new URL(search?.url ?? '').searchParams.get('q')).toBe(
       'mediatype:collection AND collection:softwarelibrary',
     );
+  });
+
+  it('lists a nested collection under its immediate parent', async () => {
+    const { provider } = createRoutedProvider({
+      response: {
+        numFound: 1,
+        docs: [
+          {
+            identifier: 'SciFi_Horror',
+            title: 'Sci-Fi / Horror',
+            mediatype: 'collection',
+            collection: ['feature_films', 'movies'],
+          },
+        ],
+      },
+    });
+
+    const result = await provider.getSubcollections('feature_films');
+
+    expect(result.items.map((collection) => collection.id)).toEqual(['SciFi_Horror']);
   });
 
   it('reports an empty page for a collection with no subcollections', async () => {
@@ -422,6 +494,7 @@ describe('collections', () => {
       title: 'Feature Films',
       itemCount: 4210,
     });
+    expect(collection.metadata['is_collection']).toBe(true);
     expect(stub.requests).toHaveLength(2);
   });
 
@@ -436,6 +509,16 @@ describe('collections', () => {
 
     expect(collection.itemCount).toBeUndefined();
     expect(collection.title).toBe('Feature Films');
+  });
+
+  it('still returns a record for an item identifier so the collection route can redirect', async () => {
+    const { provider } = createRoutedProvider();
+
+    const collection = await provider.getCollection('nosferatu');
+
+    expect(collection.id).toBe('nosferatu');
+    expect(collection.metadata['is_collection']).toBe(false);
+    expect(collection.metadata['mediatype']).toBe('movies');
   });
 
   it('rejects a collection the provider does not know', async () => {
@@ -578,12 +661,13 @@ describe('related items', () => {
     const result = await provider.getRelatedItems('nosferatu');
 
     expect(result.items.map((item) => item.id)).toEqual(['gutenberg_alice']);
+    expect(result.items.map((item) => item.id)).not.toContain('SciFi_Horror');
     // The reported total excludes the item itself, which the collection query counts.
     expect(result).toMatchObject({ page: 1, pageSize: ARCHIVE_RELATED_LIMIT, total: 1283 });
 
     const url = requestUrl(stub, 1);
 
-    expect(url.searchParams.get('q')).toBe('(collection:feature_films)');
+    expect(url.searchParams.get('q')).toBe('(collection:feature_films) AND -mediatype:collection');
     expect(url.searchParams.get('rows')).toBe(String(ARCHIVE_RELATED_LIMIT + 1));
   });
 

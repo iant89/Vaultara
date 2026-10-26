@@ -38,9 +38,11 @@ import {
   ARCHIVE_CATEGORIES,
   findArchiveCategory,
   findArchiveCategoryByCollection,
+  isDirectChildCollection,
 } from './catalog';
 import {
   ARCHIVE_PROVIDER_ID,
+  isArchiveCollection,
   mapCollection,
   mapFiles,
   mapItem,
@@ -53,6 +55,7 @@ import {
   buildMediatypeClause,
   buildQuery,
   COLLECTION_MEDIATYPE_CLAUSE,
+  collectionExclusionClause,
   escapeLucene,
   EXCLUDE_COLLECTIONS_CLAUSE,
   mapSort,
@@ -243,7 +246,10 @@ export class ArchiveProvider implements ContentProvider {
     const sort = mapSort(options.sort);
     const response = await this.api.search(
       {
-        query: buildQuery(text.length > 0 ? escapeLucene(text) : '', [mediatypeClause]),
+        query: buildQuery(text.length > 0 ? escapeLucene(text) : '', [
+          mediatypeClause,
+          collectionExclusionClause(options.contentTypes),
+        ]),
         page,
         pageSize,
         ...(sort !== undefined ? { sort } : {}),
@@ -252,7 +258,9 @@ export class ArchiveProvider implements ContentProvider {
       this.requestOptions(options),
     );
 
-    return this.toItemPage(response, page, pageSize);
+    return this.toItemPage(response, page, pageSize, {
+      includeCollections: options.contentTypes?.includes('collection') === true,
+    });
   }
 
   async getCategories(options: ProviderRequestOptions = {}): Promise<readonly ContentCategory[]> {
@@ -297,6 +305,7 @@ export class ArchiveProvider implements ContentProvider {
       { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
       [category.id],
       options,
+      { parentId: category.collectionId, parentAncestors: [] },
     );
   }
 
@@ -314,12 +323,14 @@ export class ArchiveProvider implements ContentProvider {
     this.ensureActive(options.signal);
 
     const identifier = this.requireIdentifier(collectionId, 'collection');
+    const parentAncestors = await this.loadCollectionAncestors(identifier, options);
 
     return this.searchCollections(
       [COLLECTION_MEDIATYPE_CLAUSE, buildCollectionClause(identifier)],
       { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
       [],
       options,
+      { parentId: identifier, parentAncestors },
     );
   }
 
@@ -330,13 +341,17 @@ export class ArchiveProvider implements ContentProvider {
     this.ensureActive(options.signal);
 
     const identifier = this.requireIdentifier(collectionId, 'collection');
-    const { metadata } = await this.loadItem(identifier, options);
+    const { response, metadata } = await this.loadItem(identifier, options);
 
     // A count needs its own request (`rows=0`). If it fails the collection is still worth showing,
     // so an item count is dropped rather than the page erroring.
     const itemCount = await this.fetchItemCount(identifier, options);
     const collection = mapCollection(
-      { metadata, ...(itemCount !== undefined ? { itemCount } : {}) },
+      {
+        metadata,
+        isCollection: response.is_collection,
+        ...(itemCount !== undefined ? { itemCount } : {}),
+      },
       this.api,
     );
 
@@ -363,7 +378,7 @@ export class ArchiveProvider implements ContentProvider {
     }
 
     const text = normalizeText(options.query ?? '');
-    // `-mediatype:collection` is what keeps the grid to items: the Archive files ancestors into
+    // `-mediatype:collection` is what keeps the list to items: the Archive files ancestors into
     // every item's `collection` field, and a subcollection is an item too.
     const query = buildQuery(text.length > 0 ? escapeLucene(text) : '', [
       buildCollectionClause(identifier),
@@ -403,6 +418,7 @@ export class ArchiveProvider implements ContentProvider {
         itemSize: response.item_size,
         isDark: response.is_dark,
         noDownload: response.nodownload,
+        isCollection: response.is_collection,
       },
       this.api,
     );
@@ -460,7 +476,7 @@ export class ArchiveProvider implements ContentProvider {
     const clause = collections.map((collection) => buildCollectionClause(collection)).join(' OR ');
     const search = await this.api.search(
       {
-        query: `(${clause})`,
+        query: buildQuery('', [`(${clause})`, EXCLUDE_COLLECTIONS_CLAUSE]),
         page,
         pageSize: pageSize + 1,
         sort: 'downloads desc',
@@ -480,7 +496,8 @@ export class ArchiveProvider implements ContentProvider {
 
       const item = mapItem({ metadata: document }, this.api);
 
-      if (item === undefined) {
+      // A sibling collection is not related *content*; it belongs on a collection shelf.
+      if (item === undefined || item.type === 'collection') {
         continue;
       }
 
@@ -625,6 +642,29 @@ export class ArchiveProvider implements ContentProvider {
     return { response, metadata };
   }
 
+  /**
+   * Ancestors of a collection, used to tell its direct children from the rest of the subtree.
+   *
+   * A missing parent record is not fatal: the search is already scoped to that identifier, and
+   * media types are always treated as allowed ancestors.
+   */
+  private async loadCollectionAncestors(
+    identifier: string,
+    options: ProviderRequestOptions,
+  ): Promise<readonly string[]> {
+    try {
+      const { metadata } = await this.loadItem(identifier, options);
+
+      return normalizeStringList(metadata['collection'], { maxItems: 24, maxLength: 80 });
+    } catch (error) {
+      if (isCancelled(error)) {
+        throw error;
+      }
+
+      return [];
+    }
+  }
+
   private async fetchItemCount(
     identifier: string,
     options: ProviderRequestOptions,
@@ -657,6 +697,7 @@ export class ArchiveProvider implements ContentProvider {
     },
     fallbackCategoryIds: readonly string[],
     options: ProviderRequestOptions,
+    parent: { readonly parentId: string; readonly parentAncestors: readonly string[] },
   ): Promise<PaginatedResult<ContentCollection>> {
     const { page, pageSize } = resolvePaginationOptions({
       page: paging.page,
@@ -679,8 +720,29 @@ export class ArchiveProvider implements ContentProvider {
     const collections: ContentCollection[] = [];
 
     for (const document of readDocuments(response)) {
+      if (!isArchiveCollection(document)) {
+        continue;
+      }
+
+      const listedParents = normalizeStringList(document['collection'], {
+        maxItems: 24,
+        maxLength: 80,
+      });
+
+      if (
+        !isDirectChildCollection(parent.parentId, listedParents, {
+          childId: readIdentifier(document),
+          parentAncestors: parent.parentAncestors,
+        })
+      ) {
+        continue;
+      }
+
       const categoryIds = this.categoriesFor(document, fallbackCategoryIds);
-      const collection = mapCollection({ metadata: document, categoryIds }, this.api);
+      const collection = mapCollection(
+        { metadata: document, categoryIds, isCollection: true },
+        this.api,
+      );
 
       if (collection !== undefined) {
         collections.push(collection);
@@ -720,10 +782,13 @@ export class ArchiveProvider implements ContentProvider {
     response: ArchiveSearchResponse,
     page: number,
     pageSize: number,
+    options: { readonly includeCollections?: boolean } = {},
   ): PaginatedResult<ContentItem> {
+    const includeCollections = options.includeCollections === true;
     const items = readDocuments(response)
       .map((document) => mapItem({ metadata: document }, this.api))
-      .filter((item): item is ContentItem => item !== undefined);
+      .filter((item): item is ContentItem => item !== undefined)
+      .filter((item) => includeCollections || item.type !== 'collection');
     const total = readTotal(response);
 
     return createPaginatedResult(items, {

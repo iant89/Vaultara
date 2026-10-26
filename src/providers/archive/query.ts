@@ -142,9 +142,21 @@ export const COLLECTION_MEDIATYPE_CLAUSE = 'mediatype:collection';
  *
  * Every item's `collection` field lists its ancestors up to the media type, and a collection is an
  * item too — so `collection:<id>` alone returns subcollections alongside the items they group.
- * This clause is what keeps an item grid to items.
+ * This clause is what keeps an item list to items.
  */
 export const EXCLUDE_COLLECTIONS_CLAUSE = '-mediatype:collection';
+
+/**
+ * The exclusion to apply to any search that is supposed to return content, not containers.
+ *
+ * Omitted only when the caller asked for collections: `mediatype:collection AND -mediatype:collection`
+ * would be an empty set.
+ */
+export function collectionExclusionClause(
+  contentTypes: readonly ContentType[] | undefined,
+): string | undefined {
+  return contentTypes?.includes('collection') === true ? undefined : EXCLUDE_COLLECTIONS_CLAUSE;
+}
 
 /** `collection:<id>` filter, escaped. */
 export function buildCollectionClause(collectionId: string): string {

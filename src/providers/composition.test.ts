@@ -31,7 +31,7 @@ describe('provider composition root', () => {
     const result = await runtime.gateway.search('archive', 'vampire');
 
     expect(result.items.length).toBeGreaterThan(0);
-    expect(requestUrl(stub).searchParams.get('q')).toBe('vampire');
+    expect(requestUrl(stub).searchParams.get('q')).toBe('(vampire) AND -mediatype:collection');
   });
 
   it('builds exactly one factory per default provider', () => {

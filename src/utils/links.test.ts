@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCategoryPath,
   buildCollectionPath,
+  buildDiscoverablePath,
   buildFavoritesPath,
   buildItemPath,
   buildProviderPath,
@@ -36,6 +37,15 @@ describe('collection paths', () => {
   it('encodes both segments', () => {
     expect(buildCollectionPath('archive', 'classic films')).toBe(
       '/collection/archive/classic%20films',
+    );
+  });
+
+  it('sends collection-typed results to the collection route', () => {
+    expect(
+      buildDiscoverablePath({ providerId: 'archive', id: 'SciFi_Horror', type: 'collection' }),
+    ).toBe('/collection/archive/SciFi_Horror');
+    expect(buildDiscoverablePath({ providerId: 'archive', id: 'nosferatu', type: 'movie' })).toBe(
+      '/item/archive/nosferatu',
     );
   });
 });

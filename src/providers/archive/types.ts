@@ -30,6 +30,8 @@ export interface ArchiveMetadataResponse {
   readonly item_size?: unknown;
   readonly is_dark?: unknown;
   readonly nodownload?: unknown;
+  /** Present on collection identifiers; the reliable way to tell a container from an item. */
+  readonly is_collection?: unknown;
   readonly dir?: unknown;
 }
 

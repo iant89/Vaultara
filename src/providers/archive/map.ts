@@ -109,6 +109,25 @@ export function readIdentifier(source: Record<string, unknown>): string {
   return firstString(readFirst(source, ['identifier', 'id']));
 }
 
+/**
+ * Whether an Archive record is a collection (a container) rather than an item.
+ *
+ * This is how nested collections are recognised without a hand-maintained list: the metadata
+ * endpoint sets `is_collection`, and search documents carry `mediatype:collection`.
+ */
+export function isArchiveCollection(
+  metadata: Record<string, unknown>,
+  flags: { readonly isCollection?: unknown } = {},
+): boolean {
+  if (flags.isCollection === true || flags.isCollection === 'true') {
+    return true;
+  }
+
+  const mediatype = firstString(readFirst(metadata, ['mediatype', 'type'])).toLowerCase();
+
+  return mediatype === 'collection';
+}
+
 /** The Archive's metadata object, or `undefined` when the response carried none. */
 export function readMetadataRecord(value: unknown): Record<string, unknown> | undefined {
   return asRecord(value);
@@ -383,6 +402,8 @@ export interface ArchiveItemInput {
   readonly itemSize?: unknown;
   readonly isDark?: unknown;
   readonly noDownload?: unknown;
+  /** Metadata-endpoint `is_collection`, when the caller has it. */
+  readonly isCollection?: unknown;
 }
 
 function mapRights(
@@ -435,7 +456,9 @@ export function mapItem(input: ArchiveItemInput, urls: ArchiveUrlBuilder): Conte
       description: stripHtml(readFirst(metadata, ['description', 'summary'])),
       creator: joinedString(readFirst(metadata, ['creator', 'author']), 3),
       publicationDate: resolvePublicationDate(metadata),
-      type: firstString(readFirst(metadata, ['mediatype', 'type'])) || 'unknown',
+      type: isArchiveCollection(metadata, { isCollection: input.isCollection })
+        ? 'collection'
+        : firstString(readFirst(metadata, ['mediatype', 'type'])) || 'unknown',
       thumbnailUrl,
       sourceUrl,
       categories: normalizeCategories(collections),
@@ -475,6 +498,7 @@ export interface ArchiveCollectionInput {
   readonly metadata: Record<string, unknown>;
   readonly itemCount?: number;
   readonly categoryIds?: readonly string[];
+  readonly isCollection?: unknown;
 }
 
 /** Build a normalized collection from a search document or a collection item's metadata. */
@@ -503,6 +527,7 @@ export function mapCollection(
       metadata: {
         identifier,
         mediatype: metadata['mediatype'],
+        is_collection: isArchiveCollection(metadata, { isCollection: input.isCollection }),
         collections: normalizeStringList(metadata['collection'], { maxItems: 24, maxLength: 80 }),
         subjects: normalizeStringList(metadata['subject'], { maxItems: 24, maxLength: 60 }),
         sourcePage: sourceUrl,

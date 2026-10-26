@@ -146,6 +146,14 @@ export const SEARCH_RESPONSE = {
         collection: 'gutenberg',
         year: 1865,
       },
+      {
+        identifier: 'SciFi_Horror',
+        title: 'Sci-Fi / Horror',
+        description: 'A collection of science fiction and horror films.',
+        mediatype: 'collection',
+        collection: ['feature_films', 'movies'],
+        downloads: 400,
+      },
     ],
   },
 };
@@ -302,11 +310,13 @@ export const UNKNOWN_ITEM_RESPONSE = {};
 
 export const COLLECTION_METADATA_RESPONSE = {
   files_count: 12,
+  is_collection: true,
   metadata: {
     identifier: 'feature_films',
     title: 'Feature Films',
     description: 'Feature-length films collected from many sources.',
     mediatype: 'collection',
+    collection: ['movies'],
     subject: ['film', 'cinema'],
   },
   files: [

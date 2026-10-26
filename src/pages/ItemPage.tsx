@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { AsyncContent } from '../components/content/AsyncContent';
 import { Breadcrumbs } from '../components/content/Breadcrumbs';
 import { FileList } from '../components/content/FileList';
@@ -96,6 +96,12 @@ export function ItemPage() {
   const typeLabel = value === undefined ? undefined : CONTENT_TYPE_LABELS[value.type];
   const canonicalId = formatCanonicalId({ providerId, itemId });
   const collectionId = value?.categories[0];
+
+  // A collection opened on the item route (from a leaky related/search list, or a typed URL)
+  // belongs on the collection page, where its nested collections and items can be browsed.
+  if (value !== undefined && value.type === 'collection') {
+    return <Navigate to={buildCollectionPath(providerId, value.id)} replace />;
+  }
 
   return (
     <Page
