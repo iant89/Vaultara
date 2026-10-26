@@ -1,0 +1,83 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  /* Never smaller than the 44px touch target, on any viewport. */
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  /* Disabled controls stay legible; they are dimmed but still readable. */
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.primary {
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--color-accent-strong);
+}
+
+.secondary {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-accent);
+}
+
+.ghost {
+  color: var(--color-text-muted);
+}
+
+.ghost:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Square icon-only control; the accessible name must be supplied by the caller. */
+.icon {
+  padding: 0;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+}
+
+.icon:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Pressed-state for toggles (favourite, like). Announcement comes from aria-pressed; the
+ * colour change is reinforcement, never the only signal. */
+.pressed {
+  color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
+.pressed:hover:not(:disabled) {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}

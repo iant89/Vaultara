@@ -2,7 +2,7 @@
 # DEVELOPMENT ROADMAP
 
 Version: 1.0
-Status: Proposed
+Status: Approved
 Frontend: React + TypeScript
 Architecture: Modular Provider-Based Application
 
@@ -45,53 +45,69 @@ and initial application shell.
 
 ### 1.1 Project Setup
 
-- [ ] Create the React + TypeScript project.
-- [ ] Enable TypeScript strict mode.
-- [ ] Configure the development server.
-- [ ] Configure production builds.
-- [ ] Configure linting and formatting.
-- [ ] Configure unit testing.
-- [ ] Configure end-to-end testing.
-- [ ] Establish environment configuration.
-- [ ] Document development commands.
+- [x] Create the React + TypeScript project.
+- [x] Enable TypeScript strict mode.
+- [x] Configure the development server.
+- [x] Configure production builds.
+- [x] Configure linting and formatting.
+- [x] Configure unit testing.
+- [x] Configure end-to-end testing.
+- [x] Establish environment configuration.
+- [x] Document development commands.
 
 ### 1.2 Application Structure
 
-- [ ] Create the application entry point.
-- [ ] Implement application routing.
-- [ ] Create the global layout.
-- [ ] Create the navigation component.
-- [ ] Create reusable loading states.
-- [ ] Create reusable empty states.
-- [ ] Create reusable error states.
-- [ ] Establish shared component conventions.
+- [x] Create the application entry point.
+- [x] Implement application routing.
+- [x] Create the global layout.
+- [x] Create the navigation component.
+- [x] Create reusable loading states.
+- [x] Create reusable empty states.
+- [x] Create reusable error states.
+- [x] Establish shared component conventions.
 
 ### 1.3 Shared Data Models
 
-- [ ] Define ContentItem.
-- [ ] Define ContentCollection.
-- [ ] Define ContentFile.
-- [ ] Define ContentCategory.
-- [ ] Define ContentProvider.
-- [ ] Define ProviderCapabilities.
-- [ ] Define user content state.
-- [ ] Define viewer progress.
-- [ ] Define pagination types.
-- [ ] Define standardized errors.
+- [x] Define ContentItem.
+- [x] Define ContentCollection.
+- [x] Define ContentFile.
+- [x] Define ContentCategory.
+- [x] Define ContentProvider.
+- [x] Define ProviderCapabilities.
+- [x] Define user content state.
+- [x] Define viewer progress.
+- [x] Define pagination types.
+- [x] Define standardized errors.
 
 ### 1.4 Quality Gates
 
-- [ ] Application builds successfully.
-- [ ] TypeScript checks pass.
-- [ ] Linter passes.
-- [ ] Initial unit tests pass.
-- [ ] Routes render correctly.
-- [ ] No placeholder links masquerade as working features.
+- [x] Application builds successfully.
+- [x] TypeScript checks pass.
+- [x] Linter passes.
+- [x] Initial unit tests pass.
+- [x] Routes render correctly.
+- [x] No placeholder links masquerade as working features.
+
+## Status
+
+**Complete (2026-10-25).**
+
+Verified with `npm run check` (type check, lint, format check, and 117 passing unit and
+component tests) and `npm run build`. See `mnemosync.md` for the full verification record.
+
+Known limitation: end-to-end testing is configured and the specs are written, but the
+Playwright browser download is blocked in the current development sandbox, so the E2E suite
+has never executed. Treat it as unverified. Real-browser visual, responsive, and iOS Safari
+checks are likewise not yet performed; Phase 2 should include them.
 
 ## Deliverable
 
 A working React + TypeScript application shell with shared
 models, routing, tooling, and initial tests.
+
+Delivered as: Vite + React + TypeScript scaffold, the route table from design spec
+section 22, shared layout and navigation, reusable loading/empty/error states, shared models
+in `src/models/`, validated environment configuration, and the full quality-gate toolchain.
 
 ---
 
@@ -106,49 +122,99 @@ components before implementing extensive provider logic.
 
 ### 2.1 Global Styling
 
-- [ ] Implement the dark visual theme.
-- [ ] Define colors and typography.
-- [ ] Define spacing and sizing conventions.
-- [ ] Define card and panel styling.
-- [ ] Define focus and hover states.
-- [ ] Implement reduced-motion support.
+- [x] Implement the dark visual theme.
+- [x] Define colors and typography.
+- [x] Define spacing and sizing conventions.
+- [x] Define card and panel styling.
+- [x] Define focus and hover states.
+- [x] Implement reduced-motion support.
 
 ### 2.2 Navigation
 
-- [ ] Implement the Vaultara logo area.
-- [ ] Add Archive navigation.
-- [ ] Add Wikipedia navigation.
-- [ ] Add Adult navigation.
-- [ ] Add global search control.
-- [ ] Add favorites control.
-- [ ] Add account menu.
-- [ ] Implement responsive navigation.
+- [x] Implement the Vaultara logo area.
+- [x] Add Archive navigation.
+- [x] Add Wikipedia navigation.
+- [x] Add Adult navigation. (Registered as a provider tab, rendered only when
+      `VITE_ENABLE_ADULT_PROVIDER` is enabled, per design spec 13.3. Covered by
+      `src/config/providers.test.ts`.)
+- [x] Add global search control.
+- [x] Add favorites control.
+- [x] Add account menu.
+- [x] Implement responsive navigation.
 
 ### 2.3 Shared Components
 
-- [ ] Create collection cards.
-- [ ] Create item cards.
-- [ ] Create provider badges.
-- [ ] Create favorite buttons.
-- [ ] Create like buttons.
-- [ ] Create metadata displays.
-- [ ] Create responsive grids.
-- [ ] Create horizontal content rows.
-- [ ] Create dialogs and menus.
-- [ ] Create skeleton loading placeholders.
+- [x] Create collection cards.
+- [x] Create item cards.
+- [x] Create provider badges.
+- [x] Create favorite buttons.
+- [x] Create like buttons.
+- [x] Create metadata displays.
+- [x] Create responsive grids.
+- [x] Create horizontal content rows.
+- [x] Create dialogs and menus.
+- [x] Create skeleton loading placeholders.
 
 ### 2.4 Responsive Behavior
 
-- [ ] Validate desktop layout.
-- [ ] Validate tablet layout.
-- [ ] Validate mobile layout.
-- [ ] Validate touch targets.
-- [ ] Validate keyboard navigation.
-- [ ] Prevent horizontal page overflow.
+- [x] Validate desktop layout.
+- [x] Validate tablet layout.
+- [x] Validate mobile layout.
+- [x] Validate touch targets.
+- [x] Validate keyboard navigation.
+- [x] Prevent horizontal page overflow.
+
+## Status
+
+**Implemented and validated (2026-10-25).**
+
+Sections 2.1 through 2.4 are implemented. Validation runs in two layers: jsdom component tests for
+semantics and behaviour, and a Playwright suite driving a real Chromium build for anything that
+depends on layout, media queries, or an actual keyboard.
+
+Automated coverage:
+
+- **Colour contrast** for every text/background and control-boundary pairing used in the system,
+  computed from the real token file (`src/styles/contrast.test.ts`).
+- **Touch targets**: the 44x44 CSS pixel minimum, both as a token value and as enforced by the
+  shared `Button` primitive, plus a runtime measurement of the primary controls at each viewport.
+- **Component semantics**: accessible names, `aria-pressed` toggles, focus return, Escape
+  dismissal, live-region announcements, and the rule that a card toggle never navigates.
+- **Responsive layout** at 360, 414, 768, and 1440 CSS pixels: navigation and favourites remain
+  reachable, the header never clips a provider tab, and no route overflows horizontally
+  (`document.scrollWidth` equals the viewport width).
+- **Keyboard navigation**: the skip link moves focus to the main landmark, focus rings are
+  visibly rendered, focus follows navigation without being stolen on first render, and the
+  account menu closes on Escape and restores focus to its trigger.
+- **Mobile search**: the collapsed control expands, accepts input, and submits.
+
+Section 2.4 was checked off only after the rendered interface was inspected. Two defects were found
+and fixed this way, neither of which any jsdom test could have caught: the provider strip clipped
+its last tab behind hidden overflow at narrow widths, and the header pushed the brand mark onto an
+unexpected line when the controls wrapped. The header now uses an explicit two-row grid below
+48rem and the tab strip wraps instead of scrolling. Both are covered by regression tests.
+
+Remaining limitations, stated rather than implied:
+
+- Only Chromium is exercised. Safari, Firefox, and mobile Safari rendering are unverified.
+- jsdom does not evaluate media queries (it effectively renders the desktop layout only) and has
+  no `showModal`, so the native `<dialog>` path is exercised only in the browser suite.
+- "Desktop, tablet, and mobile" mean the four tested widths. Intermediate widths are checked by a
+  layout probe run during development, not by a committed test.
+
+The development-only reference page at `/design-system` (registered only when
+`import.meta.env.DEV`) renders every token and component for review in a real browser.
 
 ## Deliverable
 
 A consistent, responsive visual system ready for real content.
+
+Delivered as: an expanded token layer (colour, typography, spacing, radii, elevation, motion,
+layout); a rebuilt responsive navigation with logo, provider tabs, global search, favourites, and
+an account menu; shared components for item cards, collection cards, provider badges,
+favourite/like toggles, metadata lists, responsive grids, horizontal content rows, dialogs,
+disclosure menus, buttons, and skeleton placeholders; and a Playwright end-to-end suite that
+verifies the responsive and keyboard behaviour described above.
 
 ---
 

@@ -23,7 +23,7 @@ All development agents must follow this document when working on the repository.
 
 ## 2. Mandatory Engineering Rules
 
-1. Read `AGENTS.md`, `APPLICATION_DESIGN_SPECIFICATION.md`, `TESTING_AND_REGRESSION_GUIDELINES.md`, and `mnemosync.md` before beginning meaningful development work.
+1. Read `AGENTS.md`, `APPLICATION_DESIGN_SPECIFICATION.md`, `DEVELOPMENT_ROADMAP.md`, `TESTING_AND_REGRESSION_GUIDELINES.md`, and `mnemosync.md` before beginning meaningful development work.
 2. Inspect the existing repository before proposing or implementing architectural changes.
 3. Treat the existing implementation, configuration, tests, and package scripts as authoritative regarding what currently exists and works.
 4. Treat `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior and requirements.
@@ -130,11 +130,18 @@ Keep the responsibilities of the root-level documentation files distinct:
 |---|---|
 | `AGENTS.md` | Engineering rules, coding standards, architectural constraints, and agent workflow |
 | `APPLICATION_DESIGN_SPECIFICATION.md` | Authoritative product requirements, intended functionality, architecture, workflows, and acceptance criteria |
+| `DEVELOPMENT_ROADMAP.md` | Authoritative delivery plan: phase sequence, task checklists, implementation priorities, and phase-level definition of done |
 | `TESTING_AND_REGRESSION_GUIDELINES.md` | Testing strategy, regression prevention, verification procedures, and release quality gates |
 | `mnemosync.md` | Persistent engineering notebook containing implementation status, discoveries, decisions, known issues, test results, and session handoffs |
 | `README.md` | Project introduction, installation, configuration, usage, and developer onboarding |
 
 Do not duplicate large amounts of changing implementation detail across these documents.
+
+`DEVELOPMENT_ROADMAP.md` defines **what order** approved requirements are delivered in and
+which work is complete; it does not define **what** the product must do. When the roadmap and
+the specification appear to disagree about intended behavior, the specification wins and the
+roadmap is corrected. Marking a roadmap task complete is a claim about implementation status,
+so update the roadmap when work is actually finished rather than in anticipation of it.
 
 ---
 
@@ -159,11 +166,12 @@ Before beginning meaningful development work:
 
 1. Read `AGENTS.md`.
 2. Read `APPLICATION_DESIGN_SPECIFICATION.md`.
-3. Read `TESTING_AND_REGRESSION_GUIDELINES.md`.
-4. Read `mnemosync.md`, if it exists.
-5. Inspect the relevant source files, configuration, and tests.
-6. Compare the notebook's descriptions with the current repository state.
-7. Identify outstanding tasks, known issues, architectural constraints, and recent decisions.
+3. Read `DEVELOPMENT_ROADMAP.md`.
+4. Read `TESTING_AND_REGRESSION_GUIDELINES.md`.
+5. Read `mnemosync.md`, if it exists.
+6. Inspect the relevant source files, configuration, and tests.
+7. Compare the notebook's descriptions with the current repository state.
+8. Identify outstanding tasks, known issues, architectural constraints, and recent decisions.
 
 If `mnemosync.md` does not exist, create it using the structure described below.
 
@@ -329,6 +337,58 @@ Target WCAG 2.2 AA where applicable.
 - Provide meaningful alternative text for informative images.
 - Communicate loading, success, and error states to assistive technology.
 - Do not rely on color alone to communicate important information.
+
+### 5.5 Environment Setup: `scripts/setup-deps.sh`
+
+`scripts/setup-deps.sh` is the supported way to prepare a checkout. Run it before the first build and whenever the toolchain is in doubt:
+
+```bash
+./scripts/setup-deps.sh            # install what is missing, verify the rest
+./scripts/setup-deps.sh --check    # verify only; exits non-zero if anything is missing
+./scripts/setup-deps.sh --no-browser
+./scripts/setup-deps.sh --browser  # fail, rather than warn, when Chromium is unavailable
+```
+
+It is idempotent and verifies rather than assumes. In order it checks:
+
+1. **Node.js** against `engines.node` in `package.json` (the single source of truth for the required version).
+2. **npm**, new enough to read the committed lockfile.
+3. **npm packages**, comparing every manifest dependency against the version resolved in `package-lock.json`; drift is corrected with `npm ci`, never `npm install`, so the lockfile stays authoritative.
+4. **A headless Chromium** for `npm run test:e2e`, resolved in this order: `PLAYWRIGHT_CHROMIUM`, an existing Playwright-managed browser, `npx playwright install chromium`, then a sandbox fallback extracted into `node_modules/.vaultara/chromium`.
+
+Rules that follow from this:
+
+- Do not document or script ad-hoc install commands instead of this script; extend the script so the check stays in one place.
+- Only step 4 is needed for the end-to-end suite, so a missing browser is a warning, not a failure, unless `--browser` is passed. Type checking, linting, and unit tests must never depend on a browser being present.
+- The fallback in step 4 is **not** a project dependency: it is fetched with `--no-save` because it exists only to work around environments where the Playwright CDN is unreachable. Do not add it to `package.json` or import it from application or test code. `playwright.config.ts` discovers the extracted binary; nothing else should know about it.
+- Extracted binaries and their shared libraries live under `node_modules/`, so they are git-ignored. Never commit a browser binary.
+- `--check` is safe to run in CI and in read-only environments: it installs nothing and exits non-zero when the environment is incomplete. An agent that finds it failing should report the environment as `BLOCKED` rather than claiming the checks passed.
+
+### 5.6 Deployment: GitHub Pages
+
+The application is published to GitHub Pages by `.github/workflows/deploy-pages.yml`. Pages is
+served from a sub-path (`/<repository>/`), which makes the base path a correctness concern in
+ordinary application code, not a deployment detail.
+
+- Never hardcode a root-absolute URL such as `href="/favorites"` or `src="/logo.svg"`. A path
+  that starts at `/` resolves to the wrong place once the app is served from a sub-path, and the
+  failure appears only on the deployed site.
+- Build in-app links with the path builders in `src/utils/links.ts` and render them through React
+  Router's `Link`/`NavLink`, which apply the router `basename` automatically.
+- Reference build-time assets through `import.meta.env.BASE_URL`, or import them so the bundler
+  rewrites the URL.
+- The router `basename` is derived from `import.meta.env.BASE_URL` in `src/app/App.tsx`, via
+  `src/app/basePath.ts`. Do not hardcode a basename; changing `VITE_BASE_PATH` must be enough.
+- Keep development on the same base as production. The dev server is intentionally served from
+  `/Vaultara/` so base-path mistakes surface locally. Do not "simplify" this by developing at the
+  root.
+- Do not commit build output and do not create a `gh-pages` branch. The workflow uploads `dist/`
+  as an artefact.
+- `404.html` is generated by `postbuild` (`scripts/build-pages-404.mjs`); it is the client-side
+  routing fallback. Never edit files under `dist/` by hand.
+- Run `npm run build && npm run verify:pages` after any change that could affect asset URLs,
+  routing, or the build output. The workflow runs the same check before publishing, so a broken
+  base path fails the deployment rather than shipping.
 
 ---
 
@@ -637,6 +697,8 @@ Use the testing layers appropriate to the change:
 
 Do not introduce a new testing framework without examining the existing setup and justifying the added complexity.
 
+A browser engine for end-to-end runs is provisioned by `scripts/setup-deps.sh` (section 5.5), never by an ad-hoc install command. If no browser can be provisioned, report end-to-end checks as `BLOCKED` rather than omitting them silently, and state which behaviours therefore remain unverified.
+
 ### 12.3 Regression Prevention
 
 - Reproduce a bug with a test before fixing it when practical.
@@ -716,6 +778,7 @@ Relevant documentation may include:
 - `README.md`
 - `AGENTS.md`
 - `APPLICATION_DESIGN_SPECIFICATION.md`
+- `DEVELOPMENT_ROADMAP.md`
 - `TESTING_AND_REGRESSION_GUIDELINES.md`
 - `mnemosync.md`
 - Architecture documentation
@@ -729,11 +792,14 @@ Keep the responsibilities of these files distinct:
 
 - **`AGENTS.md`:** Stable instructions, engineering standards, architectural constraints, and agent workflow requirements.
 - **`APPLICATION_DESIGN_SPECIFICATION.md`:** Authoritative application requirements, intended functionality, architecture, and product design.
+- **`DEVELOPMENT_ROADMAP.md`:** Authoritative delivery sequence, phase task checklists, implementation priorities, and phase-level completion criteria.
 - **`TESTING_AND_REGRESSION_GUIDELINES.md`:** Testing procedures, regression prevention, verification standards, and release quality gates.
 - **`mnemosync.md`:** Evolving engineering context, current implementation status, discoveries, decisions, issues, and session handoffs.
 - **`README.md`:** Project overview, setup, usage, and general developer onboarding.
 
 Do not duplicate large amounts of changing implementation detail across multiple documents when a single authoritative location is sufficient.
+
+Update `DEVELOPMENT_ROADMAP.md` as phases progress: record completed work, outstanding issues, dependencies, and any approved change in scope. Do not mark a phase complete while required functionality remains unimplemented, and do not check off a task before the underlying work is done and verified.
 
 Update `TESTING_AND_REGRESSION_GUIDELINES.md` when the approved testing strategy or regression requirements change. Record session-specific test results in `mnemosync.md` rather than continually adding execution logs to the testing guidelines.
 
@@ -747,10 +813,12 @@ For every meaningful development task, follow this process.
 
 - Read `AGENTS.md`.
 - Read `APPLICATION_DESIGN_SPECIFICATION.md`.
+- Read `DEVELOPMENT_ROADMAP.md`.
 - Read `TESTING_AND_REGRESSION_GUIDELINES.md`.
 - Read `mnemosync.md`.
 - Inspect the current Git status.
 - Identify the relevant source files, tests, and dependencies.
+- Confirm the environment is prepared: `./scripts/setup-deps.sh --check` (section 5.5). If it reports a missing dependency you cannot install, record the affected checks as `BLOCKED`.
 
 ### Step 2: Understand the Requirement
 
@@ -878,6 +946,6 @@ Work as a careful, context-aware software engineer.
 
 Understand the existing codebase before changing it. Read the authoritative application design specification before implementing meaningful features. Follow the testing and regression guidelines when modifying code. Make focused, type-safe, maintainable changes. Verify results rather than assuming success. Preserve user work and document important decisions.
 
-**Always use `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior, `TESTING_AND_REGRESSION_GUIDELINES.md` as the authoritative reference for testing and regression prevention, and `mnemosync.md` as the persistent engineering notebook that carries technical knowledge, implementation status, discoveries, verification results, and actionable handoff notes into future development sessions.**
+**Always use `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior, `DEVELOPMENT_ROADMAP.md` for the approved delivery order and phase status, `TESTING_AND_REGRESSION_GUIDELINES.md` as the authoritative reference for testing and regression prevention, and `mnemosync.md` as the persistent engineering notebook that carries technical knowledge, implementation status, discoveries, verification results, and actionable handoff notes into future development sessions.**
 
 The objective is to ensure Vaultara remains aligned with its approved design, thoroughly tested, secure, understandable, extensible, and maintainable as development continues across multiple sessions and contributors.

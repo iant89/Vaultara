@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+package-lock.json
+
+# Governing prose documents are deliberately excluded: they are hand-wrapped and
+# Prettier would reflow tables and lists, creating large diffs in files that are not
+# source code. Formatting rules apply to application code only.
+AGENTS.md
+APPLICATION_DESIGN_SPECIFICATION.md
+DEVELOPMENT_ROADMAP.md
+TESTING_AND_REGRESSION_GUIDELINES.md

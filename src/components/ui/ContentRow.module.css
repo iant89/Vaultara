@@ -1,0 +1,135 @@
+.row {
+  display: grid;
+  gap: var(--space-3);
+  /* Container query context: card width adapts to the row's own width, not the viewport. */
+  container-type: inline-size;
+  container-name: content-row;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.description {
+  color: var(--color-text-subtle);
+  font-size: var(--text-sm);
+}
+
+.viewAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+  /* Keeps the link on the 44px touch target inside a text row. */
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.viewAll:hover {
+  background-color: var(--color-surface-hover);
+  text-decoration: none;
+}
+
+.trackWrapper {
+  position: relative;
+  /* Allows the scroll controls to sit outside the clipping track. */
+  margin-inline: calc(var(--space-2) * -1);
+}
+
+.track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(var(--card-min-width), 1fr);
+  gap: var(--row-gap);
+  align-items: stretch;
+  padding: var(--space-2);
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--space-2);
+  overscroll-behavior-x: contain;
+  list-style: none;
+}
+
+.track > * {
+  scroll-snap-align: start;
+}
+
+/* Hide the visual scrollbar; the row remains scrollable by wheel, touch, keyboard, and the
+ * explicit prev/next controls. */
+.track {
+  scrollbar-width: none;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Card sizing by row width rather than viewport width. Browsers without container query
+ * support keep the grid-auto-columns fallback above. */
+@supports (container-type: inline-size) {
+  @container content-row (min-width: 48rem) {
+    .track {
+      grid-auto-columns: minmax(11rem, 1fr);
+    }
+  }
+
+  @container content-row (min-width: 72rem) {
+    .track {
+      grid-auto-columns: minmax(12rem, 1fr);
+    }
+  }
+}
+
+.scrollButton {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  border: 1px solid var(--color-border-strong);
+  background-color: rgb(20 23 28 / 92%);
+  box-shadow: var(--shadow-raised);
+}
+
+.scrollButton:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+}
+
+.prev {
+  left: calc(var(--space-2) * -0.5);
+}
+
+.next {
+  right: calc(var(--space-2) * -0.5);
+}
+
+/* On small screens the controls would cover artwork; touch scrolling and keyboard focus
+ * remain available, so they are hidden rather than crowded. */
+@media (max-width: 40rem) {
+  .scrollButton {
+    display: none;
+  }
+}
+
+.emptyTrack {
+  padding: var(--space-5);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-subtle);
+  font-size: var(--text-sm);
+}

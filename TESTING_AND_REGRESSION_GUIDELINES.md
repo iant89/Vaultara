@@ -22,6 +22,7 @@ The following files define complementary responsibilities.
 |---|---|
 | `AGENTS.md` | Mandatory engineering rules, coding standards, and development workflow |
 | `APPLICATION_DESIGN_SPECIFICATION.md` | Authoritative product requirements, architecture, features, workflows, and acceptance criteria |
+| `DEVELOPMENT_ROADMAP.md` | Authoritative delivery sequence, phase task checklists, implementation priorities, and phase-level completion criteria |
 | `TESTING_AND_REGRESSION_GUIDELINES.md` | Testing strategy, regression prevention, verification procedures, and release quality gates |
 | `mnemosync.md` | Persistent engineering notebook containing current implementation status, discoveries, test results, known issues, and session handoffs |
 | `README.md` | Project overview, installation, configuration, and developer onboarding |
@@ -45,6 +46,7 @@ Before performing meaningful testing or regression-sensitive changes, review:
 
 - `AGENTS.md`
 - `APPLICATION_DESIGN_SPECIFICATION.md`
+- `DEVELOPMENT_ROADMAP.md`
 - `TESTING_AND_REGRESSION_GUIDELINES.md`
 - `mnemosync.md`
 

@@ -1,0 +1,47 @@
+.artwork {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border-radius: inherit;
+  background-color: var(--color-surface-raised);
+}
+
+.poster {
+  aspect-ratio: var(--aspect-poster);
+}
+
+.thumbnail {
+  aspect-ratio: var(--aspect-thumb);
+}
+
+.square {
+  aspect-ratio: var(--aspect-square);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+
+/* Fallback keeps the layout identical to the image case, so cards never shift when
+ * artwork is missing (design spec 5.3, 25). */
+.fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(150deg, var(--color-surface-raised), var(--color-surface));
+  color: var(--color-text-subtle);
+  text-align: center;
+}
+
+.fallbackLabel {
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  opacity: 0.85;
+}

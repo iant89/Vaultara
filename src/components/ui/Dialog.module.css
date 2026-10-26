@@ -1,0 +1,62 @@
+.dialog {
+  width: min(32rem, calc(100vw - 2 * var(--space-4)));
+  max-height: min(80vh, 40rem);
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+}
+
+.dialog::backdrop {
+  background-color: rgb(4 6 9 / 72%);
+  backdrop-filter: blur(2px);
+}
+
+/* Fallback rendering for environments without a native modal dialog. */
+.fallback {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+}
+
+.inner {
+  display: grid;
+  gap: var(--space-4);
+  max-height: 100%;
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--text-lg);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.close {
+  flex: none;
+}

@@ -1,0 +1,64 @@
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-raised);
+  /* A restrained shimmer; disabled entirely under reduced motion. */
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 6%) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer var(--duration-slow) linear infinite;
+  animation-duration: 1.6s;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background-image: none;
+  }
+}
+
+.text {
+  height: 0.75rem;
+}
+
+.title {
+  height: 1rem;
+  width: 70%;
+}
+
+.media {
+  width: 100%;
+  aspect-ratio: var(--aspect-poster);
+  border-radius: var(--radius-md);
+}
+
+.block {
+  height: 6rem;
+  border-radius: var(--radius-md);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2);
+}
+
+/* Skeletons are announced once per region, not per placeholder shape. */
+.group {
+  display: grid;
+  gap: var(--space-3);
+}
