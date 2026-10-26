@@ -1,6 +1,10 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
 import { NotYetImplemented } from '../../components/feedback/NotYetImplemented';
+import { AccountPanel } from './AccountForms';
+import { CategoryPreferences } from './CategoryPreferences';
+import { PrivacyControls } from './PrivacyControls';
+import { ProviderSettings } from './ProviderSettings';
 import styles from './Settings.module.css';
 
 /**
@@ -23,11 +27,7 @@ function SettingsSection({ heading, children }: { heading: string; children: Rea
 export function SettingsOverviewSection() {
   return (
     <SettingsSection heading="Overview">
-      <NotYetImplemented
-        feature="Account settings"
-        summary="Accounts, sign-in, and cross-device synchronisation require the backend service. Until it exists, no user state is stored anywhere."
-        plannedPhase="Phase 6"
-      />
+      <AccountPanel />
     </SettingsSection>
   );
 }
@@ -35,11 +35,7 @@ export function SettingsOverviewSection() {
 export function SettingsCategoriesSection() {
   return (
     <SettingsSection heading="Categories">
-      <NotYetImplemented
-        feature="Category preferences"
-        summary="Category selection from onboarding and preference editing. Changing preferences never deletes favourites or history."
-        plannedPhase="Phase 7"
-      />
+      <CategoryPreferences />
     </SettingsSection>
   );
 }
@@ -47,11 +43,7 @@ export function SettingsCategoriesSection() {
 export function SettingsProvidersSection() {
   return (
     <SettingsSection heading="Providers">
-      <NotYetImplemented
-        feature="Provider settings"
-        summary="Enabling and disabling providers. A disabled or failing provider is isolated and never breaks the others."
-        plannedPhase="Phase 3"
-      />
+      <ProviderSettings />
     </SettingsSection>
   );
 }
@@ -59,11 +51,7 @@ export function SettingsProvidersSection() {
 export function SettingsPrivacySection() {
   return (
     <SettingsSection heading="Privacy">
-      <NotYetImplemented
-        feature="Privacy controls"
-        summary="Exploration-history tracking, clearing, and deletion controls. History minimisation is a requirement, not an optional extra."
-        plannedPhase="Phase 7"
-      />
+      <PrivacyControls />
     </SettingsSection>
   );
 }

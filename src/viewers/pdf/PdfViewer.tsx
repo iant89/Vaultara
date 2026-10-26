@@ -30,6 +30,7 @@ export interface PdfViewerProps {
     targetLanguage: string,
   ) => Promise<TranslatorPort | undefined>;
   readonly onSelectFile?: (fileId: string) => void;
+  readonly onProgress?: (page: number) => void;
 }
 
 async function defaultOpenDocument(url: string, signal: AbortSignal): Promise<PdfDocumentHandle> {
@@ -76,6 +77,7 @@ export function PdfViewer({
   openDocument = defaultOpenDocument,
   createTranslator = createPdfTranslator,
   onSelectFile,
+  onProgress,
 }: PdfViewerProps) {
   const hintId = useId();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -125,6 +127,12 @@ export function PdfViewer({
     () => (handle === undefined ? [] : visiblePages(layout, pageCount, startPage, bookColumns)),
     [bookColumns, handle, layout, pageCount, startPage],
   );
+
+  useEffect(() => {
+    if (handle !== undefined) {
+      onProgress?.(startPage);
+    }
+  }, [handle, onProgress, startPage]);
   const go = useCallback(
     (direction: -1 | 1) => {
       if (handle === undefined) {

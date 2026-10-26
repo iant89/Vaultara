@@ -1,7 +1,10 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_PREFERENCES } from '../../models/account';
+import { SessionProvider } from '../../data/SessionContext';
+import { createTestPersistence } from '../../persistence/composition';
 import { Navigation } from './Navigation';
 
 function renderNavigation() {
@@ -86,7 +89,59 @@ describe('Navigation', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }));
 
     expect(screen.getByText(/Not signed in/)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /sign out/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Create account or sign in' })).toHaveAttribute(
+      'href',
+      '/settings',
+    );
+  });
+
+  it('names the signed-in account and offers a working sign out', async () => {
+    const backend = createTestPersistence();
+    await backend.createAccount({
+      email: 'alex@example.com',
+      password: 'correct horse',
+      displayName: 'Alex',
+    });
+
+    render(
+      <MemoryRouter>
+        <SessionProvider backend={backend}>
+          <Navigation />
+        </SessionProvider>
+      </MemoryRouter>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Account menu' }));
+
+    expect(await screen.findByText(/Signed in as Alex/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('hides a provider the signed-in account disabled', async () => {
+    const backend = createTestPersistence();
+    const session = await backend.createAccount({
+      email: 'alex@example.com',
+      password: 'correct horse',
+      displayName: 'Alex',
+    });
+    await backend.setPreferences(session.sessionId, {
+      ...DEFAULT_PREFERENCES,
+      disabledProviderIds: ['wikipedia'],
+    });
+
+    render(
+      <MemoryRouter>
+        <SessionProvider backend={backend}>
+          <Navigation />
+        </SessionProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('link', { name: 'Internet Archive' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('link', { name: 'Wikipedia (not yet available)' })).toBeNull();
+    });
   });
 
   it('offers the settings subsections', async () => {

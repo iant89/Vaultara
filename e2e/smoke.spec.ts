@@ -9,7 +9,7 @@ import { appUrl, appUrlPattern } from './appBase';
  * from the provider, the assertion accepts either the section or the failure panel that replaces
  * it — both are honest outcomes and neither is a blank area.
  */
-test('discovery renders its rows and declares what is still missing', async ({ page }) => {
+test('discovery renders its configured rows', async ({ page }) => {
   await page.goto(appUrl('/'));
 
   await expect(page.getByRole('heading', { level: 1, name: 'Discovery' })).toBeVisible();
@@ -18,11 +18,6 @@ test('discovery renders its rows and declares what is still missing', async ({ p
   // Row headings come from configuration, so they exist before (and without) any provider data.
   await expect(page.getByRole('heading', { level: 2, name: 'Films' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Books and documents' })).toBeVisible();
-
-  // Personalisation is the one recommendation feature that does not exist yet, and the page says
-  // so rather than presenting an empty "recommended" shelf (roadmap 5.1).
-  await expect(page.getByText('Personal recommendations is not available yet')).toBeVisible();
-  await expect(page.getByText('Not implemented')).toBeVisible();
 });
 
 test('a category page names the category and offers a way back', async ({ page }) => {

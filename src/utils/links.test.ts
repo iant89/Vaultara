@@ -5,6 +5,7 @@ import {
   buildDiscoverablePath,
   buildFavoritesPath,
   buildItemPath,
+  buildOnboardingPath,
   buildProviderPath,
   buildSearchPath,
   buildViewerPath,
@@ -64,6 +65,7 @@ describe('other paths', () => {
     expect(buildProviderPath('archive')).toBe('/provider/archive');
     expect(buildCategoryPath('books')).toBe('/category/books');
     expect(buildFavoritesPath()).toBe('/favorites');
+    expect(buildOnboardingPath()).toBe('/onboarding');
   });
 });
 

@@ -1,5 +1,7 @@
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useSession } from '../../data/SessionContext';
 import { useFocusMainOnNavigate } from '../../hooks/useFocusMainOnNavigate';
+import { buildOnboardingPath } from '../../utils/links';
 import { Navigation } from './Navigation';
 import styles from './AppLayout.module.css';
 
@@ -7,6 +9,12 @@ const MAIN_ID = 'main-content';
 
 export function AppLayout() {
   useFocusMainOnNavigate(MAIN_ID);
+  const session = useSession();
+  const location = useLocation();
+  const needsOnboarding =
+    session.status === 'signed-in' && !session.preferences.onboardingCompleted;
+  const onboardingAllowed =
+    location.pathname.startsWith('/onboarding') || location.pathname.startsWith('/settings');
 
   return (
     <div className={styles.shell}>
@@ -16,7 +24,11 @@ export function AppLayout() {
       <Navigation />
       {/* tabIndex allows the skip link and route changes to move focus here. */}
       <main id={MAIN_ID} className={styles.main} tabIndex={-1}>
-        <Outlet />
+        {needsOnboarding && !onboardingAllowed ? (
+          <Navigate to={buildOnboardingPath()} replace />
+        ) : (
+          <Outlet />
+        )}
       </main>
       <footer className={styles.footer}>
         <p>

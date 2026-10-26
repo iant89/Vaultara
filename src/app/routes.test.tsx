@@ -150,14 +150,10 @@ describe('provider routes', () => {
 });
 
 describe('honest feature status', () => {
-  // Discovery reads real provider data now, so the remaining status claim on the home page is
-  // personalisation: it must still say it is not implemented rather than imply recommendations
-  // are merely empty (roadmap 5.1).
-  it('states that personalisation is not implemented on the discovery page', () => {
-    renderPath('/');
+  it('sends unsigned visitors from onboarding to account settings', () => {
+    renderPath('/onboarding');
 
-    expect(screen.getByText('Personal recommendations is not available yet')).toBeInTheDocument();
-    expect(screen.getByText('Not implemented')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
   });
 
   it('offers a trail back to the provider from an item', () => {

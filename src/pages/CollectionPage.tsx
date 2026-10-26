@@ -3,15 +3,16 @@ import { AsyncContent } from '../components/content/AsyncContent';
 import { Breadcrumbs } from '../components/content/Breadcrumbs';
 import { CollectionShelf } from '../components/content/CollectionShelf';
 import { CollectionToolbar } from '../components/content/CollectionToolbar';
+import { SavedCollectionCard } from '../components/content/SavedCollectionCard';
+import { SavedItemCard } from '../components/content/SavedItemCard';
 import { Section } from '../components/content/Section';
 import { ShowMore } from '../components/content/ShowMore';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { ErrorState } from '../components/feedback/ErrorState';
 import { Page } from '../components/layout/Page';
 import { Artwork } from '../components/ui/Artwork';
-import { CollectionCard } from '../components/ui/CollectionCard';
 import { ContentRow, ContentTrack } from '../components/ui/ContentRow';
-import { CONTENT_TYPE_LABELS, ItemCard } from '../components/ui/ItemCard';
+import { CONTENT_TYPE_LABELS } from '../components/ui/ItemCard';
 import { ProviderBadge } from '../components/ui/ProviderBadge';
 import { SkeletonCard, SkeletonGroup } from '../components/ui/Skeleton';
 import { getProviderName } from '../config/providers';
@@ -308,9 +309,7 @@ export function CollectionPage() {
                   itemCount={entries.length}
                 >
                   {entries.map((item) => (
-                    // Favourite controls stay absent until favourite state exists (Phase 8);
-                    // rendering a button that cannot save anything would be fake functionality.
-                    <ItemCard
+                    <SavedItemCard
                       key={`${item.providerId}:${item.id}`}
                       item={item}
                       providerName={getProviderName(item.providerId)}
@@ -342,7 +341,7 @@ export function CollectionPage() {
             itemCount={relatedCollections.length}
           >
             {relatedCollections.map((entry) => (
-              <CollectionCard
+              <SavedCollectionCard
                 key={entry.id}
                 collection={entry}
                 providerName={getProviderName(entry.providerId)}

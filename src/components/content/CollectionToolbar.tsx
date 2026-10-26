@@ -16,6 +16,10 @@ interface CollectionToolbarProps {
   readonly onSearch: (query: string) => void;
   readonly onSortChange: (sort: string) => void;
   readonly onContentTypeChange: (contentType: string) => void;
+  readonly searchLabel?: string;
+  readonly provider?: string;
+  readonly providerOptions?: readonly ToolbarOption[];
+  readonly onProviderChange?: (providerId: string) => void;
 }
 
 /**
@@ -34,6 +38,10 @@ export function CollectionToolbar({
   onSearch,
   onSortChange,
   onContentTypeChange,
+  searchLabel = 'Search this collection',
+  provider = '',
+  providerOptions,
+  onProviderChange,
 }: CollectionToolbarProps) {
   // The field holds an unsubmitted draft. It is derived from the URL parameter that produced it,
   // so a new link, the back button, or the browser's own reset replace the draft instead of the
@@ -45,6 +53,7 @@ export function CollectionToolbar({
   const searchId = useId();
   const sortId = useId();
   const typeId = useId();
+  const providerId = useId();
 
   return (
     <div className={styles.toolbar}>
@@ -57,7 +66,7 @@ export function CollectionToolbar({
         }}
       >
         <label className={styles.label} htmlFor={searchId}>
-          Search this collection
+          {searchLabel}
         </label>
         <div className={styles.searchRow}>
           <input
@@ -95,6 +104,28 @@ export function CollectionToolbar({
           ))}
         </select>
       </div>
+
+      {providerOptions !== undefined && providerOptions.length > 1 && onProviderChange ? (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor={providerId}>
+            Provider
+          </label>
+          <select
+            id={providerId}
+            className={styles.select}
+            value={provider}
+            onChange={(event) => {
+              onProviderChange(event.target.value);
+            }}
+          >
+            {providerOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       {contentTypeOptions.length > 1 ? (
         <div className={styles.field}>

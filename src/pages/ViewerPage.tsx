@@ -1,16 +1,19 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useCallback } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AsyncContent } from '../components/content/AsyncContent';
 import { Breadcrumbs } from '../components/content/Breadcrumbs';
+import { SavedActions } from '../components/content/SavedActions';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { LoadingState } from '../components/feedback/LoadingState';
 import { Page } from '../components/layout/Page';
 import { getProviderName } from '../config/providers';
 import { providerSupports } from '../data/providerCapabilities';
 import { useProviderServices } from '../data/ProviderServices';
+import { useSession } from '../data/SessionContext';
 import { useAsyncValue } from '../data/useAsyncValue';
 import type { ContentFile } from '../models/content';
 import { formatCanonicalId } from '../models/identity';
+import { useMarkExplored } from '../personalization/useMarkExplored';
 import { canReadPdf, selectPdfFile } from '../viewers/pdf/isPdfFile';
 import { buildHomePath, buildItemPath, buildProviderPath, buildViewerPath } from '../utils/links';
 
@@ -24,6 +27,7 @@ export function ViewerPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { queries, runtime } = useProviderServices();
+  const { recordProgress } = useSession();
   const providerName = getProviderName(providerId);
   const requestedFile = params.get('file') ?? undefined;
   const identity = { providerId, itemId };
@@ -38,12 +42,29 @@ export function ViewerPage() {
       : Promise.resolve<readonly ContentFile[]>([]),
   );
 
-  const title = item.state.status === 'ready' ? item.state.value.title : 'Viewer';
+  const loaded = item.state.status === 'ready' ? item.state.value : undefined;
+  const title = loaded?.title ?? 'Viewer';
+  useMarkExplored(identity, loaded !== undefined, loaded?.type);
+
+  const handleProgress = useCallback(
+    (page: number) => {
+      void recordProgress(
+        { providerId, itemId },
+        {
+          kind: 'pdf',
+          page,
+          updatedAt: new Date().toISOString(),
+        },
+      );
+    },
+    [itemId, providerId, recordProgress],
+  );
 
   return (
     <Page
       title={title}
       intro={`Viewer route identity: "${providerId}:${itemId}".`}
+      meta={loaded !== undefined ? <SavedActions item={loaded} /> : undefined}
       breadcrumbs={
         <Breadcrumbs
           items={[
@@ -94,6 +115,7 @@ export function ViewerPage() {
                     item={loaded}
                     file={selected}
                     pdfFiles={pdfFiles}
+                    onProgress={handleProgress}
                     onSelectFile={(fileId) => navigate(buildViewerPath(identity, fileId))}
                   />
                 </Suspense>

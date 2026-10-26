@@ -8,13 +8,13 @@ Built with React and TypeScript, designed around a provider plugin system so tha
 
 ## Project status
 
-**Phases 1-4 are implemented and roadmap Phase 5 (the discovery experience) is implemented against the Internet Archive provider.**
+**Phases 1–8 are implemented.** Discovery runs against the Internet Archive provider. Accounts, category preferences, exploration history, favorites, and likes persist in this browser.
 
-What works today: the application shell and its visual language (route table, design tokens, responsive navigation, shared components, loading/empty/error states); shared data models and provider/viewer contracts; the Internet Archive adapter behind the registry, gateway, and reliability layer; and the discovery surfaces that read from it — a home page with a featured item, one row per category and a category grid, category pages that show each collection as a row of its items, collection pages with nested-collection shelves plus an item shelf (sorting, filtering, in-collection search, "View more"), breadcrumbs and related collections, and item pages with artwork, metadata, available files, related content, and source attribution. Downloadable PDFs can be opened with Read into an in-app reader (book and grid layouts, auto scale, on-device translation when the browser provides it, otherwise MyMemory).
+What works today: the application shell and its visual language (route table, design tokens, responsive navigation, shared components, loading/empty/error states); shared data models and provider/viewer contracts; the Internet Archive adapter behind the registry, gateway, and reliability layer; and the discovery surfaces that read from it — a home page with a featured item, one row per category and a category grid, category pages that show each collection as a row of its items, collection pages with nested-collection shelves plus an item shelf (sorting, filtering, in-collection search, "View more"), breadcrumbs and related collections, and item pages with artwork, metadata, available files, related content, and source attribution. Downloadable PDFs can be opened with Read into an in-app reader (book and grid layouts, auto scale, on-device translation when the browser provides it, otherwise MyMemory). Accounts can be created and signed in; category onboarding, exploration history, and privacy controls persist in this browser (IndexedDB), not on a server.
 
 Discovery needs a network route to `archive.org`. Where the provider cannot be reached, each surface says so and offers a retry rather than showing an empty page.
 
-Personalisation and recommendations, favourites and likes, exploration history, search results, the download manager, and viewers other than PDF are still unimplemented, and the interface says so. Downloadable PDFs can be opened with Read. See `mnemosync.md` for exactly what is and is not verified.
+Search results, the download manager, and viewers other than PDF are still unimplemented, and the interface says so. Downloadable PDFs can be opened with Read. Favorites and likes persist on this device; they do not sync across devices. See `mnemosync.md` for exactly what is and is not verified.
 
 Every route renders a real page. Pages whose feature is not implemented say so explicitly instead of showing inactive controls that look functional. This is a deliberate project rule: no placeholder may masquerade as a working feature.
 
@@ -25,7 +25,9 @@ Every route renders a real page. Pages whose feature is not implemented say so e
 | Shared models and provider/viewer contracts                         | Defined and implemented against                   |
 | Provider registry and adapters (Internet Archive, Wikipedia, Adult) | Archive adapter wired to the UI; rest planned     |
 | Discovery: home, category, collection, item details                 | Implemented against the Archive provider          |
-| Favourites, likes, history, search results, downloads               | Not started                                       |
+| Onboarding, category preferences, exploration history               | Implemented; Adult visibility stays Phase 16      |
+| Favourites and likes                                                | Implemented; device-local only                    |
+| Search results, downloads                                           | Not started                                       |
 | Content viewers                                                     | PDF reader implemented; other formats not started |
 
 See `DEVELOPMENT_ROADMAP.md` for the full phase plan.
@@ -114,11 +116,11 @@ lazy-loaded, so it is never part of the initial production bundle.
 
 Environment variables are read from `.env`, `.env.local`, or the shell. Copy `.env.example` to `.env.local` to begin.
 
-| Variable                     | Default      | Purpose                                                             |
-| ---------------------------- | ------------ | ------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`          | unset        | Absolute http(s) URL of the backend API. Unset means frontend-only. |
-| `VITE_ENABLE_ADULT_PROVIDER` | `false`      | Opt-in switch for the Adult provider.                               |
-| `VITE_BASE_PATH`             | `/Vaultara/` | Sub-path the app is served from. `/` for a custom domain.           |
+| Variable                     | Default      | Purpose                                                                                   |
+| ---------------------------- | ------------ | ----------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`          | unset        | Reserved for a future remote account API. Unset (and unused): accounts stay in IndexedDB. |
+| `VITE_ENABLE_ADULT_PROVIDER` | `false`      | Opt-in switch for the Adult provider.                                                     |
+| `VITE_BASE_PATH`             | `/Vaultara/` | Sub-path the app is served from. `/` for a custom domain.                                 |
 
 Configuration is validated at startup by `src/config/env.ts`; an invalid value fails loudly rather than being silently ignored. Unknown boolean values are rejected so a typo cannot quietly disable a safety control.
 
@@ -188,7 +190,8 @@ covered by tests rather than only by the deployment. The suite is not run in the
 │   │   ├── layout/           App shell, navigation, search control, account menu, page frame
 │   │   └── ui/               Cards, badges, toggles, rows, grids, dialog, skeletons, icons
 │   ├── config/               Validated environment, provider catalog, discovery rows
-│   ├── data/                 Cached query layer, request limiter, async state, provider context
+│   ├── data/                 Cached query layer, request limiter, async state, provider and session context
+│   ├── persistence/          Local account backend, IndexedDB/memory stores, conflict merge
 │   ├── dev/                  Dev-only route registration and synthetic sample content
 │   ├── hooks/                Shared React hooks (route focus management)
 │   ├── models/               Shared content, provider, viewer, error, pagination types
@@ -197,6 +200,7 @@ covered by tests rather than only by the deployment. The suite is not run in the
 │   ├── styles/               Design tokens, global baseline, and the contrast test
 │   ├── test/                 Test setup (runs before every test file)
 │   ├── utils/                Path builders, class naming, reduced-motion helpers
+│   ├── viewers/              PDF reader (other viewers planned)
 │   ├── main.tsx              Browser entry point
 │   └── vite-env.d.ts         Vite client types and environment variables
 ├── index.html

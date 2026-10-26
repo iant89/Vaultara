@@ -2,6 +2,8 @@ import { Navigate, useParams } from 'react-router-dom';
 import { AsyncContent } from '../components/content/AsyncContent';
 import { Breadcrumbs } from '../components/content/Breadcrumbs';
 import { FileList } from '../components/content/FileList';
+import { SavedActions } from '../components/content/SavedActions';
+import { SavedItemCard } from '../components/content/SavedItemCard';
 import { Section } from '../components/content/Section';
 import { ShowMore } from '../components/content/ShowMore';
 import { ErrorState } from '../components/feedback/ErrorState';
@@ -9,7 +11,7 @@ import { NotYetImplemented } from '../components/feedback/NotYetImplemented';
 import { Page } from '../components/layout/Page';
 import { Artwork } from '../components/ui/Artwork';
 import { ContentRow } from '../components/ui/ContentRow';
-import { CONTENT_TYPE_LABELS, ItemCard } from '../components/ui/ItemCard';
+import { CONTENT_TYPE_LABELS } from '../components/ui/ItemCard';
 import { MetadataList } from '../components/ui/MetadataList';
 import { ProviderBadge } from '../components/ui/ProviderBadge';
 import { SkeletonGroup, SkeletonMedia } from '../components/ui/Skeleton';
@@ -21,6 +23,7 @@ import { useProgressiveList } from '../data/useProgressiveList';
 import type { ContentFile } from '../models/content';
 import { createPaginatedResult } from '../models/pagination';
 import { formatCanonicalId } from '../models/identity';
+import { useMarkExplored } from '../personalization/useMarkExplored';
 import { buildCollectionPath, buildHomePath, buildProviderPath } from '../utils/links';
 import styles from './ItemPage.module.css';
 
@@ -96,6 +99,7 @@ export function ItemPage() {
   const typeLabel = value === undefined ? undefined : CONTENT_TYPE_LABELS[value.type];
   const canonicalId = formatCanonicalId({ providerId, itemId });
   const collectionId = value?.categories[0];
+  useMarkExplored({ providerId, itemId }, value !== undefined, value?.type);
 
   // A collection opened on the item route (from a leaky related/search list, or a typed URL)
   // belongs on the collection page, where its nested collections and items can be browsed.
@@ -140,6 +144,7 @@ export function ItemPage() {
             {value.publicationDate !== undefined ? (
               <span className={styles.metaText}>{value.publicationDate}</span>
             ) : null}
+            <SavedActions item={value} />
           </div>
         ) : undefined
       }
@@ -270,7 +275,7 @@ export function ItemPage() {
                     itemCount={related.items.length}
                   >
                     {related.items.map((entry) => (
-                      <ItemCard
+                      <SavedItemCard
                         key={`${entry.providerId}:${entry.id}`}
                         item={entry}
                         providerName={getProviderName(entry.providerId)}
@@ -292,9 +297,9 @@ export function ItemPage() {
               ) : null}
 
               <NotYetImplemented
-                feature="Favourites and other viewers"
-                summary="Saving this item and resuming it later arrive with favourites. Audio, video, EPUB, and image viewers are not in this app yet. A downloadable PDF in the list above can be opened with Read."
-                plannedPhase="Phases 8, 11, and 12"
+                feature="Other viewers"
+                summary="Audio, video, EPUB, and image viewers are not in this app yet. A downloadable PDF in the list above can be opened with Read."
+                plannedPhase="Phases 11 and 12"
               />
             </>
           );

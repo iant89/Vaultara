@@ -3,9 +3,12 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { ContentItem } from '../../models/content';
 import { formatCanonicalId } from '../../models/identity';
+import { snapshotFromItem } from '../../personalization/savedContent';
+import { useSavedContent } from '../../personalization/useSavedContent';
 import { buildDiscoverablePath } from '../../utils/links';
 import { Artwork } from '../ui/Artwork';
 import { CONTENT_TYPE_LABELS } from '../ui/ItemCard';
+import { FavoriteButton } from '../ui/ToggleButton';
 import styles from './FeaturedItem.module.css';
 
 interface FeaturedItemProps {
@@ -33,6 +36,7 @@ export function FeaturedItem({ item, label = 'Featured', badge }: FeaturedItemPr
   const headingId = useId();
   const identity = { providerId: item.providerId, itemId: item.id };
   const summary = describe(item);
+  const saved = useSavedContent();
 
   return (
     <article
@@ -48,6 +52,18 @@ export function FeaturedItem({ item, label = 'Featured', badge }: FeaturedItemPr
           ratio="thumbnail"
           priority
         />
+        {saved.signedIn ? (
+          <FavoriteButton
+            active={saved.isFavorite(identity)}
+            itemTitle={item.title}
+            className={styles.toggle}
+            onToggle={(next) => {
+              void saved.toggleFavorite(identity, next, snapshotFromItem(item)).catch(() => {
+                // The star rolls back from session state; the details page reports write errors.
+              });
+            }}
+          />
+        ) : null}
       </div>
 
       <div className={styles.body}>

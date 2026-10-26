@@ -383,13 +383,6 @@ describe('discovery home page', () => {
     );
     expect(screen.getByRole('heading', { level: 1, name: 'Discovery' })).toBeInTheDocument();
   });
-
-  it('states that personalisation is not implemented', () => {
-    const { services } = createHarness();
-    renderAt('/', services);
-
-    expect(screen.getByText('Personal recommendations is not available yet')).toBeInTheDocument();
-  });
 });
 
 describe('category page', () => {
@@ -458,8 +451,8 @@ describe('collection page', () => {
       'href',
       `https://archive.org/details/feature_films`,
     );
-    // Favourites do not exist yet, so no card offers a favourite control.
-    expect(screen.queryByRole('button', { name: /favourite/i })).toBeNull();
+    // Unsigned visitors do not get a favourite control that cannot save.
+    expect(screen.queryByRole('button', { name: /favorite/i })).toBeNull();
   });
 
   it('sends sorting, filtering, and in-collection search through the URL', async () => {

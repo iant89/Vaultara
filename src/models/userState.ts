@@ -1,10 +1,12 @@
 /**
- * Per-user content state (design specification 20.4, 19.3, 7.1).
+ * Per-user content state (design specification 20.4, 19.3, 7.1, 14.1).
  *
  * Likes and favorites are separate concepts: a like is a personalization signal, a
  * favorite is an explicit bookmark in the global favorites collection. Neither may be
  * changed implicitly by progress tracking.
  */
+
+import type { ContentType } from './content';
 
 export interface ViewerProgressBase {
   readonly updatedAt: string;
@@ -56,6 +58,13 @@ export type ViewerProgress =
   | EmulatorViewerProgress
   | WebArchiveViewerProgress;
 
+/** Display fields kept so a favorite still renders when its provider is unreachable. */
+export interface FavoriteSnapshot {
+  readonly title: string;
+  readonly type: ContentType;
+  readonly thumbnailUrl?: string;
+}
+
 export interface UserContentState {
   readonly providerId: string;
   readonly itemId: string;
@@ -69,4 +78,7 @@ export interface UserContentState {
   readonly explorationCount?: number;
 
   readonly progress?: ViewerProgress;
+
+  readonly snapshot?: FavoriteSnapshot;
+  readonly favoritedAt?: string;
 }

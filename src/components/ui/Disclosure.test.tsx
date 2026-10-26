@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
-import { Disclosure, DisclosureGroup, DisclosureItem } from './Disclosure';
+import { describe, expect, it, vi } from 'vitest';
+import { Disclosure, DisclosureAction, DisclosureGroup, DisclosureItem } from './Disclosure';
 
 function renderDisclosure() {
   return render(
@@ -67,6 +67,26 @@ describe('Disclosure', () => {
     await userEvent.click(trigger);
     await userEvent.click(screen.getByRole('link', { name: 'History' }));
 
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes after a command action', async () => {
+    const onClick = vi.fn();
+    render(
+      <MemoryRouter>
+        <Disclosure triggerLabel="Account menu" triggerContent={<span>icon</span>}>
+          <DisclosureGroup title="Account">
+            <DisclosureAction onClick={onClick}>Sign out</DisclosureAction>
+          </DisclosureGroup>
+        </Disclosure>
+      </MemoryRouter>,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Account menu' });
+    await userEvent.click(trigger);
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
 

@@ -469,6 +469,13 @@ Pages read content through `src/data/`, never through an adapter and never throu
 | Concurrency ceiling                    | `src/data/requestLimiter.ts`        |
 | One request to one component           | `src/data/useAsyncValue.ts`         |
 | Provider context for the tree          | `src/data/ProviderServices.tsx`     |
+| Signed-in account and preferences      | `src/data/SessionContext.tsx`       |
+| Local account backend (IndexedDB)      | `src/persistence/`                  |
+| Onboarding category catalogue          | `src/config/onboarding.ts`          |
+| Home-page row selection                | `src/personalization/discoveryRows.ts` |
+| Explored-item discovery predicate      | `src/personalization/discoveryFilter.ts` |
+| Favorite and like mutations            | `src/personalization/savedContent.ts`    |
+| Favorites page listing                 | `src/personalization/favoriteList.ts`    |
 | Capability lookups used by the UI      | `src/data/providerCapabilities.ts`  |
 | Rows, sorts, and page-size constants   | `src/config/discovery.ts`           |
 
@@ -488,8 +495,16 @@ Rules:
   like a broken button.
 - **Only render a section when its data exists** (design spec 9.3). No description, no files, or no
   related content means no section, not an empty one.
-- **Never render a control that cannot work.** Favourite and like buttons stay absent until their
-  state exists (Phase 8); the page states the gap in words instead of showing a dead control.
+- **Never render a control that cannot work.** Favorite and like buttons appear only when the
+  visitor is signed in. Unsigned surfaces omit them rather than showing a dead control. The
+  favorites page asks unsigned visitors to sign in.
+- **Accounts are local.** GitHub Pages cannot host a backend, so `src/persistence/` stores accounts
+  in IndexedDB on this device. Passwords are PBKDF2 verifiers, never the password, and never in
+  localStorage. Sign-in does not mean cross-device sync. Tests inject a memory store.
+- **Exploration filtering is one predicate.** `isHiddenFromDiscovery` hides explored-not-liked-not-
+  favorited items from home-page rows only. Search results and collection pages must not call it.
+  Opening a collection never marks its children explored; only an item details page or viewer start
+  does.
 - **Artwork is a URL with reserved space.** Fixed aspect ratios plus a labelled fallback keep the
   layout stable, and no media is fetched to render metadata (design spec 11.4).
 - **Keep the layout from widening.** A grid track sized `auto` floors at its content's min-content
