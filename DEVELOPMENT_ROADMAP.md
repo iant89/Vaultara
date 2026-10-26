@@ -954,12 +954,15 @@ Implement the most broadly useful viewers.
 
 ### 12.2 PDF Viewer
 
-- [ ] Integrate PDF.js or equivalent.
-- [ ] Implement page navigation.
+Brought forward ahead of Phase 11 at an explicit request. Files are matched as PDFs directly;
+the shared viewer registry is still absent.
+
+- [x] Integrate PDF.js or equivalent.
+- [x] Implement page navigation.
 - [ ] Implement zoom.
-- [ ] Implement fit-to-width.
+- [x] Implement fit-to-width.
 - [ ] Implement search where supported.
-- [ ] Implement download.
+- [x] Implement download.
 - [ ] Implement reading progress.
 - [ ] Implement resume functionality.
 

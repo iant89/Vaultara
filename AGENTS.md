@@ -495,6 +495,12 @@ Rules:
 - **Keep the layout from widening.** A grid track sized `auto` floors at its content's min-content
   width, so one long unbreakable string can push a page sideways; use `minmax(0, 1fr)` and let
   provider text wrap.
+- **The PDF reader is a viewer, not a provider read.** Pages still go through `src/data/` for item
+  and file metadata. Opening a PDF fetches the file's `downloadUrl` inside `src/viewers/pdf/engine.ts`
+  (PDF.js). If the provider does not send CORS headers, the reader says so and leaves Download as
+  the way through. Translation uses Chromium's on-device Translator API when the browser provides
+  it. If that API is missing, page text is sent to MyMemory (Translated.net); there is no app
+  backend or secret API key. Tests mock `fetch` and never call the live translation host.
 - **Follow the provider's hierarchy instead of inventing one.** The Archive nests collections inside
   collections, and an item list must exclude `mediatype:collection` or subcollections appear as if
   they were content. Query for the containers one level down and render them as shelves of their
@@ -722,9 +728,10 @@ Where relevant, display source attribution, licensing information, and provider 
 
 Vaultara must use a viewer registry that selects viewers based on content type, format, and provider capabilities.
 
-Planned viewer types include:
+The PDF reader is implemented and selected directly from downloadable PDF files until the Phase 11
+registry exists. Other viewer types remain planned:
 
-- PDF viewer
+- PDF viewer (implemented: book/page/grid layouts, auto scale, on-device then MyMemory translation)
 - EPUB and book reader
 - Image viewer
 - Audio player

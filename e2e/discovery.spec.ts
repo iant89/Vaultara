@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 import { appUrl } from './appBase';
+import { buildMinimalPdf } from './minimalPdf';
 
 /**
  * Discovery experience coverage with provider data (roadmap Phase 5).
@@ -311,6 +312,10 @@ test('an item page shows files, attribution, and related content', async ({ page
     'href',
     'https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead.mp4',
   );
+  await expect(page.getByRole('link', { name: /Read notes.pdf/ })).toHaveAttribute(
+    'href',
+    /\/viewer\/archive\/night_of_the_living_dead\?file=notes\.pdf$/,
+  );
   await expect(
     page.getByRole('link', { name: 'View this item on Internet Archive' }),
   ).toHaveAttribute('href', 'https://archive.org/details/night_of_the_living_dead');
@@ -321,4 +326,41 @@ test('an item page shows files, attribution, and related content', async ({ page
   await expect(page.getByRole('button', { name: 'View more related items' })).toBeVisible();
 
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+});
+
+test('a PDF file opens in the in-app reader', async ({ page }) => {
+  await mockArchive(page);
+  await page.route('**/download/**/*.pdf', async (route: Route) => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'access-control-allow-origin': '*',
+          'access-control-allow-methods': 'GET,HEAD,OPTIONS',
+          'access-control-allow-headers': '*',
+        },
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'application/pdf',
+        'access-control-allow-origin': '*',
+        'access-control-expose-headers': 'Accept-Ranges,Content-Length',
+      },
+      body: Buffer.from(buildMinimalPdf(['Page one', 'Page two', 'Page three', 'Page four'])),
+    });
+  });
+
+  await page.goto(appUrl('/item/archive/night_of_the_living_dead'));
+  await page.getByRole('link', { name: /Read notes.pdf/ }).click();
+
+  await expect(page.getByRole('toolbar', { name: 'PDF reader' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Book' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: '2 by 2 grid' }).click();
+  await page.getByRole('button', { name: 'Page 3, open full screen' }).click();
+  await expect(page.getByRole('dialog', { name: 'Full screen page' })).toBeVisible();
 });

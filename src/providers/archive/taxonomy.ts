@@ -144,9 +144,8 @@ export function resolveMimeType(format: unknown, fileName: string): string | und
 /**
  * Formats a browser can present without a dedicated viewer.
  *
- * This deliberately excludes PDF, EPUB, and DjVu: opening those needs a viewer that does not
- * exist yet (roadmap Phase 8), and claiming they are viewable now would present an unimplemented
- * capability as working.
+ * EPUB and DjVu stay excluded: they still need viewers this app does not have. PDF is handled
+ * separately by `isAppViewable` because the in-app reader exists.
  */
 const BROWSER_DISPLAYABLE_MIME_TYPES: ReadonlySet<string> = new Set([
   'image/jpeg',
@@ -165,4 +164,13 @@ const BROWSER_DISPLAYABLE_MIME_TYPES: ReadonlySet<string> = new Set([
 
 export function isBrowserDisplayable(mimeType: string | undefined): boolean {
   return mimeType !== undefined && BROWSER_DISPLAYABLE_MIME_TYPES.has(mimeType);
+}
+
+export function isPdfMimeType(mimeType: string | undefined): boolean {
+  return mimeType === 'application/pdf';
+}
+
+/** Formats this app can present today: native media plus the PDF reader. */
+export function isAppViewable(mimeType: string | undefined): boolean {
+  return isBrowserDisplayable(mimeType) || isPdfMimeType(mimeType);
 }

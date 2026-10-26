@@ -31,6 +31,15 @@ describe('item and viewer paths', () => {
       '/viewer/wikipedia/Ada_Lovelace',
     );
   });
+
+  it('names the file being read in the query string', () => {
+    expect(buildViewerPath({ providerId: 'archive', itemId: 'alice' }, 'alice.pdf')).toBe(
+      '/viewer/archive/alice?file=alice.pdf',
+    );
+    expect(buildViewerPath({ providerId: 'archive', itemId: 'alice' }, 'folder/notes.pdf')).toBe(
+      '/viewer/archive/alice?file=folder%2Fnotes.pdf',
+    );
+  });
 });
 
 describe('collection paths', () => {

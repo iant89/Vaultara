@@ -1,10 +1,10 @@
 /**
  * Viewer contracts (design specification 17.3, 17.4).
  *
- * The registry implementation arrives in roadmap Phase 11; only the shared contract is
- * defined here so providers, files, and viewers agree on the boundary. Viewers are
- * selected by matching content metadata and file format against declared support, and
- * provider metadata plus file extensions are treated as untrusted when matching.
+ * The full registry implementation arrives in roadmap Phase 11. The PDF reader matches
+ * files directly until then. Viewers are selected by matching content metadata and file
+ * format against declared support, and provider metadata plus file extensions are treated
+ * as untrusted when matching.
  */
 
 import type { ContentFile, ContentItem, ContentType } from './content';
