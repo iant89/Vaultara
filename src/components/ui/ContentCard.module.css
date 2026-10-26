@@ -1,0 +1,148 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  height: 100%;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background-color: transparent;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+/* Hover and focus-within are treated identically so keyboard users get the same reveal as
+ * pointer users (design spec 5.4). */
+.card:hover,
+.card:focus-within {
+  border-color: var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.artworkWrap {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.artwork {
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+
+.card:hover .artwork,
+.card:focus-within .artwork {
+  transform: scale(1.03);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  /* Two-line clamp keeps every card the same height without truncating to uselessness. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/*
+ * The title link expands to cover the whole card, giving one large, predictable hit area
+ * without nesting interactive elements. Toggles are siblings with a higher z-index.
+ */
+.titleLink {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.titleLink:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.titleLink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--radius-lg);
+}
+
+.description {
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  color: var(--color-text-subtle);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+
+.metaDot::before {
+  content: '·';
+  margin-right: var(--space-2);
+  color: var(--color-text-subtle);
+}
+
+.metaText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding: 0 var(--space-1);
+}
+
+.toggle {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 2;
+  background-color: rgb(11 13 16 / 76%);
+  backdrop-filter: blur(4px);
+}
+
+.toggle:hover:not(:disabled) {
+  background-color: rgb(11 13 16 / 92%);
+}
+
+.typeChip {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-subtle);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+}

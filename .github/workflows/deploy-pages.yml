@@ -1,0 +1,100 @@
+name: Deploy to GitHub Pages
+
+# Builds the application, verifies the artefact the way GitHub Pages will serve it, and
+# publishes it. Requires Settings -> Pages -> Source to be set to "GitHub Actions"; nothing is
+# pushed to a branch, so `gh-pages` does not exist and no build output is committed.
+#
+# Repository variables:
+#   PAGES_BASE_PATH - overrides the detected base path. Set it to `/` when the site is served
+#                     from a domain root (a custom domain, or a <owner>.github.io user site
+#                     whose repository name does not match).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. Queued runs are allowed to finish rather than cancelled, so a
+# deployment in flight is never left half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Verifies Node and npm against the versions this project declares, and confirms the
+      # installed packages match the lockfile. The browser is not needed here.
+      - name: Verify the toolchain
+        run: ./scripts/setup-deps.sh --check --no-browser
+
+      - name: Run quality gates
+        run: npm run check
+
+      # A project site is served from /<repository>/, a user site from /. Detecting this keeps
+      # the workflow correct without edits when the repository is renamed or forked.
+      - name: Determine the base path
+        id: base
+        env:
+          PAGES_BASE_PATH: ${{ vars.PAGES_BASE_PATH }}
+        run: |
+          set -euo pipefail
+          base="${PAGES_BASE_PATH:-}"
+          if [ -z "$base" ]; then
+            repo="${GITHUB_REPOSITORY#*/}"
+            if [[ "$repo" == *.github.io ]]; then
+              base="/"
+            else
+              base="/${repo}/"
+            fi
+          fi
+          echo "path=$base" >> "$GITHUB_OUTPUT"
+          echo "Building for base path: $base"
+
+      - name: Build
+        env:
+          VITE_BASE_PATH: ${{ steps.base.outputs.path }}
+        run: npm run build
+
+      # Fails if an asset URL would 404 on Pages, or if the 404.html routing fallback is stale.
+      - name: Verify the Pages artefact
+        run: npm run verify:pages
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the artefact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
