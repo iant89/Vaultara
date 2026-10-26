@@ -23,22 +23,26 @@ All development agents must follow this document when working on the repository.
 
 ## 2. Mandatory Engineering Rules
 
-1. Read `AGENTS.md`, `APPLICATION_DESIGN_SPECIFICATION.md`, and `mnemosync.md` before beginning meaningful development work.
+1. Read `AGENTS.md`, `APPLICATION_DESIGN_SPECIFICATION.md`, `TESTING_AND_REGRESSION_GUIDELINES.md`, and `mnemosync.md` before beginning meaningful development work.
 2. Inspect the existing repository before proposing or implementing architectural changes.
 3. Treat the existing implementation, configuration, tests, and package scripts as authoritative regarding what currently exists and works.
 4. Treat `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior and requirements.
-5. Preserve established architecture and coding conventions unless there is a documented reason to change them.
-6. Use React and TypeScript for application development.
-7. Use strict TypeScript and avoid `any`. Prefer explicit types, discriminated unions, and safe runtime validation.
-8. Build reusable, maintainable components rather than duplicating functionality.
-9. Keep provider-specific logic isolated from shared application functionality.
-10. Do not introduce unnecessary dependencies, frameworks, build tools, or architectural complexity.
-11. Do not claim that code works unless the relevant implementation has been inspected and verification has been performed.
-12. Do not silently remove existing functionality to make a change easier.
-13. Clearly distinguish implemented functionality from planned, partially implemented, mocked, or unverified functionality.
-14. Update documentation and `mnemosync.md` when significant implementation details, architectural decisions, or development state change.
-15. Never overwrite useful notebook information with a short, vague status update. Preserve important historical context.
-16. Protect existing user changes and avoid destructive Git operations without explicit authorization.
+5. Treat `TESTING_AND_REGRESSION_GUIDELINES.md` as the authoritative reference for testing strategy, regression prevention, verification procedures, and release quality gates.
+6. Preserve established architecture and coding conventions unless there is a documented reason to change them.
+7. Use React and TypeScript for application development.
+8. Use strict TypeScript and avoid `any`. Prefer explicit types, discriminated unions, and safe runtime validation.
+9. Build reusable, maintainable components rather than duplicating functionality.
+10. Keep provider-specific logic isolated from shared application functionality.
+11. Do not introduce unnecessary dependencies, frameworks, build tools, or architectural complexity.
+12. Do not claim that code works unless the relevant implementation has been inspected and verification has been performed.
+13. Do not silently remove existing functionality to make a change easier.
+14. Clearly distinguish implemented functionality from planned, partially implemented, mocked, or unverified functionality.
+15. Update documentation and `mnemosync.md` when significant implementation details, architectural decisions, test results, or development state change.
+16. Never overwrite useful notebook information with a short, vague status update. Preserve important historical context.
+17. Protect existing user changes and avoid destructive Git operations without explicit authorization.
+18. Add or update regression tests for bug fixes whenever practical.
+19. Select tests according to the change's impact and risk. Do not limit testing to the modified file when shared functionality may be affected.
+20. Report failed, blocked, and unexecuted checks accurately.
 
 When requirements conflict, prioritize security, correctness, data integrity, explicit user instructions, and established project conventions. Resolve conflicts with the design specification explicitly rather than silently ignoring requirements.
 
@@ -124,9 +128,10 @@ Keep the responsibilities of the root-level documentation files distinct:
 
 | File | Responsibility |
 |---|---|
-| `AGENTS.md` | Engineering rules, architectural constraints, agent behavior, and development workflow |
+| `AGENTS.md` | Engineering rules, coding standards, architectural constraints, and agent workflow |
 | `APPLICATION_DESIGN_SPECIFICATION.md` | Authoritative product requirements, intended functionality, architecture, workflows, and acceptance criteria |
-| `mnemosync.md` | Persistent engineering notebook containing implementation status, discoveries, decisions, known issues, and session handoffs |
+| `TESTING_AND_REGRESSION_GUIDELINES.md` | Testing strategy, regression prevention, verification procedures, and release quality gates |
+| `mnemosync.md` | Persistent engineering notebook containing implementation status, discoveries, decisions, known issues, test results, and session handoffs |
 | `README.md` | Project introduction, installation, configuration, usage, and developer onboarding |
 
 Do not duplicate large amounts of changing implementation detail across these documents.
@@ -154,10 +159,11 @@ Before beginning meaningful development work:
 
 1. Read `AGENTS.md`.
 2. Read `APPLICATION_DESIGN_SPECIFICATION.md`.
-3. Read `mnemosync.md`, if it exists.
-4. Inspect the relevant source files, configuration, and tests.
-5. Compare the notebook's descriptions with the current repository state.
-6. Identify outstanding tasks, known issues, architectural constraints, and recent decisions.
+3. Read `TESTING_AND_REGRESSION_GUIDELINES.md`.
+4. Read `mnemosync.md`, if it exists.
+5. Inspect the relevant source files, configuration, and tests.
+6. Compare the notebook's descriptions with the current repository state.
+7. Identify outstanding tasks, known issues, architectural constraints, and recent decisions.
 
 If `mnemosync.md` does not exist, create it using the structure described below.
 
@@ -213,6 +219,7 @@ Prefer concrete details over vague summaries.
 - Keep entries concise enough to scan while retaining the context needed to continue work.
 - Do not record routine, insignificant edits unless they affect future engineering decisions.
 - Keep current implementation status separate from intended requirements in `APPLICATION_DESIGN_SPECIFICATION.md`.
+- Record significant testing outcomes and regression risks, including any required checks that could not be performed.
 
 ### 4.5 Session Handoff Protocol
 
@@ -598,55 +605,89 @@ When choosing a library, consider maintenance status, security, licensing, bundl
 
 ---
 
-## 12. Testing and Verification
+## 12. Testing and Regression Requirements
 
-Testing must reflect the scope and risk of the change.
+The root-level file `TESTING_AND_REGRESSION_GUIDELINES.md` defines the detailed testing and regression-prevention process.
 
-### 12.1 Required Checks
+All developers and AI coding agents must follow it when implementing features, fixing bugs, refactoring code, changing dependencies, or modifying shared interfaces.
 
-Use the commands defined by the repository's `package.json` and documentation.
+### 12.1 Required Testing Behavior
 
-Run relevant checks, such as:
+- Determine the expected behavior from `APPLICATION_DESIGN_SPECIFICATION.md`.
+- Assess the impact and risk of the proposed change.
+- Inspect existing tests and available package scripts.
+- Add or update tests for changed behavior where practical.
+- Add regression tests for bug fixes whenever practical.
+- Test relevant failure paths, not only successful operations.
+- Select tests based on dependency impact rather than only the modified file.
+- Run broader regression checks for changes to shared state, routing, provider contracts, persistence, viewers, or security boundaries.
+- Preserve unrelated user modifications and existing test fixtures.
+- Record significant verification results and unresolved failures in `mnemosync.md`.
 
-- TypeScript type checking
-- Linting
+### 12.2 Testing Layers
+
+Use the testing layers appropriate to the change:
+
+- Static analysis and TypeScript checks
 - Unit tests
-- Component or integration tests
-- Production builds
-- Browser tests
-- Manual responsive and accessibility checks when appropriate
+- Component tests
+- Integration tests
+- End-to-end tests
+- Manual browser, responsive, accessibility, and security testing
 
-Do not invent command names. Inspect the available scripts first.
+Do not introduce a new testing framework without examining the existing setup and justifying the added complexity.
 
-### 12.2 Testing Expectations
+### 12.3 Regression Prevention
 
-Test:
+- Reproduce a bug with a test before fixing it when practical.
+- Verify that the test fails for the original defect and passes after the fix when the test environment permits.
+- Test important consumers of modified shared interfaces.
+- Verify that unrelated providers and features remain functional.
+- Do not alter correct tests merely to accommodate incorrect behavior.
+- Do not hide, delete, or permanently disable failing tests without documenting and justifying the change.
+- Treat flaky tests as defects requiring investigation.
 
-- Successful operation
-- Loading states
-- Empty states
-- Network failures
-- Malformed provider responses
-- Partial provider failures
-- Invalid or unsupported files
-- Responsive behavior
-- Keyboard interaction
-- Persistence and restoration
-- Relevant security boundaries
+### 12.4 Verification Accuracy
 
-For changes to provider or viewer interfaces, verify both the affected integration and shared behavior that depends on it.
+Report test results truthfully.
 
-For bug fixes, add a regression test where practical.
+Use these statuses when appropriate:
 
-If a check fails:
+- **PASS:** The check was executed and passed.
+- **FAIL:** The check was executed and failed.
+- **BLOCKED:** The check could not run because of an identified blocker.
+- **NOT RUN:** The check was not executed.
+- **PARTIAL:** Only part of the intended verification was completed.
 
-1. Capture the relevant error.
-2. Determine whether the failure was introduced by the change.
-3. Fix the problem or document why it remains unresolved.
-4. Rerun the relevant verification.
-5. Record unresolved failures in `mnemosync.md`.
+Never claim that a test, build, security check, or browser workflow passed unless it was actually verified.
 
-Never claim that the application builds, tests pass, or a feature is verified without supporting evidence.
+### 12.5 Risk-Based Testing
+
+Select verification based on the potential impact of the change.
+
+- **LOW:** Isolated styling or copy changes with minimal behavioral impact.
+- **MEDIUM:** Component behavior, local state, utilities, or an isolated viewer.
+- **HIGH:** Shared state, routing, provider interfaces, persistence, or viewer registry changes.
+- **CRITICAL:** Authentication, untrusted-content execution, download security, major data migrations, or application-wide architectural changes.
+
+These classifications are guidance. Increase test coverage when dependencies, uncertainty, or potential consequences justify it.
+
+### 12.6 Final Testing Report
+
+For meaningful changes, report:
+
+- What changed
+- Risk level
+- Tests and commands executed
+- Actual results
+- Regression coverage
+- Known failures
+- Unverified behavior
+- Remaining risks
+
+Update `mnemosync.md` with important test outcomes and actionable follow-up work.
+
+For complete testing procedures, test matrices, provider contract tests, viewer regression checks, security tests, and release acceptance gates, follow `TESTING_AND_REGRESSION_GUIDELINES.md`.
 
 ---
 
@@ -668,13 +709,14 @@ When encountering uncommitted changes, assume they may belong to the user and pr
 
 ## 14. Documentation Requirements
 
-Update documentation when implementation changes affect how the application is built, used, configured, or extended.
+Update documentation when implementation changes affect how the application is built, used, configured, tested, or extended.
 
 Relevant documentation may include:
 
 - `README.md`
 - `AGENTS.md`
 - `APPLICATION_DESIGN_SPECIFICATION.md`
+- `TESTING_AND_REGRESSION_GUIDELINES.md`
 - `mnemosync.md`
 - Architecture documentation
 - Provider integration guides
@@ -687,10 +729,13 @@ Keep the responsibilities of these files distinct:
 
 - **`AGENTS.md`:** Stable instructions, engineering standards, architectural constraints, and agent workflow requirements.
 - **`APPLICATION_DESIGN_SPECIFICATION.md`:** Authoritative application requirements, intended functionality, architecture, and product design.
+- **`TESTING_AND_REGRESSION_GUIDELINES.md`:** Testing procedures, regression prevention, verification standards, and release quality gates.
 - **`mnemosync.md`:** Evolving engineering context, current implementation status, discoveries, decisions, issues, and session handoffs.
 - **`README.md`:** Project overview, setup, usage, and general developer onboarding.
 
 Do not duplicate large amounts of changing implementation detail across multiple documents when a single authoritative location is sufficient.
+
+Update `TESTING_AND_REGRESSION_GUIDELINES.md` when the approved testing strategy or regression requirements change. Record session-specific test results in `mnemosync.md` rather than continually adding execution logs to the testing guidelines.
 
 ---
 
@@ -702,6 +747,7 @@ For every meaningful development task, follow this process.
 
 - Read `AGENTS.md`.
 - Read `APPLICATION_DESIGN_SPECIFICATION.md`.
+- Read `TESTING_AND_REGRESSION_GUIDELINES.md`.
 - Read `mnemosync.md`.
 - Inspect the current Git status.
 - Identify the relevant source files, tests, and dependencies.
@@ -714,6 +760,7 @@ For every meaningful development task, follow this process.
 - Review existing implementation patterns.
 - Identify dependencies, risks, and edge cases.
 - Determine whether the requested behavior is already implemented.
+- Review related tests and known regressions.
 - Clarify genuinely blocking ambiguities before making assumptions that could cause substantial rework.
 
 ### Step 3: Plan
@@ -722,6 +769,7 @@ For every meaningful development task, follow this process.
 - Identify required code, tests, and documentation changes.
 - Preserve existing architecture unless a change is justified.
 - Consider failure handling, accessibility, security, and responsive behavior.
+- Assess the regression risk and identify dependent workflows.
 - Identify any deviations from the design specification and resolve them explicitly.
 
 ### Step 4: Implement
@@ -732,22 +780,30 @@ For every meaningful development task, follow this process.
 - Avoid unrelated refactoring.
 - Preserve existing user work.
 - Follow the approved product requirements.
+- Add or update regression tests where practical.
 
 ### Step 5: Verify
 
-- Run relevant tests and checks.
+- Run targeted tests.
+- Run broader regression tests according to risk and dependency impact.
+- Run relevant type checks, linting, and build checks.
+- Test failure paths and edge cases where appropriate.
 - Inspect the final diff.
 - Confirm that the implementation matches the requirement.
 - Confirm that relevant acceptance criteria have been addressed.
 - Identify anything that remains unverified.
 
+Follow `TESTING_AND_REGRESSION_GUIDELINES.md` for detailed test selection, execution, and reporting requirements.
+
 ### Step 6: Update Documentation and Notebook
 
 - Update `APPLICATION_DESIGN_SPECIFICATION.md` only when approved product requirements change.
+- Update `TESTING_AND_REGRESSION_GUIDELINES.md` when approved testing procedures or standards change.
 - Record significant implementation changes in `mnemosync.md`.
 - Update current status and outstanding tasks.
 - Capture important discoveries and decisions.
 - Document failed checks and unresolved risks.
+- Record the actual verification performed.
 - Provide clear next steps for a future session.
 
 ### Step 7: Report
@@ -762,7 +818,7 @@ Provide a concise but useful summary that includes:
 - Known limitations or outstanding issues
 - Recommended next steps, if applicable
 
-Be explicit about incomplete work. Never describe a proposed implementation as completed functionality.
+Be explicit about incomplete work. Never describe a proposed implementation as completed functionality or unexecuted tests as successful verification.
 
 ---
 
@@ -776,11 +832,12 @@ When choosing between competing implementation approaches, prioritize:
 4. Conformance to approved product requirements
 5. Maintainability and architectural consistency
 6. Reliability and error recovery
-7. Accessibility and responsive usability
-8. Performance
-9. Development simplicity
-10. Visual polish
-11. Optional enhancements
+7. Regression prevention and testability
+8. Accessibility and responsive usability
+9. Performance
+10. Development simplicity
+11. Visual polish
+12. Optional enhancements
 
 Do not sacrifice security or correctness for convenience or superficial UI improvements.
 
@@ -798,15 +855,20 @@ A task is complete only when the applicable requirements have been satisfied.
 - [ ] TypeScript types and interfaces are consistent.
 - [ ] Relevant error and edge cases are handled.
 - [ ] Security and provider restrictions have been considered.
-- [ ] Responsive behavior and accessibility have been addressed where applicable.
-- [ ] Relevant tests and checks have been run.
+- [ ] Regression risk and affected dependencies have been assessed.
+- [ ] Relevant tests have been added or updated where practical.
+- [ ] Targeted tests have been executed.
+- [ ] Broader regression checks have been performed according to risk.
+- [ ] Relevant static analysis and build checks have been executed.
 - [ ] Verification results are accurately reported.
 - [ ] No unrelated user changes have been overwritten.
 - [ ] Relevant documentation has been updated.
-- [ ] `mnemosync.md` has been updated with meaningful discoveries, status changes, and handoff information.
-- [ ] Outstanding limitations are documented.
+- [ ] `mnemosync.md` has been updated with meaningful discoveries, status changes, verification results, and handoff information.
+- [ ] Outstanding limitations and unverified behavior are documented.
 
 Not every checkbox applies to every task. Any inapplicable item should be assessed according to the change's scope and risk rather than treated as a reason to skip relevant verification.
+
+Follow `TESTING_AND_REGRESSION_GUIDELINES.md` for the detailed testing completion criteria and release gates.
 
 ---
 
@@ -814,8 +876,8 @@ Not every checkbox applies to every task. Any inapplicable item should be assess
 
 Work as a careful, context-aware software engineer.
 
-Understand the existing codebase before changing it. Read the authoritative application design specification before implementing meaningful features. Make focused, type-safe, maintainable changes. Verify results rather than assuming success. Preserve user work and document important decisions.
+Understand the existing codebase before changing it. Read the authoritative application design specification before implementing meaningful features. Follow the testing and regression guidelines when modifying code. Make focused, type-safe, maintainable changes. Verify results rather than assuming success. Preserve user work and document important decisions.
 
-**Always use `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior and `mnemosync.md` as the persistent engineering notebook that carries technical knowledge, implementation status, discoveries, and actionable handoff notes into future development sessions.**
+**Always use `APPLICATION_DESIGN_SPECIFICATION.md` as the authoritative reference for intended application behavior, `TESTING_AND_REGRESSION_GUIDELINES.md` as the authoritative reference for testing and regression prevention, and `mnemosync.md` as the persistent engineering notebook that carries technical knowledge, implementation status, discoveries, verification results, and actionable handoff notes into future development sessions.**
 
-The objective is not merely to make the current change work. It is to ensure Vaultara remains aligned with its approved design, understandable, secure, extensible, and maintainable as development continues across multiple sessions and contributors.
+The objective is to ensure Vaultara remains aligned with its approved design, thoroughly tested, secure, understandable, extensible, and maintainable as development continues across multiple sessions and contributors.
