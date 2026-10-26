@@ -1,0 +1,118 @@
+.viewer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  position: relative;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  position: sticky;
+  top: calc(var(--nav-height) + var(--space-2));
+  z-index: var(--z-sticky);
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.status {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  min-height: var(--touch-target);
+  display: inline-flex;
+  align-items: center;
+  overflow-wrap: anywhere;
+  max-width: 28rem;
+}
+
+.field {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.select,
+.slider,
+.seek {
+  min-height: var(--touch-target);
+  accent-color: var(--color-accent);
+}
+
+.select {
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.slider {
+  width: 8rem;
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.download:hover {
+  background-color: var(--color-surface-hover);
+  text-decoration: none;
+}
+
+.stage {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.video {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 48rem);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.seekLabel {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-subtle);
+}
+
+.seek {
+  width: 100%;
+}
+
+.hint {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}

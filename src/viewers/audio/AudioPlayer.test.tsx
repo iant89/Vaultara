@@ -95,6 +95,48 @@ describe('AudioPlayer', () => {
     expect(document.querySelector('canvas')).toBeNull();
   });
 
+  it('records playback position when the audio pauses', async () => {
+    const onProgressChange = vi.fn();
+    render(
+      <AudioPlayer
+        item={item}
+        files={[track]}
+        activeFileId="theme.wav"
+        onProgressChange={onProgressChange}
+        loadWaveform={async () => peaks}
+      />,
+    );
+
+    await screen.findByRole('slider', { name: 'Seek' });
+    document.querySelector('audio')?.dispatchEvent(new Event('pause'));
+
+    expect(onProgressChange).toHaveBeenCalledWith(expect.objectContaining({ kind: 'audio' }));
+  });
+
+  it('aborts the waveform fetch and pauses when the player unmounts', async () => {
+    let signal: AbortSignal | undefined;
+    const loadWaveform = vi.fn((_url: string, _bars: number, next: AbortSignal) => {
+      signal = next;
+      return new Promise<Float32Array>(() => undefined);
+    });
+    const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    const { unmount } = render(
+      <AudioPlayer
+        item={item}
+        files={[track]}
+        activeFileId="theme.wav"
+        loadWaveform={loadWaveform}
+      />,
+    );
+
+    await waitFor(() => expect(loadWaveform).toHaveBeenCalled());
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+    expect(pause).toHaveBeenCalled();
+    pause.mockRestore();
+  });
+
   it('does not fetch a waveform for a huge file', () => {
     const loadWaveform = vi.fn(async () => peaks);
     render(

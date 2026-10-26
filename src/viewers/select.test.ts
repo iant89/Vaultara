@@ -93,19 +93,62 @@ describe('selectViewer', () => {
     expect(selection?.file.id).toBe('theme.wav');
   });
 
-  it('falls back to the generic viewer for a video', () => {
+  it('selects the book reader for an EPUB and leaves PDFs to the PDF reader', () => {
+    const item = makeItem({ type: 'book' });
+    const epub = makeFile({
+      id: 'alice.epub',
+      name: 'alice.epub',
+      mimeType: 'application/epub+zip',
+      downloadUrl: 'https://archive.org/download/alice/alice.epub',
+    });
+    const pdf = makeFile({
+      id: 'alice.pdf',
+      name: 'alice.pdf',
+      mimeType: 'application/pdf',
+      downloadUrl: 'https://archive.org/download/alice/alice.pdf',
+    });
+
+    expect(selectViewer(registry, item, [epub])?.viewer.descriptor.id).toBe('book');
+    expect(selectViewer(registry, item, [pdf])?.viewer.descriptor.id).toBe('pdf');
+    expect(selectViewer(registry, item, [pdf], 'alice.pdf')?.viewer.descriptor.id).toBe('pdf');
+  });
+
+  it('selects the video player for an MP4 and prefers the original over a 512kb copy', () => {
     const item = makeItem({ type: 'movie' });
-    const video = makeFile({
+    const derivative = makeFile({
+      id: 'clip_512kb.mp4',
+      name: 'clip_512kb.mp4',
+      mimeType: 'video/mp4',
+      downloadUrl: 'https://archive.org/download/film/clip_512kb.mp4',
+      metadata: { format: '512Kb MPEG4' },
+    });
+    const original = makeFile({
       id: 'clip.mp4',
       name: 'clip.mp4',
       mimeType: 'video/mp4',
       downloadUrl: 'https://archive.org/download/film/clip.mp4',
+      metadata: { source: 'original', format: 'h.264 IA' },
+    });
+
+    const selection = selectViewer(registry, item, [derivative, original]);
+
+    expect(selection?.viewer.descriptor.id).toBe('video');
+    expect(selection?.file.id).toBe('clip.mp4');
+  });
+
+  it('falls back to the generic viewer for Matroska', () => {
+    const item = makeItem({ type: 'movie' });
+    const video = makeFile({
+      id: 'clip.mkv',
+      name: 'clip.mkv',
+      mimeType: 'video/x-matroska',
+      downloadUrl: 'https://archive.org/download/film/clip.mkv',
     });
 
     const selection = selectViewer(registry, item, [video]);
 
     expect(selection?.viewer.descriptor.id).toBe('generic');
-    expect(selection?.file.id).toBe('clip.mp4');
+    expect(selection?.file.id).toBe('clip.mkv');
   });
 
   it('returns undefined when there are no files or no viewers', () => {

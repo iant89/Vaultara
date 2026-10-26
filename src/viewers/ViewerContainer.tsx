@@ -218,7 +218,7 @@ export function ViewerContainer({
         <div ref={stageRef} className={styles.stage}>
           <Viewer
             item={item}
-            files={selection.files}
+            files={files}
             activeFileId={selection.file.id}
             {...(initialProgress !== undefined ? { initialProgress } : {})}
             onSelectFile={onSelectFile}

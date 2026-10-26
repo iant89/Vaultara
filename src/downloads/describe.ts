@@ -1,7 +1,9 @@
 import type { DownloadRecord, DownloadStatus } from '../models/download';
 import { canPlayAudio } from '../viewers/audio/isAudioFile';
+import { canReadBook } from '../viewers/book/isBookFile';
 import { canViewImage } from '../viewers/image/isImageFile';
 import { canReadPdf } from '../viewers/pdf/isPdfFile';
+import { canPlayVideo } from '../viewers/video/isVideoFile';
 
 export interface DownloadAccess {
   readonly name: string;
@@ -67,12 +69,20 @@ export function describeViewerCompatibility(
     return 'In-app reader';
   }
 
+  if (canReadBook(file)) {
+    return 'In-app book';
+  }
+
   if (canViewImage(file)) {
     return 'In-app gallery';
   }
 
   if (canPlayAudio(file)) {
     return 'In-app player';
+  }
+
+  if (canPlayVideo(file)) {
+    return 'In-app video';
   }
 
   return 'No in-app viewer';

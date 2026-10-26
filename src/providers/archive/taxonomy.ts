@@ -96,6 +96,7 @@ const EXTENSION_MIME_TYPE: Readonly<Record<string, string>> = {
   ogv: 'video/ogg',
   mpg: 'video/mpeg',
   mpeg: 'video/mpeg',
+  vtt: 'text/vtt',
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
@@ -144,8 +145,8 @@ export function resolveMimeType(format: unknown, fileName: string): string | und
 /**
  * Formats a browser can present without a dedicated viewer.
  *
- * EPUB and DjVu stay excluded: they still need viewers this app does not have. PDF is handled
- * separately by `isAppViewable` because the in-app reader exists.
+ * DjVu stays excluded: it still needs a viewer this app does not have. PDF and EPUB are handled
+ * separately by `isAppViewable` because in-app readers exist.
  */
 const BROWSER_DISPLAYABLE_MIME_TYPES: ReadonlySet<string> = new Set([
   'image/jpeg',
@@ -170,7 +171,11 @@ export function isPdfMimeType(mimeType: string | undefined): boolean {
   return mimeType === 'application/pdf';
 }
 
-/** Formats this app can present today: native media plus the PDF reader. */
+export function isEpubMimeType(mimeType: string | undefined): boolean {
+  return mimeType === 'application/epub+zip' || mimeType === 'application/epub';
+}
+
+/** Formats this app can present today: native media plus the PDF and book readers. */
 export function isAppViewable(mimeType: string | undefined): boolean {
-  return isBrowserDisplayable(mimeType) || isPdfMimeType(mimeType);
+  return isBrowserDisplayable(mimeType) || isPdfMimeType(mimeType) || isEpubMimeType(mimeType);
 }

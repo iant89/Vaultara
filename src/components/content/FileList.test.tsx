@@ -79,7 +79,28 @@ describe('FileList', () => {
     expect(screen.getByText(/In-app player/)).toBeInTheDocument();
   });
 
-  it('does not offer Read for a video or a restricted PDF', () => {
+  it('offers Read for a downloadable EPUB', () => {
+    renderList([
+      makeFile({
+        id: 'alice.epub',
+        providerId: 'archive',
+        itemId: 'alice',
+        name: 'alice.epub',
+        mimeType: 'application/epub+zip',
+        extension: 'epub',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/alice/alice.epub',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'Read alice.epub' })).toHaveAttribute(
+      'href',
+      '/viewer/archive/alice?file=alice.epub',
+    );
+    expect(screen.getByText(/In-app book/)).toBeInTheDocument();
+  });
+
+  it('offers Watch for a downloadable video', () => {
     renderList([
       makeFile({
         id: 'clip.mp4',
@@ -87,8 +108,29 @@ describe('FileList', () => {
         itemId: 'film',
         name: 'clip.mp4',
         mimeType: 'video/mp4',
+        extension: 'mp4',
         downloadAvailable: true,
         downloadUrl: 'https://archive.org/download/film/clip.mp4',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'Watch clip.mp4' })).toHaveAttribute(
+      'href',
+      '/viewer/archive/film?file=clip.mp4',
+    );
+    expect(screen.getByText(/In-app video/)).toBeInTheDocument();
+  });
+
+  it('does not offer Read for a Matroska file or a restricted PDF', () => {
+    renderList([
+      makeFile({
+        id: 'clip.mkv',
+        providerId: 'archive',
+        itemId: 'film',
+        name: 'clip.mkv',
+        mimeType: 'video/x-matroska',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/film/clip.mkv',
       }),
       makeFile({
         id: 'lend.pdf',
@@ -101,7 +143,7 @@ describe('FileList', () => {
     ]);
 
     expect(screen.queryByRole('link', { name: /Read / })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Download clip.mp4' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Download clip.mkv' })).toBeInTheDocument();
     expect(screen.getByText('Not downloadable')).toBeInTheDocument();
     expect(screen.getAllByText(/No in-app viewer/)).toHaveLength(2);
   });

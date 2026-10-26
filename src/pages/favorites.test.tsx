@@ -201,6 +201,32 @@ describe('favorites page', () => {
     expect(screen.getByText('Nothing saved yet')).toBeInTheDocument();
   });
 
+  it('offers a resume link when book progress exists', async () => {
+    const { backend, session } = await signedInBackend();
+    await backend.putContentState(session.sessionId, {
+      providerId: ARCHIVE,
+      itemId: 'alice',
+      liked: false,
+      favorited: true,
+      explored: true,
+      favoritedAt: '2026-10-26T00:00:00.000Z',
+      snapshot: { title: 'Alice in Wonderland', type: 'document' },
+      progress: {
+        kind: 'book',
+        chapterId: 'c1',
+        positionPercent: 20,
+        updatedAt: '2026-10-26T01:00:00.000Z',
+      },
+    });
+
+    renderAt('/favorites', backend);
+
+    expect(await screen.findByRole('link', { name: 'Resume' })).toHaveAttribute(
+      'href',
+      `/viewer/${ARCHIVE}/alice`,
+    );
+  });
+
   it('offers a resume link when PDF progress exists', async () => {
     const { backend, session } = await signedInBackend();
     await backend.putContentState(session.sessionId, {

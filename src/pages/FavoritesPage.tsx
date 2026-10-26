@@ -154,7 +154,10 @@ function FavoriteCard({ state }: { readonly state: StoredContentState }) {
       : {}),
   };
   const display = item.state.status === 'ready' ? item.state.value : fallback;
-  const resumeHref = state.progress?.kind === 'pdf' ? buildViewerPath(state) : undefined;
+  const resumeHref =
+    state.progress?.kind === 'pdf' || state.progress?.kind === 'book'
+      ? buildViewerPath(state)
+      : undefined;
 
   return (
     <SavedItemCard

@@ -13,13 +13,19 @@ function file(
 }
 
 describe('isAudioFile', () => {
-  it('accepts MP3, Ogg, WAV, and FLAC by MIME, extension, or name', () => {
+  it('accepts MP3, Ogg, WAV, FLAC, M4A, and AAC by MIME, extension, or name', () => {
     expect(isAudioFile(file({ mimeType: 'audio/mpeg', name: 'take' }))).toBe(true);
     expect(isAudioFile(file({ mimeType: undefined, extension: 'ogg', name: 'take' }))).toBe(true);
     expect(isAudioFile(file({ mimeType: undefined, extension: undefined, name: 'Take.WAV' }))).toBe(
       true,
     );
     expect(isAudioFile(file({ mimeType: 'audio/flac', name: 'take.flac' }))).toBe(true);
+    expect(isAudioFile(file({ mimeType: 'audio/mp4', extension: 'm4a', name: 'take.m4a' }))).toBe(
+      true,
+    );
+    expect(isAudioFile(file({ mimeType: 'audio/aac', extension: 'aac', name: 'take.aac' }))).toBe(
+      true,
+    );
   });
 
   it('rejects video, MIDI, and documents', () => {
