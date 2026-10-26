@@ -48,8 +48,14 @@ export function buildDiscoverablePath(item: {
   return buildItemPath({ providerId: item.providerId, itemId: item.id });
 }
 
-export function buildViewerPath(identity: ContentIdentity): string {
-  return `/viewer/${encodeSegment(identity.providerId)}/${encodeSegment(identity.itemId)}`;
+export function buildViewerPath(identity: ContentIdentity, fileId?: string): string {
+  const path = `/viewer/${encodeSegment(identity.providerId)}/${encodeSegment(identity.itemId)}`;
+
+  if (fileId === undefined || fileId.length === 0) {
+    return path;
+  }
+
+  return `${path}?file=${encodeSegment(fileId)}`;
 }
 
 export function buildSearchPath(query?: string): string {

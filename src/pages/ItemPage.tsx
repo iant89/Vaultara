@@ -292,9 +292,9 @@ export function ItemPage() {
               ) : null}
 
               <NotYetImplemented
-                feature="Favourites and in-browser viewing"
-                summary="Saving this item, resuming it later, and reading or playing it inside the app arrive with favourites and the viewer registry. Until then, the provider's own page and its file links are the way through."
-                plannedPhase="Phases 8 and 11"
+                feature="Favourites and other viewers"
+                summary="Saving this item and resuming it later arrive with favourites. Audio, video, EPUB, and image viewers are not in this app yet. A downloadable PDF in the list above can be opened with Read."
+                plannedPhase="Phases 8, 11, and 12"
               />
             </>
           );

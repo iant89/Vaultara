@@ -25,7 +25,7 @@ import {
   normalizeText,
   normalizeTags,
 } from '../normalize';
-import { isBrowserDisplayable, resolveFileExtension, resolveMimeType } from './taxonomy';
+import { isAppViewable, resolveFileExtension, resolveMimeType } from './taxonomy';
 
 export const ARCHIVE_PROVIDER_ID = 'archive';
 
@@ -331,7 +331,7 @@ function mapFile(
   const extension = resolveFileExtension(name);
   const sizeBytes = parseByteSize(record['size']);
   const checksum = parseChecksum(record);
-  const viewable = downloadAvailable && isBrowserDisplayable(mimeType);
+  const viewable = downloadAvailable && isAppViewable(mimeType);
 
   return normalizeContentFile(
     {

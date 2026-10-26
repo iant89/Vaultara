@@ -1,5 +1,8 @@
+import { Link } from 'react-router-dom';
 import type { ContentFile } from '../../models/content';
 import { formatByteSize } from '../../utils/format';
+import { buildViewerPath } from '../../utils/links';
+import { canReadPdf } from '../../viewers/pdf/isPdfFile';
 import styles from './FileList.module.css';
 
 interface FileListProps {
@@ -17,7 +20,8 @@ function describe(file: ContentFile): string {
  *
  * Restriction is stated per file rather than per item: an item can be readable while its files are
  * not downloadable, and a file that cannot be fetched shows why instead of a disabled control.
- * Download links open the provider's own URL in a new tab, which is also the attribution trail.
+ * Downloadable PDFs also get a Read link into the in-app viewer. Download links open the
+ * provider's own URL in a new tab, which is also the attribution trail.
  */
 export function FileList({ files }: FileListProps) {
   if (files.length === 0) {
@@ -37,20 +41,34 @@ export function FileList({ files }: FileListProps) {
               {summary.length > 0 ? <span className={styles.meta}>{summary}</span> : null}
             </div>
 
-            {canDownload ? (
-              <a
-                className={styles.action}
-                href={file.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Download
-                {/* Distinguishes repeated "Download" links for screen-reader users. */}
-                <span className="sr-only"> {file.name}</span>
-              </a>
-            ) : (
-              <span className={styles.restricted}>Not downloadable</span>
-            )}
+            <div className={styles.actions}>
+              {canReadPdf(file) ? (
+                <Link
+                  className={styles.action}
+                  to={buildViewerPath(
+                    { providerId: file.providerId, itemId: file.itemId },
+                    file.id,
+                  )}
+                  aria-label={`Read ${file.name}`}
+                >
+                  Read
+                </Link>
+              ) : null}
+
+              {canDownload ? (
+                <a
+                  className={styles.action}
+                  href={file.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Download ${file.name}`}
+                >
+                  Download
+                </a>
+              ) : (
+                <span className={styles.restricted}>Not downloadable</span>
+              )}
+            </div>
           </li>
         );
       })}

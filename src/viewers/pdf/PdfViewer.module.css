@@ -1,0 +1,201 @@
+.viewer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  position: sticky;
+  top: calc(var(--nav-height) + var(--space-2));
+  z-index: var(--z-sticky);
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.select {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.pageStatus {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  min-height: var(--touch-target);
+  display: inline-flex;
+  align-items: center;
+}
+
+.hint {
+  flex: 1 1 12rem;
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+}
+
+.stage {
+  display: grid;
+  min-width: 0;
+  min-height: min(70vh, 48rem);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.spread {
+  display: grid;
+  grid-template-columns: repeat(var(--book-columns, 2), minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 0;
+  perspective: 1200px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns, 2), minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.paper {
+  position: relative;
+  /* Paper is the PDF's own surface, not an application chrome colour. */
+  background-color: #fff;
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+}
+
+.turning {
+  animation: pageTurn var(--duration-slow) var(--ease-standard);
+}
+
+@keyframes pageTurn {
+  from {
+    transform: rotateY(-12deg);
+    opacity: 0.7;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.replacedLine {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  line-height: 1;
+  white-space: pre-wrap;
+  transform-origin: left top;
+}
+
+.pageButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.pageButton:hover {
+  border-color: var(--color-accent);
+}
+
+.lightbox {
+  width: min(96vw, 90rem);
+  height: min(96vh, 90rem);
+  max-width: none;
+  max-height: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.lightbox::backdrop {
+  background-color: rgb(0 0 0 / 80%);
+}
+
+.lightboxBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-2);
+}
+
+.lightboxStage {
+  min-height: 0;
+  height: calc(100% - var(--touch-target) - var(--space-2));
+  display: grid;
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.download:hover {
+  background-color: var(--color-surface-hover);
+  text-decoration: none;
+}

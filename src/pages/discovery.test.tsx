@@ -44,6 +44,14 @@ const CATEGORIES: readonly ContentCategory[] = [
   }),
 ];
 
+const BOOK: ContentItem = makeItem({
+  id: 'alice_in_wonderland',
+  providerId: ARCHIVE,
+  title: 'Alice in Wonderland',
+  type: 'document',
+  sourceUrl: 'https://archive.org/details/alice_in_wonderland',
+});
+
 const ITEM: ContentItem = makeItem({
   id: 'night_of_the_living_dead',
   providerId: ARCHIVE,
@@ -200,17 +208,19 @@ function createHarness() {
     },
   );
 
-  const getItem = vi.fn(async (itemId: string) =>
-    itemId === 'SciFi_Horror'
-      ? makeItem({
-          id: 'SciFi_Horror',
-          providerId: ARCHIVE,
-          title: 'Sci-Fi / Horror',
-          type: 'collection',
-          categories: ['feature_films'],
-        })
-      : ITEM,
-  );
+  const getItem = vi.fn(async (itemId: string) => {
+    if (itemId === 'SciFi_Horror') {
+      return makeItem({
+        id: 'SciFi_Horror',
+        providerId: ARCHIVE,
+        title: 'Sci-Fi / Horror',
+        type: 'collection',
+        categories: ['feature_films'],
+      });
+    }
+
+    return itemId === BOOK.id ? BOOK : ITEM;
+  });
   const getRelatedItems = vi.fn(async (_itemId: string, options?: { page?: number }) => {
     const page = options?.page ?? 1;
 
@@ -228,18 +238,34 @@ function createHarness() {
       { page, pageSize: 12, total: 30 },
     );
   });
-  const getAvailableFiles = vi.fn(async () => [
-    makeFile({
-      id: 'night_of_the_living_dead.mp4',
-      providerId: ARCHIVE,
-      itemId: ITEM.id,
-      name: 'night_of_the_living_dead.mp4',
-      mimeType: 'video/mp4',
-      sizeBytes: 1_048_576,
-      downloadAvailable: true,
-      downloadUrl: `https://archive.org/download/${ITEM.id}/night_of_the_living_dead.mp4`,
-    }),
-  ]);
+  const getAvailableFiles = vi.fn(async (itemId: string) =>
+    itemId === BOOK.id
+      ? [
+          makeFile({
+            id: 'alice.pdf',
+            providerId: ARCHIVE,
+            itemId: BOOK.id,
+            name: 'alice.pdf',
+            mimeType: 'application/pdf',
+            extension: 'pdf',
+            sizeBytes: 204_800,
+            downloadAvailable: true,
+            downloadUrl: `https://archive.org/download/${BOOK.id}/alice.pdf`,
+          }),
+        ]
+      : [
+          makeFile({
+            id: 'night_of_the_living_dead.mp4',
+            providerId: ARCHIVE,
+            itemId: ITEM.id,
+            name: 'night_of_the_living_dead.mp4',
+            mimeType: 'video/mp4',
+            sizeBytes: 1_048_576,
+            downloadAvailable: true,
+            downloadUrl: `https://archive.org/download/${ITEM.id}/night_of_the_living_dead.mp4`,
+          }),
+        ],
+  );
   const getCategories = vi.fn(async () => CATEGORIES);
 
   const registry = new ProviderRegistry();
@@ -542,6 +568,11 @@ describe('item page', () => {
       'href',
       `https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead.mp4`,
     );
+    expect(
+      within(filesSection.closest('section') as HTMLElement).queryByRole('link', {
+        name: /Read /,
+      }),
+    ).not.toBeInTheDocument();
 
     expect(
       screen.getByRole('link', { name: /View this item on Internet Archive/ }),
@@ -592,5 +623,29 @@ describe('item page', () => {
     renderAt(`/item/${ARCHIVE}/missing-item`, services);
 
     expect(await screen.findByText('Item not found')).toBeInTheDocument();
+  });
+
+  it('offers Read on a downloadable PDF', async () => {
+    const { services } = createHarness();
+    renderAt(`/item/${ARCHIVE}/${BOOK.id}`, services);
+
+    expect(await screen.findByRole('heading', { level: 1, name: BOOK.title })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Read alice.pdf' })).toHaveAttribute(
+      'href',
+      `/viewer/${ARCHIVE}/${BOOK.id}?file=alice.pdf`,
+    );
+  });
+});
+
+describe('viewer page', () => {
+  it('says when the item has no PDF the app can read', async () => {
+    const { services } = createHarness();
+    renderAt(`/viewer/${ARCHIVE}/${ITEM.id}`, services);
+
+    expect(await screen.findByText('No PDF this app can read')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to item details' })).toHaveAttribute(
+      'href',
+      `/item/${ARCHIVE}/${ITEM.id}`,
+    );
   });
 });

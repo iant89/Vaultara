@@ -12,6 +12,7 @@ import {
   stripHtml,
 } from './map';
 import {
+  isAppViewable,
   isBrowserDisplayable,
   mapMediatype,
   resolveFileExtension,
@@ -86,12 +87,14 @@ describe('taxonomy', () => {
     expect(resolveFileExtension('SCAN.JPG')).toBe('jpg');
   });
 
-  it('only treats browser-native media as viewable', () => {
+  it('only treats browser-native media as viewable without a dedicated reader', () => {
     expect(isBrowserDisplayable('image/jpeg')).toBe(true);
     expect(isBrowserDisplayable('audio/mpeg')).toBe(true);
-    // A PDF needs a viewer that does not exist yet (roadmap Phase 8).
     expect(isBrowserDisplayable('application/pdf')).toBe(false);
     expect(isBrowserDisplayable(undefined)).toBe(false);
+    expect(isAppViewable('application/pdf')).toBe(true);
+    expect(isAppViewable('image/jpeg')).toBe(true);
+    expect(isAppViewable('application/epub+zip')).toBe(false);
   });
 });
 
@@ -400,7 +403,7 @@ describe('mapFiles', () => {
     expect(file?.accessStatus).toBe('private');
   });
 
-  it('does not offer PDFs for viewing while no viewer exists', () => {
+  it('offers downloadable PDFs for in-app reading', () => {
     const [file] = mapFiles(
       [{ name: 'book.pdf', source: 'derivative', format: 'Text PDF' }],
       'item',
@@ -409,8 +412,9 @@ describe('mapFiles', () => {
     );
 
     expect(file?.mimeType).toBe('application/pdf');
-    expect(file?.viewable).toBe(false);
+    expect(file?.viewable).toBe(true);
     expect(file?.downloadAvailable).toBe(true);
+    expect(file?.downloadUrl).toBe('https://archive.org/download/item/book.pdf');
   });
 
   it('ignores entries that are not objects or have no name', () => {
