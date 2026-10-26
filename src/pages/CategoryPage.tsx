@@ -1,24 +1,25 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 import { AsyncContent } from '../components/content/AsyncContent';
 import { Breadcrumbs } from '../components/content/Breadcrumbs';
+import { CollectionShelf } from '../components/content/CollectionShelf';
+import { RowSkeleton } from '../components/content/ItemRow';
 import { Pagination } from '../components/content/Pagination';
-import { Section } from '../components/content/Section';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { Page } from '../components/layout/Page';
-import { CollectionCard } from '../components/ui/CollectionCard';
-import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
-import { SkeletonCard, SkeletonGroup } from '../components/ui/Skeleton';
 import { PRIMARY_PROVIDER_ID } from '../config/discovery';
 import { getProviderName } from '../config/providers';
 import { useProviderServices } from '../data/ProviderServices';
 import { useAsyncValue } from '../data/useAsyncValue';
-import type { ContentCollection } from '../models/content';
 import { nextSearchParams, parsePageParam, withSearchParams } from '../utils/contentParams';
 import { buildCategoryPath, buildHomePath, buildProviderPath } from '../utils/links';
-import styles from './CategoryPage.module.css';
 
-/** Placeholder cards while a page of collections resolves. */
-const SKELETON_COUNT = 4;
+/**
+ * Collection shelves per numbered page.
+ *
+ * Each shelf is its own items request, so this is a viewport of rows rather than a grid of
+ * folder cards. Six keeps the page within the request limiter without inventing a second pager.
+ */
+export const COLLECTION_PAGE_SIZE = 6;
 
 export function CategoryPage() {
   const { categoryId = '' } = useParams<{ categoryId: string }>();
@@ -41,9 +42,17 @@ export function CategoryPage() {
       ? categories.state.value.find((entry) => entry.id === categoryId)
       : undefined;
 
+  // Collections come from the provider: a media type's contents are whatever it currently files
+  // there, including collections nested deeper in the tree.
   const collections = useAsyncValue(
     `provider:collections:${providerId}:${categoryId}:${page}`,
-    ({ signal, fresh }) => queries.collections(providerId, categoryId, { page }, { signal, fresh }),
+    ({ signal, fresh }) =>
+      queries.collections(
+        providerId,
+        categoryId,
+        { page, pageSize: COLLECTION_PAGE_SIZE },
+        { signal, fresh },
+      ),
   );
 
   const title = category?.name ?? 'Category';
@@ -73,53 +82,36 @@ export function CategoryPage() {
           title: 'Category not found',
           description: `${providerName} does not offer a category called “${categoryId}”.`,
         }}
-        loading={
-          <SkeletonGroup label="Loading collections">
-            <div className={styles.skeletons}>
-              {Array.from({ length: SKELETON_COUNT }, (_, index) => (
-                <SkeletonCard key={index} />
-              ))}
-            </div>
-          </SkeletonGroup>
-        }
+        loading={<RowSkeleton label="Loading collections" />}
       >
-        {(result) => (
-          <Section
-            title="Collections"
-            description="Each collection groups items that belong together; open one to browse its contents."
-          >
-            {result.items.length === 0 ? (
-              <EmptyState
-                title="No collections in this category"
-                description={`${providerName} reported no collections for this category right now.`}
-              />
-            ) : (
-              <>
-                <ResponsiveGrid label="Collections">
-                  {result.items.map((collection: ContentCollection) => (
-                    <CollectionCard
-                      key={collection.id}
-                      collection={collection}
-                      providerName={getProviderName(collection.providerId)}
-                    />
-                  ))}
-                </ResponsiveGrid>
+        {(result) =>
+          result.items.length === 0 ? (
+            <EmptyState
+              title="No collections in this category"
+              description={`${providerName} reported no collections for this category right now.`}
+            />
+          ) : (
+            <>
+              {result.items.map((collection) => (
+                <CollectionShelf key={collection.id} collection={collection} />
+              ))}
 
-                <Pagination
-                  page={result.page}
-                  hasMore={result.hasMore}
-                  label="Collection pages"
-                  buildHref={(target) =>
-                    withSearchParams(
-                      buildCategoryPath(categoryId),
-                      nextSearchParams(searchParams, { page: String(target) }),
-                    )
-                  }
-                />
-              </>
-            )}
-          </Section>
-        )}
+              <Pagination
+                page={result.page}
+                hasMore={result.hasMore}
+                {...(result.total !== undefined ? { total: result.total } : {})}
+                pageSize={result.pageSize}
+                label="Collection pages"
+                buildHref={(target) =>
+                  withSearchParams(
+                    buildCategoryPath(categoryId),
+                    nextSearchParams(searchParams, { page: String(target) }),
+                  )
+                }
+              />
+            </>
+          )
+        }
       </AsyncContent>
     </Page>
   );

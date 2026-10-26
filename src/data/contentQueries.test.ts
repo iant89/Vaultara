@@ -14,7 +14,12 @@ function createHarness(limiter?: ReturnType<typeof createRequestLimiter>) {
   const getCollection = vi.fn(async () => makeCollection());
   const getCollectionItems = vi.fn(async () => PAGE);
   const getItem = vi.fn(async (itemId: string) => makeItem({ id: itemId }));
-  const getRelatedItems = vi.fn(async () => [makeItem({ id: 'related' })]);
+  const getRelatedItems = vi.fn(async () =>
+    createPaginatedResult([makeItem({ id: 'related' })], { page: 1, pageSize: 12 }),
+  );
+  const getSubcollections = vi.fn(async () =>
+    createPaginatedResult([makeCollection({ id: 'nested' })], { page: 1, pageSize: 24 }),
+  );
   const getAvailableFiles = vi.fn(async () => []);
   const search = vi.fn(async () => PAGE);
 
@@ -28,6 +33,7 @@ function createHarness(limiter?: ReturnType<typeof createRequestLimiter>) {
       getCollectionItems,
       getItem,
       getRelatedItems,
+      getSubcollections,
       getAvailableFiles,
       search,
     }),
@@ -52,6 +58,7 @@ function createHarness(limiter?: ReturnType<typeof createRequestLimiter>) {
       getCollectionItems,
       getItem,
       getRelatedItems,
+      getSubcollections,
       getAvailableFiles,
       search,
     },
@@ -162,20 +169,44 @@ describe('content queries', () => {
     expect(spies.getItem).toHaveBeenCalledTimes(3);
   });
 
+  it('keys collection, nested-collection, and related paging separately', async () => {
+    const { queries, spies } = createHarness();
+
+    await queries.collections('fake', 'movies', { page: 1, pageSize: 24 });
+    await queries.collections('fake', 'movies', { page: 2, pageSize: 24 });
+    await queries.subcollections('fake', 'movies', { page: 1 });
+    await queries.subcollections('fake', 'movies', { page: 2 });
+    await queries.relatedItems('fake', 'item-1', { page: 1 });
+    await queries.relatedItems('fake', 'item-1', { page: 2 });
+
+    // Three lists, each with two pages: six requests, and a seventh from none of them.
+    expect(spies.getCollections).toHaveBeenCalledTimes(2);
+    expect(spies.getSubcollections).toHaveBeenCalledTimes(2);
+    expect(spies.getRelatedItems).toHaveBeenCalledTimes(2);
+  });
+
   it('exposes the remaining operations', async () => {
     const { queries, spies } = createHarness();
 
     await queries.categories('fake');
     await queries.collections('fake', 'movies');
     await queries.collection('fake', 'classic-films');
-    await queries.relatedItems('fake', 'item-1');
+    await queries.subcollections('fake', 'classic-films', { page: 2 });
+    await queries.relatedItems('fake', 'item-1', { page: 2 });
     await queries.files('fake', 'item-1');
     await queries.search('fake', 'vampire', { contentTypes: ['movie'] });
 
     expect(spies.getCategories).toHaveBeenCalledWith(expect.objectContaining({}));
     expect(spies.getCollections).toHaveBeenCalledWith('movies', expect.anything());
     expect(spies.getCollection).toHaveBeenCalledWith('classic-films', expect.anything());
-    expect(spies.getRelatedItems).toHaveBeenCalledWith('item-1', expect.anything());
+    expect(spies.getSubcollections).toHaveBeenCalledWith(
+      'classic-films',
+      expect.objectContaining({ page: 2 }),
+    );
+    expect(spies.getRelatedItems).toHaveBeenCalledWith(
+      'item-1',
+      expect.objectContaining({ page: 2 }),
+    );
     expect(spies.getAvailableFiles).toHaveBeenCalledWith('item-1', expect.anything());
     expect(spies.search).toHaveBeenCalledWith(
       'vampire',

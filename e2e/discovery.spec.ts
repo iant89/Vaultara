@@ -9,6 +9,10 @@ import { appUrl } from './appBase';
  * access or on what the live service happens to hold today. Responses are shaped like the real
  * payloads — `advancedsearch.php` returns `{ response: { docs, numFound } }` and `metadata/<id>`
  * returns `{ metadata, files }` — so the mapping layer is exercised end to end in a real browser.
+ *
+ * The stub also mirrors the provider's hierarchy: `mediatype:collection AND collection:<parent>`
+ * returns the collections inside a branch, while an item query carries `-mediatype:collection`,
+ * which is what separates a collection's items from the collections nested in it.
  */
 
 const JSON_HEADERS = { 'content-type': 'application/json', 'access-control-allow-origin': '*' };
@@ -17,30 +21,71 @@ const JSON_HEADERS = { 'content-type': 'application/json', 'access-control-allow
 const LONG_TITLE =
   'A relentlessly long item title about municipal tramways, waterworks and civic architecture';
 
-function searchDocs(query: string, count: number): readonly Record<string, unknown>[] {
-  const mediatype = /mediatype:\(([^)]+)\)/.exec(query)?.[1]?.split(' OR ')[0] ?? 'movies';
-  const collection = /collection:([^\s)]+)/.exec(query)?.[1];
+/** Collections the stub reports for each branch of the tree. */
+const COLLECTIONS_BY_PARENT: Readonly<
+  Record<string, readonly { readonly identifier: string; readonly title: string }[]>
+> = {
+  movies: [
+    { identifier: 'feature_films', title: 'Feature Films' },
+    { identifier: 'classic_tv', title: 'Classic TV' },
+  ],
+  feature_films: [{ identifier: 'feature_films_noir', title: 'Film Noir' }],
+  software: [{ identifier: 'softwarelibrary', title: 'Software Library' }],
+  softwarelibrary: [{ identifier: 'softwarelibrary_msdos_games', title: 'MS-DOS Games' }],
+};
 
-  if (query.startsWith('identifier:')) {
-    const wanted = /identifier:\((.+)\)/.exec(query)?.[1]?.split(' OR ') ?? [];
+/** Titles the metadata endpoint returns for the collections the stub knows about. */
+const COLLECTION_TITLES: Readonly<Record<string, string>> = {
+  feature_films: 'Feature Films',
+  classic_tv: 'Classic TV',
+  feature_films_noir: 'Film Noir',
+  softwarelibrary: 'Software Library',
+  softwarelibrary_msdos_games: 'MS-DOS Games',
+};
 
-    return wanted.map((identifier) => ({
-      identifier,
-      title: identifier.replace(/[_-]/g, ' '),
-      mediatype: 'collection',
-      description: 'A curated group of items.',
-      collection: ['movies'],
-    }));
+/** Every collection rises to its media type, exactly as the Archive flattens ancestry. */
+function ancestorsOf(identifier: string): readonly string[] {
+  if (identifier.startsWith('software')) {
+    return ['softwarelibrary', 'software'];
   }
 
-  return Array.from({ length: count }, (_, index) => ({
-    identifier: `${collection ?? mediatype}-${index}`,
-    title: index === 0 ? LONG_TITLE : `${collection ?? mediatype} item ${index + 1}`,
+  return ['feature_films', 'movies'];
+}
+
+function parentOf(query: string): string {
+  return /collection:([^\s)]+)/.exec(query)?.[1] ?? 'unknown';
+}
+
+function collectionDocs(query: string): readonly Record<string, unknown>[] {
+  const parent = parentOf(query);
+
+  return (COLLECTIONS_BY_PARENT[parent] ?? COLLECTIONS_BY_PARENT['movies'] ?? []).map((entry) => ({
+    identifier: entry.identifier,
+    title: entry.title,
+    mediatype: 'collection',
+    description: 'A curated group of items.',
+    collection: ancestorsOf(entry.identifier),
+  }));
+}
+
+function itemDocs(
+  query: string,
+  rows: number,
+  pageNumber: number,
+): readonly Record<string, unknown>[] {
+  const parent = parentOf(query);
+  const mediatype = /mediatype:\(([^)]+)\)/.exec(query)?.[1]?.split(' OR ')[0] ?? 'movies';
+  const wanted = Math.min(rows, 24);
+
+  return Array.from({ length: wanted }, (_, index) => ({
+    // Page number in the identifier, so an appended page is visibly new content.
+    identifier: `${parent}-p${String(pageNumber)}-${String(index)}`,
+    title: pageNumber === 1 && index === 0 ? LONG_TITLE : `${parent} item ${String(index + 1)}`,
     mediatype,
     description: 'A short description of the item.',
     creator: 'Archive contributor',
     date: '1954-01-01',
-    collection: collection === undefined ? ['feature_films'] : [collection],
+    collection: [parent, ...ancestorsOf(parent)],
     subject: ['history', 'film'],
     downloads: 1200 + index,
   }));
@@ -52,13 +97,23 @@ async function mockArchive(page: Page): Promise<void> {
     const query = url.searchParams.get('q') ?? '';
     const rows = Number(url.searchParams.get('rows') ?? '24');
     const pageNumber = Number(url.searchParams.get('page') ?? '1');
-    const docs = rows === 0 ? [] : searchDocs(query, Math.min(rows, 24));
+
+    // `rows=0` is the count-only request behind a collection's item total. An item query carries
+    // `-mediatype:collection`, so the negative clause has to be checked before the positive one.
+    const asksForCollections =
+      query.includes('mediatype:collection') && !query.includes('-mediatype:collection');
+    const docs =
+      rows === 0
+        ? []
+        : asksForCollections
+          ? collectionDocs(query)
+          : itemDocs(query, rows, pageNumber);
 
     await route.fulfill({
       status: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({
-        response: { docs, numFound: pageNumber === 1 ? 4210 : 4186 },
+        response: { docs, numFound: 4210 },
       }),
     });
   });
@@ -67,8 +122,11 @@ async function mockArchive(page: Page): Promise<void> {
     const identifier = decodeURIComponent(
       new URL(route.request().url()).pathname.split('/').pop() ?? '',
     );
+    const isCollection = COLLECTION_TITLES[identifier] !== undefined;
     const title =
-      identifier === 'night_of_the_living_dead' ? 'Night of the Living Dead' : identifier;
+      identifier === 'night_of_the_living_dead'
+        ? 'Night of the Living Dead'
+        : (COLLECTION_TITLES[identifier] ?? identifier);
 
     await route.fulfill({
       status: 200,
@@ -79,12 +137,12 @@ async function mockArchive(page: Page): Promise<void> {
         metadata: {
           identifier,
           title,
-          mediatype: 'movies',
+          mediatype: isCollection ? 'collection' : 'movies',
           creator: 'George A. Romero',
           date: '1968-10-01',
           description:
             '<p>A night in rural Pennsylvania turns into a siege.</p><p>Restored from a public-domain print.</p>',
-          collection: ['feature_films'],
+          collection: ancestorsOf(identifier),
           subject: ['horror', 'public domain'],
           licenseurl: 'https://creativecommons.org/publicdomain/mark/1.0/',
           rights: 'Public domain.',
@@ -131,12 +189,40 @@ test('the discovery page renders provider rows and a featured item', async ({ pa
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 });
 
-test('a collection page lists items, sorts, and pages', async ({ page }) => {
+test('a category page lists collections and pages through them', async ({ page }) => {
+  await mockArchive(page);
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto(appUrl('/category/movies'));
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Moving Images' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Feature Films' })).toBeVisible();
+  // Collections list their provider; an item count needs a separate count request and is only
+  // claimed where the provider reports one.
+  await expect(page.getByText('Internet Archive').first()).toBeVisible();
+
+  // The provider reported a total, so the pages are numbered rather than a bare "Next".
+  const pager = page.getByRole('navigation', { name: 'Collection pages' });
+
+  await expect(pager.getByRole('link', { name: '2', exact: true })).toHaveAttribute(
+    'href',
+    appUrl('/category/movies?page=2'),
+  );
+
+  await pager.getByRole('link', { name: /Next/ }).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page.getByText('Page 2 of 702')).toBeVisible();
+
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+});
+
+test('a collection page lists items, sorts, searches, and adds more on request', async ({
+  page,
+}) => {
   await mockArchive(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(appUrl('/collection/archive/feature_films'));
 
-  await expect(page.getByRole('heading', { level: 1, name: 'feature_films' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Feature Films' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Items' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 3, name: LONG_TITLE }).first()).toBeVisible();
 
@@ -150,9 +236,33 @@ test('a collection page lists items, sorts, and pages', async ({ page }) => {
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page).toHaveURL(/q=tram/);
 
-  await page.getByRole('link', { name: /Next/ }).click();
-  await expect(page).toHaveURL(/page=2/);
-  await expect(page.getByText('Page 2')).toBeVisible();
+  const cards = page.locator('ul[aria-label="Collection items"] > li');
+
+  await expect(cards).toHaveCount(24);
+  await expect(page.getByText('Showing 24 of 4,210 items')).toBeVisible();
+
+  await page.getByRole('button', { name: 'View more items' }).click();
+
+  // Appended rather than replaced: the first page stays and a second batch joins it.
+  await expect(cards).toHaveCount(48);
+  await expect(page.getByText('Showing 48 of 4,210 items')).toBeVisible();
+});
+
+test('the collection hierarchy descends from a media type into nested collections', async ({
+  page,
+}) => {
+  await mockArchive(page);
+  await page.goto(appUrl('/category/software'));
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Software' })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Software Library' }).click();
+  await expect(page).toHaveURL(/\/collection\/archive\/softwarelibrary/);
+  await expect(page.getByRole('heading', { level: 2, name: 'Collections inside' })).toBeVisible();
+
+  await page.getByRole('link', { name: 'MS-DOS Games' }).click();
+  await expect(page).toHaveURL(/\/collection\/archive\/softwarelibrary_msdos_games/);
+  await expect(page.getByRole('heading', { level: 1, name: 'MS-DOS Games' })).toBeVisible();
 });
 
 test('an item page shows files, attribution, and related content', async ({ page }) => {
@@ -176,19 +286,8 @@ test('an item page shows files, attribution, and related content', async ({ page
   await expect(page.getByRole('heading', { level: 2, name: 'Related items' })).toBeVisible();
   await expect(page.getByText('Public domain.', { exact: true })).toBeVisible();
 
-  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
-});
-
-test('a category page lists its collections with provider attribution', async ({ page }) => {
-  await mockArchive(page);
-  await page.setViewportSize({ width: 768, height: 1024 });
-  await page.goto(appUrl('/category/movies'));
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Moving Images' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /feature films/ })).toBeVisible();
-  // Collections list their provider; an item count needs a separate count request and is only
-  // claimed where the provider reports one.
-  await expect(page.getByText('Internet Archive').first()).toBeVisible();
+  // Related content is a batch, not a cap: the reader can ask for the rest.
+  await expect(page.getByRole('button', { name: 'View more related items' })).toBeVisible();
 
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 });

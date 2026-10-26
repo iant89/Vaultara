@@ -113,6 +113,26 @@ describe('CollectionCard', () => {
 
     expect(screen.queryByText(/items?$/)).toBeNull();
   });
+
+  it('keeps artwork dominant by omitting the description', () => {
+    renderWithRouter(<CollectionCard collection={COLLECTION} providerName="Internet Archive" />);
+
+    expect(screen.queryByText('Public-domain films.')).toBeNull();
+  });
+
+  it('hides the provider badge unless asked', () => {
+    const { rerender } = renderWithRouter(
+      <CollectionCard collection={COLLECTION} providerName="Internet Archive" />,
+    );
+    expect(screen.queryByTestId('provider-swatch')).toBeNull();
+
+    rerender(
+      <MemoryRouter>
+        <CollectionCard collection={COLLECTION} providerName="Internet Archive" showProvider />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('provider-swatch')).toBeInTheDocument();
+  });
 });
 
 describe('ProviderBadge', () => {

@@ -87,6 +87,7 @@ export function createFakeProvider(overrides: FakeProviderOverrides = {}): Conte
         itemDetails: true,
         relatedContent: true,
         downloadableFiles: true,
+        subcollections: true,
         pagination: true,
         ...capabilities,
       }),
@@ -96,7 +97,8 @@ export function createFakeProvider(overrides: FakeProviderOverrides = {}): Conte
     getCollection: async () => makeCollection({ providerId: id }),
     getCollectionItems: async () => createPaginatedResult([], { page: 1, pageSize: 24 }),
     getItem: async (itemId) => makeItem({ id: itemId, providerId: id }),
-    getRelatedItems: async () => [],
+    getSubcollections: async () => createPaginatedResult([], { page: 1, pageSize: 24 }),
+    getRelatedItems: async () => createPaginatedResult([], { page: 1, pageSize: 12 }),
     ...methods,
   };
 }

@@ -46,12 +46,26 @@ export interface PageQuery {
   readonly pageSize?: number;
 }
 
+/** Paging and ordering for a list of collections. */
+export interface CollectionQuery extends PageQuery {
+  readonly sort?: SearchSort;
+}
+
+/** Paging for a list of items that is not a full browse (related content). */
+export type ItemPageQuery = PageQuery;
+
 export interface ContentQueries {
   categories(providerId: string, options?: LoadOptions): Promise<readonly ContentCategory[]>;
   collections(
     providerId: string,
     categoryId: string,
-    paging?: PageQuery,
+    paging?: CollectionQuery,
+    options?: LoadOptions,
+  ): Promise<PaginatedResult<ContentCollection>>;
+  subcollections(
+    providerId: string,
+    collectionId: string,
+    paging?: CollectionQuery,
     options?: LoadOptions,
   ): Promise<PaginatedResult<ContentCollection>>;
   collection(
@@ -69,8 +83,9 @@ export interface ContentQueries {
   relatedItems(
     providerId: string,
     itemId: string,
+    paging?: ItemPageQuery,
     options?: LoadOptions,
-  ): Promise<readonly ContentItem[]>;
+  ): Promise<PaginatedResult<ContentItem>>;
   files(providerId: string, itemId: string, options?: LoadOptions): Promise<readonly ContentFile[]>;
   search(
     providerId: string,
@@ -114,12 +129,42 @@ export function createContentQueries(
 
     collections(providerId, categoryId, paging = {}, loadOptions) {
       return cache.load(
-        cacheKey(['collections', providerId, categoryId, paging.page, paging.pageSize]),
+        cacheKey([
+          'collections',
+          providerId,
+          categoryId,
+          paging.page,
+          paging.pageSize,
+          paging.sort,
+        ]),
         () =>
           limiter.run(() =>
             gateway.getCollections(providerId, categoryId, {
               page: paging.page,
               pageSize: paging.pageSize,
+              sort: paging.sort,
+            }),
+          ),
+        { ...loadOptions },
+      );
+    },
+
+    subcollections(providerId, collectionId, paging = {}, loadOptions) {
+      return cache.load(
+        cacheKey([
+          'subcollections',
+          providerId,
+          collectionId,
+          paging.page,
+          paging.pageSize,
+          paging.sort,
+        ]),
+        () =>
+          limiter.run(() =>
+            gateway.getSubcollections(providerId, collectionId, {
+              page: paging.page,
+              pageSize: paging.pageSize,
+              sort: paging.sort,
             }),
           ),
         { ...loadOptions },
@@ -168,10 +213,16 @@ export function createContentQueries(
       );
     },
 
-    relatedItems(providerId, itemId, loadOptions) {
+    relatedItems(providerId, itemId, paging = {}, loadOptions) {
       return cache.load(
-        cacheKey(['related', providerId, itemId]),
-        () => limiter.run(() => gateway.getRelatedItems(providerId, itemId)),
+        cacheKey(['related', providerId, itemId, paging.page, paging.pageSize]),
+        () =>
+          limiter.run(() =>
+            gateway.getRelatedItems(providerId, itemId, {
+              page: paging.page,
+              pageSize: paging.pageSize,
+            }),
+          ),
         { ...loadOptions },
       );
     },

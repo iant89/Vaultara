@@ -259,11 +259,12 @@ describe('categories', () => {
     const categories = await provider.getCategories();
 
     expect(categories.map((category) => category.id)).toEqual([
-      'texts',
       'movies',
+      'texts',
       'audio',
       'images',
       'software',
+      'data',
       'web',
     ]);
     for (const category of categories) {
@@ -288,66 +289,77 @@ describe('categories', () => {
 });
 
 describe('collections', () => {
-  it('merges Archive titles into the curated order', async () => {
+  it('lists the collections filed under a media type', async () => {
     const { provider, stub } = createRoutedProvider(CATEGORY_COLLECTIONS_RESPONSE);
 
     const result = await provider.getCollections('movies');
 
-    expect(result.items.map((collection) => collection.id)).toEqual([
-      'feature_films',
-      'classic_tv',
-      'prelinger',
-      'moviesandfilms',
-    ]);
-    expect(result.items.map((collection) => collection.title)).toEqual([
-      'Feature Films',
-      'Classic TV',
-      'Prelinger Archives',
-      'Movies and Films',
-    ]);
-    expect(result).toMatchObject({ page: 1, total: 4, hasMore: false });
-    expect(result.items[0]?.categoryIds).toEqual(['movies']);
-    expect(result.items[0]?.sourceUrl).toBe('https://archive.org/details/feature_films');
+    expect(result.items.map((collection) => collection.id)).toEqual(['feature_films', 'prelinger']);
+    expect(result.items[0]).toMatchObject({
+      title: 'Feature Films',
+      description: 'Feature-length films.',
+      sourceUrl: 'https://archive.org/details/feature_films',
+      // The Archive writes the media type into every descendant's ancestry, so a collection is
+      // placed in the interface's category without a second lookup.
+      categoryIds: ['movies'],
+    });
+    expect(result).toMatchObject({ page: 1, total: 2, hasMore: false });
 
-    expect(requestUrl(stub).searchParams.get('q')).toBe(
-      'identifier:(feature_films OR classic_tv OR prelinger OR moviesandfilms)',
-    );
+    const url = requestUrl(stub);
+
+    expect(url.searchParams.get('q')).toBe('mediatype:collection AND collection:movies');
+    expect(url.searchParams.getAll('sort[]')).toEqual(['downloads desc']);
   });
 
-  it('pages over the curated list', async () => {
+  it('pages with the provider’s own paging rather than slicing a local list', async () => {
     const { provider, stub } = createRoutedProvider(CATEGORY_COLLECTIONS_RESPONSE);
 
-    const result = await provider.getCollections('movies', { page: 2, pageSize: 2 });
+    await provider.getCollections('movies', { page: 3, pageSize: 10 });
 
-    expect(result.items.map((collection) => collection.id)).toEqual([
-      'prelinger',
-      'moviesandfilms',
-    ]);
-    expect(result).toMatchObject({ total: 4, hasMore: false });
-    expect(requestUrl(stub).searchParams.get('q')).toBe('identifier:(prelinger OR moviesandfilms)');
+    const url = requestUrl(stub);
+
+    expect(url.searchParams.get('page')).toBe('3');
+    expect(url.searchParams.get('rows')).toBe('10');
   });
 
-  it('returns an empty page beyond the last collection without a request', async () => {
-    const { provider, stub } = createRoutedProvider();
+  it('searches and orders the collection list when asked', async () => {
+    const { provider, stub } = createRoutedProvider(CATEGORY_COLLECTIONS_RESPONSE);
 
-    const result = await provider.getCollections('movies', { page: 9 });
+    await provider.getCollections('movies', { sort: 'title-asc', query: 'film' });
 
-    expect(result).toMatchObject({ items: [], hasMore: false, total: 4 });
-    expect(stub.requests).toHaveLength(0);
+    const url = requestUrl(stub);
+
+    expect(url.searchParams.get('q')).toBe('(film) AND mediatype:collection AND collection:movies');
+    expect(url.searchParams.getAll('sort[]')).toEqual(['titleSorter asc']);
   });
 
-  it('keeps navigation working when the lookup fails', async () => {
+  it('places a nested collection under the media type it descends from', async () => {
+    const { provider } = createRoutedProvider({
+      response: {
+        numFound: 1,
+        docs: [
+          {
+            identifier: 'softwarelibrary_msdos_games',
+            title: 'Software Library: MS-DOS Games',
+            mediatype: 'collection',
+            // The Archive lists the whole ancestor chain, media type included.
+            collection: ['softwarelibrary', 'software', 'softwarelibrary_msdos_games'],
+          },
+        ],
+      },
+    });
+
+    const result = await provider.getCollections('software');
+
+    expect(result.items[0]?.categoryIds).toEqual(['software']);
+  });
+
+  it('reports a provider failure instead of pretending the category is empty', async () => {
     const { provider } = createProvider(() => jsonResponse({}, { status: 500 }));
 
-    const result = await provider.getCollections('movies');
-
-    expect(result.items.map((collection) => collection.title)).toEqual([
-      'Feature Films',
-      'Classic TV',
-      'Prelinger Archives',
-      'Movies and Films',
-    ]);
-    expect(result.items[0]?.description).toBeUndefined();
+    await expect(provider.getCollections('movies')).rejects.toMatchObject({
+      kind: 'provider-unavailable',
+    });
   });
 
   it('rejects a category this app does not offer', async () => {
@@ -356,6 +368,36 @@ describe('collections', () => {
     await expect(provider.getCollections('holograms')).rejects.toMatchObject({
       kind: 'not-found',
     });
+    expect(stub.requests).toHaveLength(0);
+  });
+
+  it('lists the collections inside a collection', async () => {
+    const { provider, stub } = createRoutedProvider(CATEGORY_COLLECTIONS_RESPONSE);
+
+    const result = await provider.getSubcollections('softwarelibrary');
+
+    expect(result.items.map((collection) => collection.id)).toEqual(['feature_films', 'prelinger']);
+    expect(result).toMatchObject({ page: 1, total: 2 });
+
+    expect(requestUrl(stub).searchParams.get('q')).toBe(
+      'mediatype:collection AND collection:softwarelibrary',
+    );
+  });
+
+  it('reports an empty page for a collection with no subcollections', async () => {
+    const { provider } = createRoutedProvider({ response: { numFound: 0, docs: [] } });
+
+    await expect(provider.getSubcollections('feature_films')).resolves.toMatchObject({
+      items: [],
+      hasMore: false,
+      total: 0,
+    });
+  });
+
+  it('requires an identifier before looking for subcollections', async () => {
+    const { provider, stub } = createRoutedProvider();
+
+    await expect(provider.getSubcollections('   ')).rejects.toMatchObject({ kind: 'not-found' });
     expect(stub.requests).toHaveLength(0);
   });
 
@@ -413,7 +455,7 @@ describe('collections', () => {
 
     const url = requestUrl(stub);
 
-    expect(url.searchParams.get('q')).toBe('collection:feature_films');
+    expect(url.searchParams.get('q')).toBe('collection:feature_films AND -mediatype:collection');
     expect(url.searchParams.getAll('sort[]')).toEqual(['downloads desc']);
     expect(url.searchParams.get('rows')).toBe('12');
   });
@@ -433,7 +475,7 @@ describe('collections', () => {
 
     // The user text stays inside its own group, so `OR` cannot widen the collection clause.
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      '(vampire OR \\(bat\\)) AND collection:feature_films',
+      '(vampire OR \\(bat\\)) AND collection:feature_films AND -mediatype:collection',
     );
   });
 
@@ -443,7 +485,7 @@ describe('collections', () => {
     await provider.getCollectionItems('feature_films', { contentTypes: ['movie', 'document'] });
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      'collection:feature_films AND mediatype:(movies OR texts)',
+      'collection:feature_films AND -mediatype:collection AND mediatype:(movies OR texts)',
     );
   });
 
@@ -452,7 +494,9 @@ describe('collections', () => {
 
     await provider.getCollectionItems('feature_films', { query: '   ' });
 
-    expect(requestUrl(stub).searchParams.get('q')).toBe('collection:feature_films');
+    expect(requestUrl(stub).searchParams.get('q')).toBe(
+      'collection:feature_films AND -mediatype:collection',
+    );
   });
 });
 
@@ -531,9 +575,11 @@ describe('related items', () => {
   it('uses the item’s collections and never returns the item itself', async () => {
     const { provider, stub } = createRoutedProvider();
 
-    const related = await provider.getRelatedItems('nosferatu');
+    const result = await provider.getRelatedItems('nosferatu');
 
-    expect(related.map((item) => item.id)).toEqual(['gutenberg_alice']);
+    expect(result.items.map((item) => item.id)).toEqual(['gutenberg_alice']);
+    // The reported total excludes the item itself, which the collection query counts.
+    expect(result).toMatchObject({ page: 1, pageSize: ARCHIVE_RELATED_LIMIT, total: 1283 });
 
     const url = requestUrl(stub, 1);
 
@@ -541,10 +587,25 @@ describe('related items', () => {
     expect(url.searchParams.get('rows')).toBe(String(ARCHIVE_RELATED_LIMIT + 1));
   });
 
-  it('returns nothing when the item belongs to no collection', async () => {
+  it('asks the provider for the requested page so more can be added on demand', async () => {
     const { provider, stub } = createRoutedProvider();
 
-    await expect(provider.getRelatedItems('solo')).resolves.toEqual([]);
+    await provider.getRelatedItems('nosferatu', { page: 4, pageSize: 6 });
+
+    const url = requestUrl(stub, 1);
+
+    expect(url.searchParams.get('page')).toBe('4');
+    expect(url.searchParams.get('rows')).toBe('7');
+  });
+
+  it('returns an empty page when the item belongs to no collection', async () => {
+    const { provider, stub } = createRoutedProvider();
+
+    await expect(provider.getRelatedItems('solo')).resolves.toMatchObject({
+      items: [],
+      hasMore: false,
+      total: 0,
+    });
     expect(stub.requests).toHaveLength(1);
   });
 
@@ -556,7 +617,7 @@ describe('related items', () => {
     });
   });
 
-  it('reports an unknown item instead of an empty list', async () => {
+  it('reports an unknown item instead of an empty page', async () => {
     const { provider } = createRoutedProvider();
 
     await expect(provider.getRelatedItems('nonexistent')).rejects.toMatchObject({

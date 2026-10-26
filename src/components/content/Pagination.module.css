@@ -1,6 +1,6 @@
 .nav {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
   padding-block: var(--space-2);
@@ -32,6 +32,56 @@
 .link:hover {
   background-color: var(--color-surface-hover);
   text-decoration: none;
+}
+
+.pagesSlot {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page,
+.current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+.page:hover {
+  background-color: var(--color-surface-hover);
+  text-decoration: none;
+}
+
+.current {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface-raised);
+  font-weight: var(--weight-semibold);
+}
+
+.gap {
+  color: var(--color-text-subtle);
+  padding: 0 var(--space-1);
+  font-variant-numeric: tabular-nums;
 }
 
 .status {

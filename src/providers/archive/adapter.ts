@@ -30,10 +30,15 @@ import {
   type ProviderCapabilities,
   type ProviderRequestOptions,
   type SearchOptions,
+  type SearchSort,
 } from '../../models/provider';
 import { normalizeStringList, normalizeText } from '../normalize';
 import { ArchiveApi, type ArchiveRequestOptions, type Fetcher } from './api';
-import { ARCHIVE_CATEGORIES, findArchiveCategory } from './catalog';
+import {
+  ARCHIVE_CATEGORIES,
+  findArchiveCategory,
+  findArchiveCategoryByCollection,
+} from './catalog';
 import {
   ARCHIVE_PROVIDER_ID,
   mapCollection,
@@ -45,10 +50,11 @@ import {
 } from './map';
 import {
   buildCollectionClause,
-  buildIdentifierClause,
   buildMediatypeClause,
   buildQuery,
+  COLLECTION_MEDIATYPE_CLAUSE,
   escapeLucene,
+  EXCLUDE_COLLECTIONS_CLAUSE,
   mapSort,
 } from './query';
 import type { ArchiveMetadataResponse, ArchiveSearchResponse } from './types';
@@ -60,8 +66,14 @@ import type { ArchiveMetadataResponse, ArchiveSearchResponse } from './types';
  */
 export const ARCHIVE_MAX_RESULTS = 10_000;
 
-/** Related items shown per item; enough for a row without a second request. */
+/**
+ * Related items per request. One row is enough to be useful, and every further batch costs one
+ * request that the interface only makes when the reader asks for more.
+ */
 export const ARCHIVE_RELATED_LIMIT = 12;
+
+/** Collections listed per request, whether at a media type or inside a collection. */
+export const ARCHIVE_COLLECTION_PAGE_SIZE = 24;
 
 const SEARCH_DOCUMENT_FIELDS: readonly string[] = [
   'identifier',
@@ -172,6 +184,9 @@ export class ArchiveProvider implements ContentProvider {
       itemDetails: true,
       relatedContent: true,
       downloadableFiles: true,
+      // The Archive nests collections: a media type holds collections, and a collection can hold
+      // further subcollections before any items.
+      subcollections: true,
       // Nothing is streamed through the application: files are linked, and a viewer arrives in
       // a later phase (roadmap Phase 8).
       streaming: false,
@@ -243,22 +258,26 @@ export class ArchiveProvider implements ContentProvider {
   async getCategories(options: ProviderRequestOptions = {}): Promise<readonly ContentCategory[]> {
     this.ensureActive(options.signal);
 
-    // Categories are configuration, so this needs no request — but they still must not claim
-    // artwork they do not have: the Archive answers the thumbnail service with a placeholder for
-    // a collection without a cover, which keeps every card renderable.
-    return ARCHIVE_CATEGORIES.map((category) => {
-      const [primary] = category.collections;
-
-      return {
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        artworkUrl: this.api.thumbnailUrl(primary?.id ?? category.mediatype),
-        providerId: ARCHIVE_PROVIDER_ID,
-      };
-    });
+    // The media type list is configuration, so this needs no request. Artwork still comes from
+    // the Archive's thumbnail service on the media type's own collection, and the service answers
+    // with a placeholder rather than a failure for a node without a cover.
+    return ARCHIVE_CATEGORIES.map((category) => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
+      artworkUrl: this.api.thumbnailUrl(category.collectionId),
+      providerId: ARCHIVE_PROVIDER_ID,
+    }));
   }
 
+  /**
+   * Collections filed under a media type.
+   *
+   * One request: `mediatype:collection` selects containers, and the ancestor clause restricts
+   * them to this branch of the tree. Because the Archive adds every ancestor to an item's
+   * `collection` field, nested subcollections are included — the list is complete for the branch,
+   * and each collection page narrows it again one level down.
+   */
   async getCollections(
     categoryId: string,
     options: BrowseOptions = {},
@@ -273,60 +292,35 @@ export class ArchiveProvider implements ContentProvider {
       );
     }
 
-    const { page, pageSize } = resolvePaginationOptions(options);
-    const offset = calculateOffset(page, pageSize);
-    const wanted = category.collections.slice(offset, offset + pageSize);
-    const total = category.collections.length;
+    return this.searchCollections(
+      [COLLECTION_MEDIATYPE_CLAUSE, buildCollectionClause(category.collectionId)],
+      { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
+      [category.id],
+      options,
+    );
+  }
 
-    if (wanted.length === 0) {
-      return createPaginatedResult<ContentCollection>([], { page, pageSize, total });
-    }
+  /**
+   * Collections inside a collection.
+   *
+   * Same shape as a category's list, one level lower in the tree. A collection with no
+   * subcollections returns an empty page rather than an error: flat structures are the norm on
+   * the Archive, and the interface simply shows no "Collections inside" section.
+   */
+  async getSubcollections(
+    collectionId: string,
+    options: BrowseOptions = {},
+  ): Promise<PaginatedResult<ContentCollection>> {
+    this.ensureActive(options.signal);
 
-    // One request resolves the whole page: the catalogue supplies the identifiers and Archive
-    // supplies the real titles and descriptions. A failed lookup is not fatal — the catalogue
-    // fallback keeps the collection reachable.
-    let documents: readonly Record<string, unknown>[] = [];
+    const identifier = this.requireIdentifier(collectionId, 'collection');
 
-    try {
-      const response = await this.api.search(
-        {
-          query: buildIdentifierClause(wanted.map((collection) => collection.id)),
-          page: 1,
-          pageSize: wanted.length,
-          fields: COLLECTION_DOCUMENT_FIELDS,
-        },
-        this.requestOptions(options),
-      );
-
-      documents = readDocuments(response);
-    } catch (error) {
-      if (isCancelled(error)) {
-        throw error;
-      }
-
-      documents = [];
-    }
-
-    const byIdentifier = new Map<string, Record<string, unknown>>();
-
-    for (const document of documents) {
-      const identifier = readIdentifier(document);
-
-      if (identifier !== '') {
-        byIdentifier.set(identifier, document);
-      }
-    }
-
-    const collections = wanted
-      .map((definition) => {
-        const document = byIdentifier.get(definition.id);
-        const metadata = document ?? { identifier: definition.id, title: definition.name };
-
-        return mapCollection({ metadata, categoryIds: [category.id] }, this.api);
-      })
-      .filter((collection): collection is ContentCollection => collection !== undefined);
-
-    return createPaginatedResult(collections, { page, pageSize, total });
+    return this.searchCollections(
+      [COLLECTION_MEDIATYPE_CLAUSE, buildCollectionClause(identifier)],
+      { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
+      [],
+      options,
+    );
   }
 
   async getCollection(
@@ -369,8 +363,11 @@ export class ArchiveProvider implements ContentProvider {
     }
 
     const text = normalizeText(options.query ?? '');
+    // `-mediatype:collection` is what keeps the grid to items: the Archive files ancestors into
+    // every item's `collection` field, and a subcollection is an item too.
     const query = buildQuery(text.length > 0 ? escapeLucene(text) : '', [
       buildCollectionClause(identifier),
+      EXCLUDE_COLLECTIONS_CLAUSE,
       buildMediatypeClause(options.contentTypes),
     ]);
 
@@ -423,19 +420,33 @@ export class ArchiveProvider implements ContentProvider {
    * Related items are the item's siblings inside its own collections.
    *
    * Preferences and history do not exist yet (roadmap Phase 7), so "related" is a provider-level
-   * relationship rather than a personalised one, and the item itself is excluded client-side
-   * because a Lucene negation is not worth an extra provider-specific query shape.
+   * relationship rather than a personalised one. The results are paged so the interface can add
+   * another batch on request instead of truncating the list: the reader is the only one who knows
+   * how far down it they want to go.
+   *
+   * One extra row is requested per page because the item itself is filtered out here — a Lucene
+   * negation on the item's own identifier is not worth a provider-specific query shape — and the
+   * page is trimmed back to its requested size so consecutive pages never overlap.
    */
   async getRelatedItems(
     itemId: string,
-    options: ProviderRequestOptions = {},
-  ): Promise<readonly ContentItem[]> {
+    options: BrowseOptions = {},
+  ): Promise<PaginatedResult<ContentItem>> {
     this.ensureActive(options.signal);
 
     const identifier = this.requireIdentifier(itemId, 'item');
     // A missing or withdrawn item is reported as such: "no related content" is a statement about
-    // an item that exists, and returning an empty list would hide the real problem.
+    // an item that exists, and an empty page would hide the real problem.
     const { metadata } = await this.loadItem(identifier, options);
+
+    const { page, pageSize } = resolvePaginationOptions({
+      page: options.page,
+      pageSize: options.pageSize ?? ARCHIVE_RELATED_LIMIT,
+    });
+
+    if (calculateOffset(page, pageSize) >= ARCHIVE_MAX_RESULTS) {
+      return emptyPage<ContentItem>(page, pageSize);
+    }
 
     const collections = normalizeStringList(metadata['collection'], {
       maxItems: 3,
@@ -443,29 +454,27 @@ export class ArchiveProvider implements ContentProvider {
     }).filter((collection) => collection.toLowerCase() !== 'inlibrary');
 
     if (collections.length === 0) {
-      return [];
+      return createPaginatedResult<ContentItem>([], { page, pageSize, total: 0 });
     }
 
     const clause = collections.map((collection) => buildCollectionClause(collection)).join(' OR ');
     const search = await this.api.search(
       {
         query: `(${clause})`,
-        page: 1,
-        // One extra row, because the item under consideration is filtered out below.
-        pageSize: ARCHIVE_RELATED_LIMIT + 1,
+        page,
+        pageSize: pageSize + 1,
         sort: 'downloads desc',
         fields: SEARCH_DOCUMENT_FIELDS,
       },
       this.requestOptions(options),
     );
 
-    const seen = new Set<string>([identifier]);
     const related: ContentItem[] = [];
 
     for (const document of readDocuments(search)) {
       const documentId = readIdentifier(document);
 
-      if (documentId === '' || seen.has(documentId)) {
+      if (documentId === '' || documentId === identifier) {
         continue;
       }
 
@@ -475,15 +484,22 @@ export class ArchiveProvider implements ContentProvider {
         continue;
       }
 
-      seen.add(documentId);
       related.push(item);
 
-      if (related.length >= ARCHIVE_RELATED_LIMIT) {
+      if (related.length >= pageSize) {
         break;
       }
     }
 
-    return related;
+    // The item is part of its own collections, so the reported total counts it once.
+    const found = readTotal(search);
+    const total = found === undefined ? undefined : Math.max(0, found - 1);
+
+    return createPaginatedResult(related, {
+      page,
+      pageSize,
+      ...(total !== undefined ? { total } : {}),
+    });
   }
 
   async getAvailableFiles(
@@ -622,6 +638,82 @@ export class ArchiveProvider implements ContentProvider {
 
       return undefined;
     }
+  }
+
+  /**
+   * One page of collections matching the given clauses.
+   *
+   * Shared by the media type list and the "collections inside" list because they differ only in
+   * scope. Sorting defaults to most-downloaded: the Archive's relevance order for containers is
+   * effectively arbitrary, and the biggest collections are the ones readers are looking for.
+   */
+  private async searchCollections(
+    clauses: readonly string[],
+    paging: {
+      readonly page?: number;
+      readonly pageSize?: number;
+      readonly sort?: SearchSort;
+      readonly query?: string;
+    },
+    fallbackCategoryIds: readonly string[],
+    options: ProviderRequestOptions,
+  ): Promise<PaginatedResult<ContentCollection>> {
+    const { page, pageSize } = resolvePaginationOptions({
+      page: paging.page,
+      pageSize: paging.pageSize ?? ARCHIVE_COLLECTION_PAGE_SIZE,
+    });
+
+    if (calculateOffset(page, pageSize) >= ARCHIVE_MAX_RESULTS) {
+      return emptyPage<ContentCollection>(page, pageSize);
+    }
+
+    const text = normalizeText(paging.query ?? '');
+    const query = buildQuery(text.length > 0 ? escapeLucene(text) : '', clauses);
+    const sort = mapSort(paging.sort) ?? 'downloads desc';
+
+    const response = await this.api.search(
+      { query, page, pageSize, sort, fields: COLLECTION_DOCUMENT_FIELDS },
+      this.requestOptions(options),
+    );
+
+    const collections: ContentCollection[] = [];
+
+    for (const document of readDocuments(response)) {
+      const categoryIds = this.categoriesFor(document, fallbackCategoryIds);
+      const collection = mapCollection({ metadata: document, categoryIds }, this.api);
+
+      if (collection !== undefined) {
+        collections.push(collection);
+      }
+    }
+
+    const total = readTotal(response);
+
+    return createPaginatedResult(collections, {
+      page,
+      pageSize,
+      ...(total !== undefined ? { total } : {}),
+    });
+  }
+
+  /**
+   * Which of the interface's categories a collection belongs to.
+   *
+   * The Archive writes the whole ancestor chain into `collection`, media type included, so a
+   * collection nested three levels deep is still placed under Software. The fallback covers
+   * records whose ancestry the index did not include: the caller already knows which branch it
+   * asked about.
+   */
+  private categoriesFor(
+    metadata: Record<string, unknown>,
+    fallback: readonly string[],
+  ): readonly string[] {
+    const ancestors = normalizeStringList(metadata['collection'], { maxItems: 24, maxLength: 80 });
+    const matched = ancestors
+      .map((ancestor) => findArchiveCategoryByCollection(ancestor)?.id)
+      .filter((id): id is string => id !== undefined);
+
+    return matched.length > 0 ? [...new Set(matched)] : fallback;
   }
 
   private toItemPage(

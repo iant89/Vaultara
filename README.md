@@ -10,7 +10,7 @@ Built with React and TypeScript, designed around a provider plugin system so tha
 
 **Phases 1-4 are implemented and roadmap Phase 5 (the discovery experience) is implemented against the Internet Archive provider.**
 
-What works today: the application shell and its visual language (route table, design tokens, responsive navigation, shared components, loading/empty/error states); shared data models and provider/viewer contracts; the Internet Archive adapter behind the registry, gateway, and reliability layer; and the discovery surfaces that read from it — a home page with a featured item, one row per category and a category grid, category pages listing collections, collection pages with a paginated item grid plus sorting, filtering, in-collection search, breadcrumbs and related collections, and item pages with artwork, metadata, available files, related content, and source attribution.
+What works today: the application shell and its visual language (route table, design tokens, responsive navigation, shared components, loading/empty/error states); shared data models and provider/viewer contracts; the Internet Archive adapter behind the registry, gateway, and reliability layer; and the discovery surfaces that read from it — a home page with a featured item, one row per category and a category grid, category pages that show each collection as a row of its items, collection pages with nested-collection shelves plus an item shelf (sorting, filtering, in-collection search, "View more"), breadcrumbs and related collections, and item pages with artwork, metadata, available files, related content, and source attribution.
 
 Discovery needs a network route to `archive.org`. Where the provider cannot be reached, each surface says so and offers a retry rather than showing an empty page.
 
@@ -270,18 +270,47 @@ fails repeatedly, stops receiving requests while the others keep serving.
 The discovery flow is `Home -> Category -> Collection -> Item details`, and every step is a real
 route built from URL state so it can be linked, bookmarked, and reached with the back button.
 
-| Route                         | What it shows                                                                |
-| ----------------------------- | ---------------------------------------------------------------------------- |
-| `/`                           | Featured item, one row per discovery row (24 cards), category grid           |
-| `/provider/:providerId`       | That provider's categories                                                   |
-| `/category/:categoryId`       | The category's collections, paginated                                        |
-| `/collection/:providerId/:id` | Item grid with sorting, content-type filter, in-collection search, paging    |
-| `/item/:providerId/:itemId`   | Item hero, description, files with download links, metadata, related content |
+| Route                         | What it shows                                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| `/`                           | Featured item, one row per discovery row (24 cards), category grid                            |
+| `/provider/:providerId`       | That provider's categories                                                                    |
+| `/category/:categoryId`       | Each collection as a row of its items, with numbered pages of shelves                         |
+| `/collection/:providerId/:id` | Nested collections as item shelves, then items: sort, filter, search, "View more"             |
+| `/item/:providerId/:itemId`   | Item hero, description, files with download links, metadata, related content with "View more" |
+
+### How the Archive's hierarchy is browsed
+
+The Archive is a tree, not a flat list. A media type (Software, Moving Images, Texts, Audio, Images,
+Data, Web Archive) contains collections; a collection can contain further collections; items sit at
+the leaves. The Archive publishes no endpoint that returns that tree, so the application reads it
+from the search index:
+
+- A **media type's** collections are `mediatype:collection` restricted to that branch. The Archive
+  adds every ancestor to an item's `collection` field, media type included, so a collection nested
+  several levels down still resolves to the media type it belongs to.
+- A **collection's** nested collections are the same query one level lower, each rendered as a
+  horizontal shelf of its items (with View all) before this collection's own items.
+- A **collection's** items exclude `mediatype:collection`, because a subcollection is an item too
+  and would otherwise appear in the shelf as if it were content.
+
+That is why the tree is browsable to any depth without a curated list per level.
+
+### Adding more without leaving the page
+
+Collection items, nested collections, and related content are batches, not pages of a numbered
+series. Each shows "Showing 24 of 4,210 items" and a **View more** control that appends the next
+batch. The first page is the only request a visit costs; every further batch is one request the
+reader asked for. A failure while appending keeps what is already on screen and reports the
+problem beside the button, so a readable list never turns into an error page.
+
+Category pages are different: they are pageable in the URL, so `?page=2` is a link you can share,
+and the pager shows numbered pages with first/last anchors once the provider reports a total.
 
 Rules the pages follow:
 
 - **One request per visible surface.** Rows are backed by `src/config/discovery.ts`; the featured
   slot and its row issue identical query arguments, so the cache serves both from one request.
+  Lists that grow keep every extra batch behind a control the reader operates.
 - **Every failure is local.** A row that cannot load reports it and offers a retry while the rest
   of the page keeps working; an item that does not exist says so instead of blaming the network.
 - **Only render what exists.** Sections whose data is absent (no description, no files, no related

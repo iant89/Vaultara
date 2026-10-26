@@ -204,6 +204,7 @@ type CapabilityFlag =
   | 'itemDetails'
   | 'relatedContent'
   | 'downloadableFiles'
+  | 'subcollections'
   | 'streaming'
   | 'pagination'
   | 'adultContent';
@@ -249,6 +250,7 @@ export function validateProviderCapabilities(
     itemDetails: readFlag(record, 'itemDetails', providerId),
     relatedContent: readFlag(record, 'relatedContent', providerId),
     downloadableFiles: readFlag(record, 'downloadableFiles', providerId),
+    subcollections: readFlag(record, 'subcollections', providerId),
     streaming: readFlag(record, 'streaming', providerId),
     pagination: readFlag(record, 'pagination', providerId),
     adultContent: readFlag(record, 'adultContent', providerId),

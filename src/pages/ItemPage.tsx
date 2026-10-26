@@ -3,26 +3,32 @@ import { AsyncContent } from '../components/content/AsyncContent';
 import { Breadcrumbs } from '../components/content/Breadcrumbs';
 import { FileList } from '../components/content/FileList';
 import { Section } from '../components/content/Section';
+import { ShowMore } from '../components/content/ShowMore';
 import { ErrorState } from '../components/feedback/ErrorState';
 import { NotYetImplemented } from '../components/feedback/NotYetImplemented';
 import { Page } from '../components/layout/Page';
 import { Artwork } from '../components/ui/Artwork';
+import { ContentRow } from '../components/ui/ContentRow';
 import { CONTENT_TYPE_LABELS, ItemCard } from '../components/ui/ItemCard';
 import { MetadataList } from '../components/ui/MetadataList';
 import { ProviderBadge } from '../components/ui/ProviderBadge';
-import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { SkeletonGroup, SkeletonMedia } from '../components/ui/Skeleton';
 import { getProviderName } from '../config/providers';
 import { providerSupports } from '../data/providerCapabilities';
 import { useProviderServices } from '../data/ProviderServices';
 import { useAsyncValue } from '../data/useAsyncValue';
-import type { ContentFile, ContentItem } from '../models/content';
+import { useProgressiveList } from '../data/useProgressiveList';
+import type { ContentFile } from '../models/content';
+import { createPaginatedResult } from '../models/pagination';
 import { formatCanonicalId } from '../models/identity';
 import { buildCollectionPath, buildHomePath, buildProviderPath } from '../utils/links';
 import styles from './ItemPage.module.css';
 
 /** Tags shown before the list stops being a summary and becomes the item's whole index. */
 const MAX_TAGS = 8;
+
+/** Related items fetched per request; the reader asks for the next batch. */
+const RELATED_BATCH_SIZE = 12;
 
 /** Split prose into paragraphs without inventing structure that is not there. */
 function paragraphs(text: string | undefined): readonly string[] {
@@ -77,10 +83,13 @@ export function ItemPage() {
       : Promise.resolve<readonly ContentFile[]>([]),
   );
 
-  const related = useAsyncValue(`related:${providerId}:${itemId}`, ({ signal, fresh }) =>
-    providerSupports(runtime, providerId, 'relatedContent')
-      ? queries.relatedItems(providerId, itemId, { signal, fresh })
-      : Promise.resolve<readonly ContentItem[]>([]),
+  const related = useProgressiveList(
+    `related:${providerId}:${itemId}`,
+    (page, context) =>
+      providerSupports(runtime, providerId, 'relatedContent')
+        ? queries.relatedItems(providerId, itemId, { page, pageSize: RELATED_BATCH_SIZE }, context)
+        : Promise.resolve(createPaginatedResult([], { page, pageSize: RELATED_BATCH_SIZE })),
+    { getKey: (entry) => `${entry.providerId}:${entry.id}` },
   );
 
   const value = item.state.status === 'ready' ? item.state.value : undefined;
@@ -237,28 +246,43 @@ export function ItemPage() {
                 </div>
               </Section>
 
-              {related.state.status === 'error' ? (
+              {related.error !== undefined ? (
                 // Related content is a bonus, not the page's purpose: a failure here says so
                 // quietly rather than turning the item into an error page.
                 <Section title="Related items">
                   <ErrorState
-                    error={related.state.error}
+                    error={related.error}
                     title="Related items could not be loaded"
                     onRetry={related.reload}
                   />
                 </Section>
-              ) : related.state.status === 'ready' && related.state.value.length > 0 ? (
-                <Section title="Related items" description="Other items from the same collections.">
-                  <ResponsiveGrid label="Related items">
-                    {related.state.value.slice(0, 12).map((entry) => (
+              ) : related.items.length > 0 ? (
+                <>
+                  <ContentRow
+                    title="Related items"
+                    description="Other items from the same collections."
+                    itemCount={related.items.length}
+                  >
+                    {related.items.map((entry) => (
                       <ItemCard
                         key={`${entry.providerId}:${entry.id}`}
                         item={entry}
                         providerName={getProviderName(entry.providerId)}
                       />
                     ))}
-                  </ResponsiveGrid>
-                </Section>
+                  </ContentRow>
+
+                  <ShowMore
+                    shown={related.items.length}
+                    total={related.total}
+                    noun="items"
+                    scope="related items"
+                    hasMore={related.hasMore}
+                    loading={related.loadingMore}
+                    error={related.moreError}
+                    onLoadMore={related.loadMore}
+                  />
+                </>
               ) : null}
 
               <NotYetImplemented

@@ -495,6 +495,24 @@ Rules:
 - **Keep the layout from widening.** A grid track sized `auto` floors at its content's min-content
   width, so one long unbreakable string can push a page sideways; use `minmax(0, 1fr)` and let
   provider text wrap.
+- **Follow the provider's hierarchy instead of inventing one.** The Archive nests collections inside
+  collections, and an item list must exclude `mediatype:collection` or subcollections appear as if
+  they were content. Query for the containers one level down and render them as shelves of their
+  items above this collection's own items.
+- **A collection on a browse surface is a row of its items, not a folder card.** Category pages and
+  "Collections inside" show each collection as a horizontal shelf with a View all link to its page.
+  The collection page remains the place to sort, filter, and ask for more. Neighbouring shelves
+  fail independently.
+- **Never assume a provider's tree is flat, and never assume it is deep.** Nesting is a declared
+  capability (`subcollections`); a provider without it shows no "Collections inside" section and
+  receives no request for one.
+- **Know which paging a list needs.** A list a reader compares across pages (a category's
+  collections) belongs in the URL and gets a real pager. A list a reader scans and abandons
+  (a collection's items, related content) grows in place: first batch on arrival, then a "View
+  more" control that appends one page per activation. Never auto-load on scroll, never truncate
+  silently, and never let an append failure replace the entries already on screen.
+- **Say how much there is.** When the provider reports a total, show "Showing 24 of 4,210 items" so
+  the reader knows what the control will reach; when it does not, say only what is known.
 
 ---
 

@@ -38,11 +38,17 @@ Fixed product decisions already established by
 **Phase: 5 (discovery experience) implemented. Deployment to GitHub Pages configured.**
 
 The Internet Archive adapter is now driven by the interface. Home shows a featured item, one row
-per content family (24 cards each) and the provider's category grid; provider and category pages list
-collections; collection pages show a paginated item grid with sorting, a content-type filter and
-in-collection search; item pages show artwork, description, files with per-file download links,
-metadata, licence, source link and related items. Every list is a URL-reachable state, and breadcrumbs
-connect the hierarchy.
+per content family (24 cards each) and the provider's category grid; provider pages list categories;
+category pages show each collection as a horizontal shelf of its items; collection pages show nested
+collections the same way, then an item shelf with sorting, a content-type filter and in-collection
+search; item pages show artwork, description, files with per-file download links, metadata, licence,
+source link and related items. Breadcrumbs connect the hierarchy.
+
+The Archive's tree is followed rather than flattened: a media type's collections come from the
+search index, a collection's subcollections are the same query one level lower, and an item grid
+excludes `mediatype:collection` so a subcollection is never rendered as content. Category pages page
+through collections with numbered URLs; collection items, nested collections and related items grow
+in place behind a "View more" control that appends one batch per activation.
 
 Reads go through `src/data/`: a TTL cache with in-flight de-duplication, a concurrency limiter, a
 `useAsyncValue` hook that binds one key to one component, and a `ProviderServices` context. Pages
@@ -60,14 +66,14 @@ Verified 2026-10-26 after Phase 5:
 
 | Fact                                                       | Evidence                                                                                  |
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Every quality gate passes                                  | `npm run check` (typecheck, lint, format, 598 tests in 37 files): PASS                    |
-| Production build succeeds                                  | `npm run build`: main 408.78 kB (127.38 kB gzip); design-system chunk 12.39 kB, split out |
+| Every quality gate passes                                  | `npm run check` (typecheck, lint, format, 625 tests in 40 files): PASS                    |
+| Production build succeeds                                  | `npm run build`: main 414.62 kB (128.74 kB gzip); design-system chunk 12.39 kB, split out |
 | Provider data layer                                        | 26 tests in `src/data/`: cache TTL, de-duplication, limiter, keys, async state: PASS      |
 | Archive adapter behaviour                                  | 135 tests in `src/providers/archive/`: search, collections, items, files, failures: PASS  |
-| Discovery pages against provider data                      | 14 tests in `src/pages/discovery.test.tsx` with a stubbed gateway: PASS                   |
-| Discovery workflow in a real browser                       | `e2e/discovery.spec.ts`: 4 tests with stubbed Archive JSON, 360-1440 px: PASS             |
+| Discovery pages against provider data                      | 15 tests in `src/pages/discovery.test.tsx` with a stubbed gateway: PASS                   |
+| Discovery workflow in a real browser                       | `e2e/discovery.spec.ts`: 5 tests with stubbed Archive JSON, 390-1440 px: PASS             |
 | No horizontal overflow with real content                   | `e2e/`: eight routes at four viewports plus data-driven pages: PASS                       |
-| End-to-end suite                                           | `npm run test:e2e`: 33 tests, Chromium, 25.1 s: PASS                                      |
+| End-to-end suite                                           | `npm run test:e2e`: 34 tests, Chromium: PASS                                              |
 | Contrast of every used pairing                             | `src/styles/contrast.test.ts` computes ratios from `tokens.css`: PASS                     |
 | Touch target floor                                         | `--touch-target: 2.75rem` (44px) asserted; `Button` enforces it: PASS                     |
 | Dev-only page is code-split and unregistered in production | no sample-content strings in the main chunk; route absent from `createRoutes()`: PASS     |
@@ -284,9 +290,9 @@ All commands are defined in `package.json` (Phase 1). Nothing here is guessed.
 | `npm run lint:fix`     | ESLint with safe fixes                                                |
 | `npm run format`       | Prettier write (application code; docs excluded)                      |
 | `npm run format:check` | Prettier check without writing                                        |
-| `npm test`             | Vitest run once (598 tests in 37 files)                               |
+| `npm test`             | Vitest run once (622 tests in 40 files)                               |
 | `npm run test:watch`   | Vitest watch mode                                                     |
-| `npm run test:e2e`     | Playwright (33 tests); browser provisioned by `scripts/setup-deps.sh` |
+| `npm run test:e2e`     | Playwright (34 tests); browser provisioned by `scripts/setup-deps.sh` |
 | `npm run check`        | The full gate: typecheck, lint, format check, unit tests              |
 
 `npm install` is required once. There is no CI workflow yet (see Known Issues).
@@ -395,8 +401,10 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 | Provider context (`ProviderServices`, shared lazy runtime)                           | Implemented                                          | `src/data/ProviderServices.tsx`                            |
 | Home page: featured item, six category rows, category grid, personalisation notice   | Implemented                                          | `src/pages/HomePage.tsx`                                   |
 | Provider page: categories for an available provider, honest status otherwise         | Implemented                                          | `src/pages/ProviderPage.tsx`                               |
-| Category page: collections, paginated, breadcrumbs                                   | Implemented                                          | `src/pages/CategoryPage.tsx`                               |
-| Collection page: item grid, sorting, type filter, in-collection search, paging       | Implemented                                          | `src/pages/CollectionPage.tsx`                             |
+| Category page: each collection as a shelf of its items, numbered pages of shelves    | Implemented                                          | `src/pages/CategoryPage.tsx`, `CollectionShelf.tsx`        |
+| Nested collections ("Collections inside") as item shelves, with View more            | Implemented                                          | `adapter.getSubcollections`, `CollectionPage.tsx`          |
+| Incremental lists: first batch on arrival, "View more" appends the next              | Implemented                                          | `src/data/useProgressiveList.ts`, `ShowMore.tsx`           |
+| Collection page: item shelf, sorting, type filter, in-collection search, View more   | Implemented                                          | `src/pages/CollectionPage.tsx`                             |
 | Item page: hero, description, files with download links, metadata, rights, related   | Implemented                                          | `src/pages/ItemPage.tsx`                                   |
 | Discovery components: rows, breadcrumbs, pagination, files, toolbar, category card   | Implemented                                          | `src/components/content/`                                  |
 | Design tokens: colour, type, space, radii, elevation, motion, layout, z-index        | Implemented                                          | `src/styles/tokens.css`                                    |
@@ -589,6 +597,12 @@ do not exist.
 | 51 | "View all" renders only for categories the provider reports | A dead link is worse than no link; provider swaps must not break navigation | Phase 5 |
 | 52 | Item counts appear only where the provider reports one | A count per collection card would cost one request per card; inventing one would be a lie (design spec 9.3) | Phase 5 |
 | 53 | Favourite controls stay absent until favourite state exists | Quality gate: never render a control that cannot work | Phase 5, revisit Phase 8 |
+| 54 | Media types are configured; everything below them comes from the search index | The Archive has no tree endpoint, and a curated list per media type could only ever describe a handful of collections | Phase 5 |
+| 55 | `mediatype:collection` selects containers; item queries add `-mediatype:collection` | A subcollection is an item, so without the exclusion nested collections appear in the item grid as if they were content | Phase 5 |
+| 56 | A collection's category is inferred from its own ancestry, media type included | The Archive writes every ancestor into `collection`, so a collection three levels down still resolves to Software | Phase 5 |
+| 57 | Two paging models, chosen per list: numbered URLs for collections, "View more" for items | Readers compare categories page by page but scan items and stop early; a `?page=7` of a 4,210-item collection is a bookmark nobody wants | Phase 5 |
+| 58 | An append failure never discards the entries already on screen | Turning a readable list into an error page punishes the reader for asking for more | Phase 5 |
+| 59 | A collection on a browse surface is a shelf of its items, not a folder card | The user asked for the Netflix row layout; folder cards hid the content behind an extra tap and filled the phone with descriptions | Phase 5 |
 
 Resolved by user decision on 2026-10-25: file naming (issue 3, decision 18) and the
 roadmap's authoritative status (issue 2, decision 19).
@@ -676,28 +690,28 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 
 ### Executed checks (2026-10-26, latest gate)
 
-| Check                                                       | Command                       | Status  | Detail                                                                                                                    |
-| ----------------------------------------------------------- | ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                       |
-| Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                   |
-| Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                     |
-| Unit and component tests                                    | `npm test`                    | PASS    | 37 files, 598 tests                                                                                                       |
-| Production build                                            | `npm run build`               | PASS    | Main 408.78 kB (127.38 kB gzip); dev chunk split out                                                                      |
-| Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1        |
-| Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                               |
-| Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                      |
-| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 33 tests, Chromium 153.0.8010.0, 25.1 s; 4 viewports, keyboard, mobile search, discovery workflow                         |
-| Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                      |
-| Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed |
-| Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                        |
-| Native modal path                                           | manual                        | PARTIAL | Renders in Chromium, but no test asserts `showModal` behaviour yet                                                        |
-| Provider architecture unit and integration tests            | `npm test`                    | PASS    | 174 new tests across registry, gateway, reliability, normalization, validation                                            |
-| Archive adapter tests                                       | `npm test`                    | PASS    | 135 tests: API, mapping, adapter behaviour, and behaviour through registry + gateway                                      |
-| Discovery page tests against stubbed provider data          | `npm test`                    | PASS    | 14 tests: home, provider, category, collection (sort/filter/search/page), item (files, rights, related)                   |
-| Discovery workflow in a real browser                        | `e2e/discovery.spec.ts`       | PASS    | 4 tests at 390/768/1440 px with stubbed Archive JSON; no horizontal overflow on any route                                 |
-| Adapter against the live archive.org service                | none                          | N/A     | No route from the sandbox. Fixtures follow documented shapes; not a substitute for a live run                             |
-| Pages artefact: base path, assets, 404 fallback, deep links | `npm run verify:pages`        | PASS    | Verified for base `/Vaultara/` and `/`; emulates Pages serving without a browser                                          |
-| Deployed build in a real browser                            | Chromium against `dist/`      | PASS    | `/Vaultara/favorites`, `/settings/privacy`, `/item/...` boot and route correctly; client navigation stays inside the base |
+| Check                                                       | Command                       | Status  | Detail                                                                                                                                                   |
+| ----------------------------------------------------------- | ----------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                                                      |
+| Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                                                  |
+| Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                                                    |
+| Unit and component tests                                    | `npm test`                    | PASS    | 40 files, 622 tests                                                                                                                                      |
+| Production build                                            | `npm run build`               | PASS    | Main 414.62 kB (128.74 kB gzip); dev chunk split out                                                                                                     |
+| Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1                                       |
+| Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                                                              |
+| Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                                                     |
+| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 34 tests, Chromium 153.0.8010.0; 4 viewports, keyboard, mobile search, discovery workflow, hierarchy                                                     |
+| Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                                                     |
+| Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed                                |
+| Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                                                       |
+| Native modal path                                           | manual                        | PARTIAL | Renders in Chromium, but no test asserts `showModal` behaviour yet                                                                                       |
+| Provider architecture unit and integration tests            | `npm test`                    | PASS    | 174 new tests across registry, gateway, reliability, normalization, validation                                                                           |
+| Archive adapter tests                                       | `npm test`                    | PASS    | 135 tests: API, mapping, adapter behaviour, and behaviour through registry + gateway                                                                     |
+| Discovery page tests against stubbed provider data          | `npm test`                    | PASS    | 15 tests: home, provider, category (numbered pages), collection (sort/filter/search/View more), nested collections, item (files, rights, related + more) |
+| Discovery workflow in a real browser                        | `e2e/discovery.spec.ts`       | PASS    | 5 tests at 390/768/1440 px with stubbed Archive JSON; hierarchy, View more, no overflow                                                                  |
+| Adapter against the live archive.org service                | none                          | N/A     | No route from the sandbox. Fixtures follow documented shapes; not a substitute for a live run                                                            |
+| Pages artefact: base path, assets, 404 fallback, deep links | `npm run verify:pages`        | PASS    | Verified for base `/Vaultara/` and `/`; emulates Pages serving without a browser                                                                         |
+| Deployed build in a real browser                            | Chromium against `dist/`      | PASS    | `/Vaultara/favorites`, `/settings/privacy`, `/item/...` boot and route correctly; client navigation stays inside the base                                |
 
 ### Tests added in Phase 5
 
@@ -798,6 +812,25 @@ the full sentence. A scratch probe script left in the repository root is linted 
 code, so it fails `npm run check` on `no-undef` — write probes outside the repository or delete
 them in the same session.
 
+**A curated catalogue cannot describe a tree.** The first version of the category page listed four
+hand-picked collections per media type, which was a guess at the Archive's contents rather than a
+view of them. The Archive exposes no tree endpoint, but it does flatten every item's ancestry into
+its `collection` field — so `mediatype:collection AND collection:<branch>` returns the containers one
+level down, and the same query one level further is the next level. The lesson: when a provider has
+no hierarchy API, look for the field that encodes ancestry before reaching for a hard-coded list.
+
+**A container is an item, so a "browse this collection" query returns its subcollections too.** The
+item grid briefly listed collections as if they were films. `-mediatype:collection` is the fix, and
+it has to be part of the same query rather than a client-side filter — otherwise pagination counts
+the wrong things and every page is short by however many containers it contained.
+
+**Incremental lists need their own hook, not a bigger page size.** Loading a whole 4,210-item
+collection to avoid paging is worse than paging badly. The list hook keeps the accumulated entries,
+drops duplicates a shifting index returns, and — importantly — treats a failed _append_ differently
+from a failed _first_ page: the first failure replaces the list, the second sits beside the button
+and leaves the readable content alone. Testing that distinction is what stopped a "Try again" button
+from wiping twenty items off the screen.
+
 **A hook cannot be called after a conditional return, and a route should not fetch for a provider
 that has no adapter.** The first provider page issued its categories request before deciding
 whether the provider existed, which would have recorded a health failure against a provider that
@@ -807,6 +840,28 @@ never had a chance to answer. The request moved into an extracted component that
 ---
 
 ## Recent Changes
+
+### 2026-10-26 - Collection hierarchy, pagination, and incremental lists
+
+- Replaced the curated per-media-type collection list with the Archive's real tree: a media type's
+  collections come from `mediatype:collection AND collection:<media type>`, with `Data` added as a
+  seventh media type and the category order following the Archive's own.
+- Added `getSubcollections` to the provider contract (optional method, `subcollections` capability),
+  the gateway and the query layer; `CollectionPage` renders a "Collections inside" section above the
+  item grid.
+- Item queries now exclude `mediatype:collection`, so a subcollection never appears as content.
+  Collections are placed in a category from their own ancestry, media type included.
+- `getRelatedItems` returns a `PaginatedResult` and honours `page`/`pageSize` instead of returning a
+  fixed list of twelve.
+- Added `src/data/useProgressiveList.ts`: accumulated entries, duplicate suppression, a key change
+  restarting from page one, and append failures that keep the loaded list.
+- Added `ShowMore` (visible label "View more", scope in the accessible name, "Showing N of M",
+  retry-in-place) and gave `Pagination` a numbered page window with first/last anchors and
+  `aria-current`.
+- `ContentQueries.relatedItems` and `subcollections` are added and keyed on their paging arguments.
+- Tests: `useProgressiveList` (6), `ShowMore` (5), `Pagination` (6), plus adapter, gateway, query and
+  page coverage for the hierarchy; `e2e/discovery.spec.ts` gained a hierarchy walk and a View-more
+  assertion, and its stub now mirrors the container/item distinction.
 
 ### 2026-10-26 - Phase 5: discovery experience
 
@@ -979,19 +1034,99 @@ architecture, the Archive adapter, and the discovery workflow that consumes it.
 
 1. **Phase 6: accounts and persistence** — only on the user's instruction. It brings IndexedDB,
    accounts, and the state that favourites currently lack.
-2. **Wire the favourite controls when their state exists (Phase 8).** `ItemCard` already accepts
+2. **Verify the hierarchy against the live service:** confirm `mediatype:collection AND
+collection:<media type>` returns the expected collections (and not every collection on the
+   Archive), that `-mediatype:collection` behaves as a filter on the live index, and that `numFound`
+   for a container query is the container count the interface displays.
+3. **Wire the favourite controls when their state exists (Phase 8).** `ItemCard` already accepts
    `onFavoriteToggle`; discovery pages pass nothing, so no control renders. Do not add controls to
    the API contract before the store exists.
-3. **Verify the discovery flow against the live service** when a network is available: the curated
+4. **Verify the discovery flow against the live service** when a network is available: the curated
    collection identifiers in `catalog.ts`, the CORS behaviour of `advancedsearch.php`, real
    artwork (the Archive serves a placeholder rather than a 404 for items without a thumbnail), and
    the item counts taken from `numFound`.
-4. **Add a native-modal E2E test.** The `<dialog>` path renders in Chromium but nothing asserts
+5. **Add a native-modal E2E test.** The `<dialog>` path renders in Chromium but nothing asserts
    `showModal` semantics, focus trapping, or background inertness.
-5. **Extend CI** to run `npm run test:e2e`, not just `npm run check`.
-6. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
+6. **Extend CI** to run `npm run test:e2e`, not just `npm run check`.
+7. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
 
 ## Session Handoff Log
+
+### Session 2026-10-26 (Netflix shelves)
+
+1. **Objective:** the user sent a Netflix screenshot ("this is the layout I was looking for")
+   against a phone photo of the collection page's 2-column folder-card grid. Presentation only;
+   nothing committed.
+2. **Specification references:** design spec 5.1-5.3 (home is stacked horizontal rows, artwork
+   dominates the card); 8.2 still describes a wrapping grid for collection items — the user
+   instruction overrides that presentation. Roadmap 5.8; `AGENTS.md` 5.8.
+3. **Changes made:**
+   - `CollectionShelf`: one collection → `ItemRow` of its items plus View all.
+   - Category page: six shelves per numbered page instead of a grid of collection cards.
+   - Collection page: nested collections as shelves; items and related lists as horizontal tracks.
+   - Item page related items as a row.
+   - `CollectionCard` omits description and the provider badge by default (artwork dominates).
+   - `ContentTrack` extracted from `ContentRow`; row titles with View all are links.
+   - Page column no longer caps at 72rem, so shelves use the main width.
+4. **Implementation status:** discovery browse now matches the home-page shelf pattern. Favourites,
+   search results, downloads and viewers remain unimplemented.
+5. **Verification:** `npm run check` PASS (40 files, 625 tests); `npm run test:e2e` PASS (34 tests);
+   `npm run build` PASS (main 415.51 kB / 128.69 kB gzip); `npm run verify:pages` PASS. Screenshots
+   of category and collection shelves at 390 px and 1440 px reviewed; overflow 0.
+6. **Outstanding work:** live Archive verification; Phase 6 not authorised.
+7. **Known risks:** six extra item requests per category page (queued by the limiter of 4); a
+   nested collection that holds only further collections shows an empty shelf with View all.
+8. **Next steps:** user-driven. Do not start Phase 6 unprompted.
+9. **Relevant files:** `src/components/content/CollectionShelf.tsx`, `ItemRow.tsx`,
+   `src/components/ui/{ContentRow,CollectionCard}.tsx`,
+   `src/pages/{Category,Collection,Item}Page.tsx`, `e2e/discovery.spec.ts`.
+
+### Session 2026-10-26 (hierarchy, pagination, incremental lists)
+
+1. **Objective:** the user reported that the Archive stores content as a tree — media type, then
+   collections, then subcollections, then items — which the interface was flattening with a curated
+   list; they also asked for pagination and for a "View more" control wherever a list is cut short
+   (collections and related items). Nothing was committed.
+2. **Specification references:** design spec 7.1, 9.2-9.5, 15.3; roadmap 5.2, 5.3, 5.6, 5.7;
+   `AGENTS.md` 5.8.
+3. **Changes made:**
+   - `catalog.ts`: media types plus the collection each is rooted at; `Data` added; category order
+     follows the Archive's own. `findArchiveCategoryByCollection` maps an ancestor id to a category.
+   - `query.ts`: `COLLECTION_MEDIATYPE_CLAUSE` and `EXCLUDE_COLLECTIONS_CLAUSE`.
+   - `adapter.ts`: `getCollections` is now a provider query for the branch (unfiltered failure, paged
+     by the provider, ordered by downloads by default, searchable); new `getSubcollections`;
+     `getCollectionItems` excludes containers; `getRelatedItems` returns a `PaginatedResult` and
+     honours paging; shared `searchCollections`/`categoriesFor` internals.
+   - Contract: `subcollections` capability, optional `getSubcollections`, `getRelatedItems` paged;
+     gateway, validation, `contentQueries` and the test fake updated.
+   - `useProgressiveList` + `ShowMore`; `Pagination` gained a numbered page window.
+   - Pages: collection page shows nested collections and grows items/related lists in place; category
+     page pages collections with numbered URLs; item page's related list grows on request.
+4. **Implementation status:** 5.2, 5.3, 5.6 and 5.7 complete against the Archive. Favourites remain
+   unrendered (no state until Phase 8) and search results, downloads and viewers are untouched.
+5. **Verification:** `npm run check` PASS (40 files, 622 tests); `npm run test:e2e` PASS (34 tests);
+   `npm run build` PASS; `npm run verify:pages` PASS; screenshots of the home, category, collection
+   (desktop and 390 px) and item pages reviewed with zero horizontal overflow at each width.
+6. **Failures found by the tests:** the item grid initially received collections as content (fixed by
+   exempting `mediatype:collection` in the query, not in the client); the E2E stub answered item
+   queries with collections because its positive-clause check matched the negative one; two "View
+   more" buttons on one page were indistinguishable to a screen reader until the control grew a
+   scoped accessible name; the "Showing N of M" line only became correct once the provider total was
+   passed through for appended pages.
+7. **Outstanding work:** live verification against archive.org (CORS on `advancedsearch.php`, real
+   `numFound` values for container queries, whether `-mediatype:collection` behaves as expected on
+   the live index); favourites (Phase 8); search results (Phase 9); a "View more" for home rows is not
+   implemented because those rows are horizontal scrollers, not cut lists.
+8. **Known risks:** the container query is `mediatype:collection AND collection:<branch>` — if the
+   Archive ever stops adding media types to an item's ancestry, categories would return nothing and
+   the fallback only covers the category a caller already asked about. Nested collections inherit the
+   branch's media type, so a collection listed under one media type can also appear under another
+   when its ancestry says so.
+9. **Next steps:** user-driven. Phase 6 has not been authorised.
+10. **Relevant files:** `src/providers/archive/{catalog,query,adapter}.ts`, `src/models/provider.ts`,
+    `src/providers/gateway.ts`, `src/data/{contentQueries,useProgressiveList}.ts`,
+    `src/components/content/{ShowMore,Pagination}.tsx`, `src/pages/{Category,Collection,Item}Page.tsx`,
+    `e2e/discovery.spec.ts`, `README.md`, `AGENTS.md` 5.8.
 
 ### Session 2026-10-26 (Phase 5 discovery experience)
 

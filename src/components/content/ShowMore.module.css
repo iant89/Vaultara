@@ -1,0 +1,25 @@
+.more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.status {
+  color: var(--color-text-subtle);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.loading {
+  color: var(--color-text);
+}
+
+/* The failure panel should not stretch the whole page when it replaces the button. */
+.more > [role='alert'] {
+  flex: 1 1 100%;
+}

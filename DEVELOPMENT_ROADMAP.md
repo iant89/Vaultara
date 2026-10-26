@@ -482,13 +482,42 @@ using real Archive.org data.
 ### 5.3 Collection Pages
 
 - [x] Implement collection headers.
-- [x] Implement item grids.
+- [x] Implement item shelves (horizontal poster tracks with "View more").
 - [x] Implement pagination.
 - [x] Implement sorting.
 - [x] Implement filtering.
 - [x] Implement search within collections.
 - [x] Implement breadcrumbs.
 - [x] Implement related collections.
+
+### 5.6 Collection Hierarchy
+
+The Archive is a tree: a media type holds collections, a collection may hold further collections,
+and items sit at the leaves. Browsing has to follow that shape rather than flattening it.
+
+- [x] List a media type's collections from the provider (not a curated list per media type).
+- [x] Discover collections nested inside a collection and show each as a row of its items.
+- [x] Keep subcollections out of the item grid, since a subcollection is an item too.
+- [x] Place a nested collection under the media type it descends from, from its own ancestry data.
+- [x] Paginate a media type's collection shelves with numbered pages and shareable URLs.
+
+### 5.7 Incremental Lists
+
+- [x] Load one batch of collection items instead of a whole page of a numbered series.
+- [x] Offer "View more" where more entries exist, appending one batch per activation.
+- [x] Do the same for nested collections and for an item's related content.
+- [x] State how much is on screen and how much there is, when the provider reports a total.
+- [x] Keep the entries already shown when appending fails, and report the failure beside the control.
+
+### 5.8 Browsing shelves
+
+The home page already used horizontal rows. Category and collection browse now match that
+shape: a collection is a shelf of posters, not a folder card.
+
+- [x] Show each collection on a category page as a row of its items, with View all.
+- [x] Show nested collections the same way on a collection page.
+- [x] Keep artwork dominant on collection cards (title and count; no description on the card).
+- [x] Keep category paging in the URL; six shelves per page so each row stays its own request.
 
 ### 5.4 Item Details
 
@@ -516,13 +545,13 @@ using real Archive.org data.
 Archive provider: home, category, collection, and item details, with breadcrumbs, related content,
 and per-file download links.
 
-| Surface                | Behaviour                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------ |
-| Home                   | Featured item, six category rows of 24 cards, category grid, personalisation placeholder    |
-| Provider               | That provider's categories, or an honest status for providers without an adapter            |
-| Category               | Its collections, paginated, with provider badges                                            |
-| Collection             | Item grid with sorting, content-type filter, in-collection search, paging, related rows     |
-| Item                   | Hero, description, files with download links, metadata, rights, source link, related items  |
+| Surface                | Behaviour                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| Home                   | Featured item, six category rows of 24 cards, category grid, personalisation placeholder            |
+| Provider               | That provider's categories, or an honest status for providers without an adapter                    |
+| Category               | Each collection as a row of its items, numbered pages of six shelves                                |
+| Collection             | Nested collections as item shelves, then items: sort, filter, search, "View more"                   |
+| Item                   | Hero, description, files with download links, metadata, rights, source link, related items + more   |
 
 Where each piece lives:
 
@@ -552,6 +581,25 @@ Decisions worth knowing:
 - **Item counts appear only where the provider reports one.** Collections carry a real count; the
   category grid omits counts rather than inventing them, because a count per card would cost one
   request per card (design spec 9.3).
+- **The hierarchy is read from the index, not curated.** A media type's collections are
+  `mediatype:collection AND collection:<media type>`; a collection's nested collections are the same
+  query one level down; a collection's items add `-mediatype:collection` so a subcollection is not
+  rendered as content. Because the Archive writes every ancestor into an item's `collection` field,
+  a collection nested three levels deep still resolves to the media type it belongs to. The previous
+  curated list per media type is gone — it could only ever describe six collections per branch.
+- **Collections are browsable to any depth without new configuration.** A new subcollection on the
+  Archive appears on its parent's page on the next load; nothing here needs editing for it.
+- **A collection on a browse surface is a shelf of its items.** Category pages and "Collections
+  inside" render each collection as a horizontal row with View all, matching the home page rather
+  than a grid of folder cards. The collection page is still where sorting, filtering, and "View
+  more" happen. Six shelves per category page keeps each row as its own request.
+- **Two kinds of paging, chosen per list.** A category's collection shelves are numbered pages in the
+  URL, because a reader moves between them and expects to share the view. A collection's items, its
+  nested collections, and an item's related content grow in place behind "View more", because a
+  reader scans them and usually stops early — and because a `?page=7` of a collection is a bookmark
+  nobody wants. Both state what is on screen and what exists.
+- **An append failure never costs the reader the entries already on screen.** The batch failure is
+  reported beside the control, with a retry that asks for the same page again.
 - **Cards omit the provider badge on single-provider surfaces** (rows, collection grids) and the
   surface itself names the provider; every hero, badge row, and detail page identifies it.
 - **No favourite controls exist yet.** Phase 8 brings favourite state; until then the item page says
@@ -559,9 +607,9 @@ Decisions worth knowing:
 - **Failures are contained per surface.** A row that fails reports it and offers a retry while the
   rest of the page keeps working; an unknown item says "not found" rather than blaming the network.
 
-**Verification (2026-10-26):** `npm run check` PASS (37 files, 598 tests); `npm run test:e2e` PASS
-(33 tests, Chromium); `npm run build` PASS; `npm run verify:pages` PASS. Bundle: main 408.78 kB
-(127.38 kB gzip), because the provider and data layer are now part of the application.
+**Verification (2026-10-26):** `npm run check` PASS (40 files, 625 tests); `npm run test:e2e` PASS
+(34 tests, Chromium); `npm run build` PASS; `npm run verify:pages` PASS. Bundle: main 415.51 kB
+(128.69 kB gzip), because the provider and data layer are part of the application.
 
 **Not verified:** live archive.org behaviour (the sandbox has no route to it), real provider
 artwork, Safari/Firefox/iOS, and screen-reader output. The browser tests stub the provider's JSON so
