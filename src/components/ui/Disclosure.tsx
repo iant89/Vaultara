@@ -144,3 +144,28 @@ export function DisclosureItem({ to, children }: DisclosureItemProps) {
     </li>
   );
 }
+
+interface DisclosureActionProps {
+  readonly children: ReactNode;
+  readonly onClick: () => void;
+}
+
+/** A command rendered as a menu row. Closes the panel, then runs the action. */
+export function DisclosureAction({ children, onClick }: DisclosureActionProps) {
+  const context = useContext(DisclosureContext);
+
+  return (
+    <li>
+      <button
+        type="button"
+        className={styles.item}
+        onClick={() => {
+          context?.close();
+          onClick();
+        }}
+      >
+        {children}
+      </button>
+    </li>
+  );
+}

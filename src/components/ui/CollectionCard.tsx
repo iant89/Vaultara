@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import type { ContentCollection } from '../../models/content';
+import type { ContentIdentity } from '../../models/identity';
 import { formatItemCount } from '../../utils/format';
 import { buildCollectionPath } from '../../utils/links';
 import { Artwork } from './Artwork';
 import { ProviderBadge } from './ProviderBadge';
+import { FavoriteButton } from './ToggleButton';
 import styles from './ContentCard.module.css';
 
 interface CollectionCardProps {
@@ -14,6 +16,9 @@ interface CollectionCardProps {
   readonly priority?: boolean;
   /** Renders the provider badge; hide it when the whole surface is already one provider. */
   readonly showProvider?: boolean;
+  readonly onFavoriteToggle?: (identity: ContentIdentity, next: boolean) => void;
+  readonly isFavorite?: boolean;
+  readonly favoriteDisabled?: boolean;
 }
 
 /**
@@ -29,8 +34,12 @@ export function CollectionCard({
   wide = false,
   priority = false,
   showProvider = false,
+  onFavoriteToggle,
+  isFavorite = false,
+  favoriteDisabled = false,
 }: CollectionCardProps) {
   const itemCount = formatItemCount(collection.itemCount);
+  const identity: ContentIdentity = { providerId: collection.providerId, itemId: collection.id };
 
   return (
     <li className={styles.card}>
@@ -43,6 +52,17 @@ export function CollectionCard({
           priority={priority}
           className={styles.artwork}
         />
+        {onFavoriteToggle ? (
+          <FavoriteButton
+            active={isFavorite}
+            itemTitle={collection.title}
+            disabled={favoriteDisabled}
+            className={styles.toggle}
+            onToggle={(next) => {
+              onFavoriteToggle(identity, next);
+            }}
+          />
+        ) : null}
       </div>
 
       <div className={styles.body}>

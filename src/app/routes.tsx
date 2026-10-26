@@ -7,6 +7,7 @@ import { DownloadsPage } from '../pages/DownloadsPage';
 import { FavoritesPage } from '../pages/FavoritesPage';
 import { HistoryPage } from '../pages/HistoryPage';
 import { HomePage } from '../pages/HomePage';
+import { OnboardingPage } from '../pages/OnboardingPage';
 import { ItemPage } from '../pages/ItemPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ProviderPage } from '../pages/ProviderPage';
@@ -52,6 +53,7 @@ export function createRoutes({ includeDevRoutes = false }: RouteOptions = {}): R
         { path: 'search', element: <SearchPage /> },
         { path: 'favorites', element: <FavoritesPage /> },
         { path: 'history', element: <HistoryPage /> },
+        { path: 'onboarding', element: <OnboardingPage /> },
         { path: 'downloads', element: <DownloadsPage /> },
         { path: 'viewer/:providerId/:itemId', element: <ViewerPage /> },
         {

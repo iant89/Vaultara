@@ -1,9 +1,9 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAsyncValue } from '../data/useAsyncValue';
+import { useAsyncValue, type AsyncState } from '../data/useAsyncValue';
 import { useProviderServices } from '../data/ProviderServices';
+import { useSession } from '../data/SessionContext';
 import {
-  DISCOVERY_ROWS,
-  FEATURED_CATEGORY_ID,
   PRIMARY_PROVIDER_ID,
   ROW_PAGE_SIZE,
   type DiscoveryRowDefinition,
@@ -15,11 +15,15 @@ import { FeaturedItem } from '../components/content/FeaturedItem';
 import { ItemRow } from '../components/content/ItemRow';
 import { Section } from '../components/content/Section';
 import { EmptyState } from '../components/feedback/EmptyState';
-import { NotYetImplemented } from '../components/feedback/NotYetImplemented';
 import { Page } from '../components/layout/Page';
 import { ProviderBadge } from '../components/ui/ProviderBadge';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { SkeletonCard, SkeletonGroup, SkeletonMedia } from '../components/ui/Skeleton';
+import type { ContentItem } from '../models/content';
+import type { PaginatedResult } from '../models/pagination';
+import type { UserContentState } from '../models/userState';
+import { filterDiscoveryItems, indexContentStates } from '../personalization/discoveryFilter';
+import { featuredRowFor, rowsForCategories } from '../personalization/discoveryRows';
 import { buildCategoryPath, buildProviderPath } from '../utils/links';
 import styles from './HomePage.module.css';
 
@@ -42,20 +46,48 @@ function useCategoryRow(providerId: string, row: DiscoveryRowDefinition) {
   );
 }
 
-const FEATURED_ROW =
-  DISCOVERY_ROWS.find((row) => row.categoryId === FEATURED_CATEGORY_ID) ?? DISCOVERY_ROWS[0];
+function useDiscoveryFilter() {
+  const session = useSession();
+  const hideExplored =
+    session.status === 'signed-in' && session.preferences.hideExploredFromDiscovery;
+  const states = useMemo(() => indexContentStates(session.contentStates), [session.contentStates]);
 
-/** The most recently added item of the featured row, or nothing at all. */
+  return { hideExplored, states, selectedCategoryIds: session.preferences.selectedCategoryIds };
+}
+
+function filterRowState(
+  state: AsyncState<PaginatedResult<ContentItem>>,
+  states: ReadonlyMap<string, UserContentState>,
+  hideExplored: boolean,
+): AsyncState<PaginatedResult<ContentItem>> {
+  if (state.status !== 'ready') {
+    return state;
+  }
+
+  return {
+    ...state,
+    value: {
+      ...state.value,
+      items: filterDiscoveryItems(state.value.items, states, hideExplored),
+    },
+  };
+}
+
 function FeaturedSection({
   providerId,
   row,
+  states,
+  hideExplored,
 }: {
   readonly providerId: string;
   readonly row: DiscoveryRowDefinition;
+  readonly states: ReadonlyMap<string, UserContentState>;
+  readonly hideExplored: boolean;
 }) {
   const { state } = useCategoryRow(providerId, row);
+  const filtered = filterRowState(state, states, hideExplored);
 
-  if (state.status === 'loading') {
+  if (filtered.status === 'loading') {
     return (
       <SkeletonGroup label="Loading featured content">
         <div className={styles.featuredSkeleton}>
@@ -65,7 +97,7 @@ function FeaturedSection({
     );
   }
 
-  const item = state.status === 'ready' ? state.value.items[0] : undefined;
+  const item = filtered.status === 'ready' ? filtered.value.items[0] : undefined;
 
   if (item === undefined) {
     // A failed or empty featured row is not an error worth its own panel: the row below reports
@@ -90,10 +122,14 @@ function CategoryRow({
   providerId,
   row,
   viewAllHref,
+  states,
+  hideExplored,
 }: {
   readonly providerId: string;
   readonly row: DiscoveryRowDefinition;
   readonly viewAllHref?: string;
+  readonly states: ReadonlyMap<string, UserContentState>;
+  readonly hideExplored: boolean;
 }) {
   const { state, reload } = useCategoryRow(providerId, row);
 
@@ -102,7 +138,7 @@ function CategoryRow({
       title={row.title}
       description={row.description}
       {...(viewAllHref !== undefined ? { viewAllHref } : {})}
-      state={state}
+      state={filterRowState(state, states, hideExplored)}
       reload={reload}
     />
   );
@@ -111,6 +147,9 @@ function CategoryRow({
 export function HomePage() {
   const { queries } = useProviderServices();
   const providerId = PRIMARY_PROVIDER_ID;
+  const { hideExplored, states, selectedCategoryIds } = useDiscoveryFilter();
+  const rows = rowsForCategories(selectedCategoryIds);
+  const featured = featuredRowFor(rows);
 
   // The category list decides which "View all" links would actually work; the rows themselves
   // resolve their own requests.
@@ -123,20 +162,29 @@ export function HomePage() {
       ? new Set(categories.state.value.map((category) => category.id))
       : new Set<string>();
 
+  const intro =
+    selectedCategoryIds.length > 0
+      ? 'Recently added titles from the categories you chose. Change them any time in Settings.'
+      : 'Recently added films, books, audio, images, software, and web archives from the Internet Archive.';
+
   return (
-    <Page
-      title="Discovery"
-      intro="Recently added films, books, audio, images, software, and web archives from the Internet Archive."
-    >
-      {FEATURED_ROW !== undefined ? (
-        <FeaturedSection providerId={providerId} row={FEATURED_ROW} />
+    <Page title="Discovery" intro={intro}>
+      {featured !== undefined ? (
+        <FeaturedSection
+          providerId={providerId}
+          row={featured}
+          states={states}
+          hideExplored={hideExplored}
+        />
       ) : null}
 
-      {DISCOVERY_ROWS.map((row) => (
+      {rows.map((row) => (
         <CategoryRow
           key={row.categoryId}
           providerId={providerId}
           row={row}
+          states={states}
+          hideExplored={hideExplored}
           {...(availableCategoryIds.has(row.categoryId)
             ? { viewAllHref: buildCategoryPath(row.categoryId) }
             : {})}
@@ -182,12 +230,6 @@ export function HomePage() {
           }
         </AsyncContent>
       </Section>
-
-      <NotYetImplemented
-        feature="Personal recommendations"
-        summary="Recommendations based on what you open and like arrive with personalisation. Until then, discovery is the same for everyone and reflects only what the provider publishes."
-        plannedPhase="Phase 7"
-      />
     </Page>
   );
 }

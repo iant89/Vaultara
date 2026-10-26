@@ -8,7 +8,7 @@ import type { PaginatedResult } from '../../models/pagination';
 import { ErrorState } from '../feedback/ErrorState';
 import { ContentRow } from '../ui/ContentRow';
 import { ArrowRightIcon } from '../ui/icons';
-import { ItemCard } from '../ui/ItemCard';
+import { SavedItemCard } from './SavedItemCard';
 import { Skeleton, SkeletonCard, SkeletonGroup } from '../ui/Skeleton';
 import styles from './ItemRow.module.css';
 
@@ -98,7 +98,7 @@ export function ItemRow({
       emptyMessage={emptyMessage}
     >
       {items.map((item) => (
-        <ItemCard key={item.id} item={item} providerName={getProviderName(item.providerId)} />
+        <SavedItemCard key={item.id} item={item} providerName={getProviderName(item.providerId)} />
       ))}
     </ContentRow>
   );

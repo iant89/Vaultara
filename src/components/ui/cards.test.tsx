@@ -79,6 +79,21 @@ describe('ItemCard', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('keeps a resume link above the card overlay', () => {
+    renderWithRouter(
+      <ItemCard
+        item={ITEM}
+        providerName="Internet Archive"
+        resumeHref="/view/archive/item%20with%20space"
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: 'Resume' })).toHaveAttribute(
+      'href',
+      '/view/archive/item%20with%20space',
+    );
+  });
+
   it('reports the canonical identity when the favourite toggle is used', async () => {
     const onFavoriteToggle = vi.fn();
     renderWithRouter(
@@ -132,6 +147,26 @@ describe('CollectionCard', () => {
     renderWithRouter(<CollectionCard collection={COLLECTION} providerName="Internet Archive" />);
 
     expect(screen.queryByText('Public-domain films.')).toBeNull();
+  });
+
+  it('reports the canonical identity when the favourite toggle is used', async () => {
+    const onFavoriteToggle = vi.fn();
+    renderWithRouter(
+      <CollectionCard
+        collection={COLLECTION}
+        providerName="Internet Archive"
+        onFavoriteToggle={onFavoriteToggle}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Add Early Silent Cinema to favorites' }),
+    );
+
+    expect(onFavoriteToggle).toHaveBeenCalledWith(
+      { providerId: 'archive', itemId: 'silent-cinema' },
+      true,
+    );
   });
 
   it('hides the provider badge unless asked', () => {

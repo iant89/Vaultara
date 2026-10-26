@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { SessionProvider } from '../data/SessionContext';
 import { toRouterBasename } from './basePath';
 import { createRoutes } from './routes';
 
@@ -16,5 +17,9 @@ const router = createBrowserRouter(
 );
 
 export function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <SessionProvider>
+      <RouterProvider router={router} />
+    </SessionProvider>
+  );
 }

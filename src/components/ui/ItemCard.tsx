@@ -35,6 +35,10 @@ interface ItemCardProps {
   readonly favoriteDisabled?: boolean;
   /** Renders the provider badge; hide it when the whole surface is already one provider. */
   readonly showProvider?: boolean;
+  /** Viewer resume link, shown above the card overlay so it stays clickable. */
+  readonly resumeHref?: string;
+  /** Extra caption, e.g. when a favorite is shown from a snapshot. */
+  readonly notice?: string;
 }
 
 /**
@@ -50,6 +54,8 @@ export function ItemCard({
   isFavorite = false,
   favoriteDisabled = false,
   showProvider = false,
+  resumeHref,
+  notice,
 }: ItemCardProps) {
   const identity: ContentIdentity = { providerId: item.providerId, itemId: item.id };
   const typeLabel = CONTENT_TYPE_LABELS[item.type];
@@ -75,6 +81,11 @@ export function ItemCard({
             }}
           />
         ) : null}
+        {resumeHref !== undefined ? (
+          <Link to={resumeHref} className={styles.resume}>
+            Resume
+          </Link>
+        ) : null}
       </div>
 
       <div className={styles.body}>
@@ -84,7 +95,10 @@ export function ItemCard({
           </Link>
         </h3>
 
-        {item.creator ? <p className={styles.description}>{item.creator}</p> : null}
+        {notice !== undefined ? <p className={styles.description}>{notice}</p> : null}
+        {notice === undefined && item.creator ? (
+          <p className={styles.description}>{item.creator}</p>
+        ) : null}
 
         <div className={styles.metaRow}>
           <span className={styles.typeChip} data-testid="content-type">

@@ -83,3 +83,7 @@ export function buildDownloadsPath(): string {
 export function buildSettingsPath(): string {
   return '/settings';
 }
+
+export function buildOnboardingPath(): string {
+  return '/onboarding';
+}

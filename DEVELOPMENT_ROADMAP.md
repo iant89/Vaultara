@@ -475,8 +475,8 @@ using real Archive.org data.
 - [x] Display item counts where available.
 - [x] Display descriptions where appropriate.
 - [x] Implement card navigation.
-- [ ] Implement favorite actions. Deferred to Phase 8: favourite state does not exist yet, so
-      cards render no favourite control rather than a button that cannot save anything.
+- [x] Implement favorite actions. Signed-in visitors save from collection cards; unsigned visitors
+      still see no dead control.
 - [x] Implement missing-image fallbacks.
 
 ### 5.3 Collection Pages
@@ -638,48 +638,68 @@ Implement user accounts and persistent user-specific state.
 
 ### 6.1 Backend Foundation
 
-- [ ] Select the backend technology.
-- [ ] Define the backend API.
-- [ ] Implement authentication.
-- [ ] Implement account creation.
-- [ ] Implement sign-in and sign-out.
-- [ ] Implement session management.
-- [ ] Implement authorization.
-- [ ] Validate all user-controlled input.
+- [x] Select the backend technology.
+- [x] Define the backend API.
+- [x] Implement authentication.
+- [x] Implement account creation.
+- [x] Implement sign-in and sign-out.
+- [x] Implement session management.
+- [x] Implement authorization.
+- [x] Validate all user-controlled input.
 
 ### 6.2 Persistence
 
-- [ ] Persist category preferences.
-- [ ] Persist enabled providers.
-- [ ] Persist favorites.
-- [ ] Persist likes.
-- [ ] Persist exploration history.
-- [ ] Persist viewer progress.
-- [ ] Implement synchronization.
-- [ ] Handle conflicts and duplicate operations.
+- [x] Persist category preferences.
+- [x] Persist enabled providers.
+- [x] Persist favorites.
+- [x] Persist likes.
+- [x] Persist exploration history.
+- [x] Persist viewer progress.
+- [x] Implement synchronization.
+- [x] Handle conflicts and duplicate operations.
 
 ### 6.3 Client Storage
 
-- [ ] Implement IndexedDB caching where appropriate.
-- [ ] Implement cache expiration.
-- [ ] Implement pending synchronization operations.
-- [ ] Handle offline changes where supported.
-- [ ] Avoid storing authentication secrets in ordinary
+- [x] Implement IndexedDB caching where appropriate.
+- [x] Implement cache expiration.
+- [x] Implement pending synchronization operations.
+- [x] Handle offline changes where supported.
+- [x] Avoid storing authentication secrets in ordinary
       browser storage.
 
 ### 6.4 Testing
 
-- [ ] Test account creation.
-- [ ] Test authentication failures.
-- [ ] Test persistence across refreshes.
-- [ ] Test account isolation.
-- [ ] Test synchronization conflicts.
-- [ ] Test logout and session expiration.
+- [x] Test account creation.
+- [x] Test authentication failures.
+- [x] Test persistence across refreshes.
+- [x] Test account isolation.
+- [x] Test synchronization conflicts.
+- [x] Test logout and session expiration.
+
+## Status
+
+**Implemented (2026-10-26).** GitHub Pages cannot host a server, so the account "backend" is a
+documented TypeScript contract (`src/persistence/contract.ts`) implemented by a browser-local
+service on IndexedDB. `VITE_API_BASE_URL` remains reserved; a remote HTTP adapter is not invented.
+
+| Concern | Behaviour |
+| --- | --- |
+| Accounts | Create, sign in, sign out, session restore after refresh. Passwords stored as PBKDF2 verifiers only. |
+| Isolation | Every record is keyed by `userId`. A second account cannot read the first. |
+| Preferences | Category ids, disabled providers, history-tracking flag, hide-explored flag, onboarding-completed flag. Provider and category toggles in Settings are live. |
+| Content state | Favorites, likes, exploration, viewer progress in one document per canonical identity. |
+| Sync | Pending-operation queue, last-write-wins merge by identity/`updatedAt`, duplicate `opId` ignored. Local synchronize acknowledges the queue. |
+| Cache | TTL helper over the same KV store. Expired entries are dropped. |
+
+Honest copy: the account menu and Settings overview say the account stays on this device.
 
 ## Deliverable
 
 Persistent accounts with a reliable backend-backed user
 state model.
+
+Delivered as: a local IndexedDB account service behind a documented API, session restore,
+per-account preferences and content state, and tests for isolation, expiry, and conflicts.
 
 ---
 
@@ -693,40 +713,52 @@ Customize discovery based on user interests and exploration.
 
 ### 7.1 Category Selection
 
-- [ ] Implement category-selection onboarding.
-- [ ] Add category artwork.
-- [ ] Add selection states.
-- [ ] Support multiple selections.
-- [ ] Add Select All.
-- [ ] Add Clear All.
-- [ ] Add Continue.
-- [ ] Allow onboarding to be skipped.
+- [x] Implement category-selection onboarding.
+- [x] Add category artwork.
+- [x] Add selection states.
+- [x] Support multiple selections.
+- [x] Add Select All.
+- [x] Add Clear All.
+- [x] Add Continue.
+- [x] Allow onboarding to be skipped.
 
 ### 7.2 User Preferences
 
-- [ ] Persist category selections.
-- [ ] Implement preference editing.
-- [ ] Implement provider preferences.
-- [ ] Implement content visibility settings.
-- [ ] Implement history controls.
+- [x] Persist category selections.
+- [x] Implement preference editing.
+- [x] Implement provider preferences.
+- [ ] Implement content visibility settings. *(Adult visibility remains Phase 16.)*
+- [x] Implement history controls.
 
 ### 7.3 Exploration Tracking
 
-- [ ] Track item exploration.
-- [ ] Track first and last exploration timestamps.
-- [ ] Track exploration count.
-- [ ] Avoid marking all collection entries as explored.
-- [ ] Track viewer progress where supported.
+- [x] Track item exploration.
+- [x] Track first and last exploration timestamps.
+- [x] Track exploration count.
+- [x] Avoid marking all collection entries as explored.
+- [x] Track viewer progress where supported.
 
 ### 7.4 Discovery Filtering
 
-- [ ] Hide previously explored items by default.
-- [ ] Keep liked items eligible for rediscovery.
-- [ ] Keep favorited items eligible for rediscovery.
-- [ ] Preserve explicitly requested search results.
-- [ ] Preserve items in explicitly browsed collections.
-- [ ] Implement reset-history functionality.
-- [ ] Test all filtering combinations.
+- [x] Hide previously explored items by default.
+- [x] Keep liked items eligible for rediscovery.
+- [x] Keep favorited items eligible for rediscovery.
+- [x] Preserve explicitly requested search results.
+- [x] Preserve items in explicitly browsed collections.
+- [x] Implement reset-history functionality.
+- [x] Test all filtering combinations.
+
+## Status
+
+**Implemented (2026-10-26)** except Adult content-visibility settings, which stay Phase 16.
+
+Onboarding is skippable and writes `selectedCategoryIds` plus `onboardingCompleted`. Home rows
+follow that selection (empty means every family). Item details and the PDF viewer mark exploration;
+opening a collection does not. Home rows hide explored-not-liked-not-favorited items when the
+privacy toggle is on. Search is still Phase 9 and is not filtered. Resetting history keeps likes,
+favorites, and category preferences.
+
+Favourite **controls** shipped in Phase 8.
 
 ## Deliverable
 
@@ -741,46 +773,56 @@ and correct exploration-history behavior.
 
 Implement global saved content across all providers.
 
+## Status
+
+**Implemented (2026-10-26).** Favorites and likes persist in `UserContentState` under the
+canonical identity. Toggles are optimistic inside the session write queue and roll back on
+persistence failure. Unsigned visitors do not see dead controls. `/favorites` lists snapshot-first
+so a downed provider still shows the saved title. Likes stay independent of favorites; they already
+keep items on discovery (Phase 7) and do not create a recommendation engine here. Cross-device
+sync is not offered — GitHub Pages has no backend. Adult visibility stays Phase 16. Search stays
+Phase 9.
+
 ## Tasks
 
 ### 8.1 Favorite State
 
-- [ ] Implement canonical item identities.
-- [ ] Implement favorite persistence.
-- [ ] Implement favorite toggling.
-- [ ] Implement optimistic updates.
-- [ ] Implement failure rollback.
-- [ ] Synchronize favorite state across components.
-- [ ] Preserve snapshots when providers are unavailable.
+- [x] Implement canonical item identities.
+- [x] Implement favorite persistence.
+- [x] Implement favorite toggling.
+- [x] Implement optimistic updates.
+- [x] Implement failure rollback.
+- [x] Synchronize favorite state across components.
+- [x] Preserve snapshots when providers are unavailable.
 
 ### 8.2 Global Favorites Page
 
-- [ ] Implement the favorites route.
-- [ ] Display a unified item grid.
-- [ ] Filter by provider.
-- [ ] Filter by content type.
-- [ ] Sort favorites.
-- [ ] Search within favorites.
-- [ ] Remove favorites.
-- [ ] Open item details.
-- [ ] Resume supported viewers.
+- [x] Implement the favorites route.
+- [x] Display a unified item grid.
+- [x] Filter by provider.
+- [x] Filter by content type.
+- [x] Sort favorites.
+- [x] Search within favorites.
+- [x] Remove favorites.
+- [x] Open item details.
+- [x] Resume supported viewers.
 
 ### 8.3 Likes
 
-- [ ] Implement like state independently of favorites.
-- [ ] Add like controls where appropriate.
-- [ ] Persist likes.
-- [ ] Integrate likes into recommendations.
-- [ ] Verify likes do not automatically create favorites.
+- [x] Implement like state independently of favorites.
+- [x] Add like controls where appropriate.
+- [x] Persist likes.
+- [x] Integrate likes into recommendations.
+- [x] Verify likes do not automatically create favorites.
 
 ### 8.4 Testing
 
-- [ ] Favorite items from discovery.
-- [ ] Favorite items from collections.
-- [ ] Favorite items from details pages.
-- [ ] Verify global consistency.
-- [ ] Test unavailable provider behavior.
-- [ ] Test synchronization across devices.
+- [x] Favorite items from discovery.
+- [x] Favorite items from collections.
+- [x] Favorite items from details pages.
+- [x] Verify global consistency.
+- [x] Test unavailable provider behavior.
+- [ ] Test synchronization across devices. Not applicable: no remote backend.
 
 ## Deliverable
 
@@ -1352,12 +1394,12 @@ Verify that all core requirements are satisfied.
 - [ ] Wikipedia integration works.
 - [ ] Adult provider controls work.
 - [ ] Account creation works.
-- [ ] Category onboarding works.
-- [ ] User preferences persist.
+- [x] Category onboarding works.
+- [x] User preferences persist.
 - [ ] Favorites work across providers.
 - [ ] Likes work independently.
-- [ ] Exploration tracking works.
-- [ ] Discovery filtering works.
+- [x] Exploration tracking works.
+- [x] Discovery filtering works.
 - [ ] Global search works.
 - [ ] Download workflows work where permitted.
 - [ ] PDF viewer works.

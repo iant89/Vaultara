@@ -136,6 +136,29 @@
   background-color: rgb(11 13 16 / 92%);
 }
 
+.resume {
+  position: absolute;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background-color: rgb(11 13 16 / 76%);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  backdrop-filter: blur(4px);
+}
+
+.resume:hover {
+  background-color: rgb(11 13 16 / 92%);
+  text-decoration: none;
+}
+
 .typeChip {
   padding: 0 var(--space-2);
   border-radius: var(--radius-xs);
