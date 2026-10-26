@@ -7,7 +7,6 @@ import { SavedItemCard } from '../components/content/SavedItemCard';
 import { Section } from '../components/content/Section';
 import { ShowMore } from '../components/content/ShowMore';
 import { ErrorState } from '../components/feedback/ErrorState';
-import { NotYetImplemented } from '../components/feedback/NotYetImplemented';
 import { Page } from '../components/layout/Page';
 import { Artwork } from '../components/ui/Artwork';
 import { ContentRow } from '../components/ui/ContentRow';
@@ -295,12 +294,6 @@ export function ItemPage() {
                   />
                 </>
               ) : null}
-
-              <NotYetImplemented
-                feature="Other viewers"
-                summary="Audio, video, EPUB, and image viewers are not in this app yet. A downloadable PDF in the list above can be opened with Read."
-                plannedPhase="Phases 11 and 12"
-              />
             </>
           );
         }}

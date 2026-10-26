@@ -14,6 +14,7 @@ import type { ContentProvider } from '../models/provider';
 import { createArchiveProvider, type ArchiveProviderOptions } from './archive/adapter';
 import { ProviderGateway, type ProviderGatewayOptions } from './gateway';
 import { ProviderRegistry, type ProviderRegistryOptions } from './registry';
+import { createWikipediaProvider, type WikipediaProviderOptions } from './wikipedia/adapter';
 
 /** Builds one adapter. Factories keep construction details out of the runtime. */
 export type ProviderFactory = () => ContentProvider;
@@ -33,12 +34,15 @@ export interface CreateProviderRuntimeOptions {
   readonly gateway?: ProviderGatewayOptions;
   /** Transport and host override for the Archive adapter (tests inject a fake `fetch`). */
   readonly archive?: ArchiveProviderOptions;
+  /** Transport and host override for the Wikipedia adapter (tests inject a fake `fetch`). */
+  readonly wikipedia?: WikipediaProviderOptions;
 }
 
 export function defaultProviderFactories(
   archive: ArchiveProviderOptions = {},
+  wikipedia: WikipediaProviderOptions = {},
 ): readonly ProviderFactory[] {
-  return [() => createArchiveProvider(archive)];
+  return [() => createArchiveProvider(archive), () => createWikipediaProvider(wikipedia)];
 }
 
 /**
@@ -50,7 +54,8 @@ export function defaultProviderFactories(
  */
 export function createProviderRuntime(options: CreateProviderRuntimeOptions = {}): ProviderRuntime {
   const registry = new ProviderRegistry(options.registry);
-  const factories = options.factories ?? defaultProviderFactories(options.archive);
+  const factories =
+    options.factories ?? defaultProviderFactories(options.archive ?? {}, options.wikipedia ?? {});
 
   for (const factory of factories) {
     registry.register(factory());

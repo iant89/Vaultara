@@ -100,6 +100,26 @@ describe('FileList', () => {
     expect(screen.getByText(/In-app book/)).toBeInTheDocument();
   });
 
+  it('offers Read for a Wikipedia article', () => {
+    renderList([
+      makeFile({
+        id: 'article',
+        providerId: 'wikipedia',
+        itemId: 'Ada_Lovelace',
+        name: 'Ada Lovelace',
+        mimeType: 'application/vnd.vaultara.wikipedia+html',
+        downloadAvailable: true,
+        downloadUrl: 'https://en.wikipedia.org/wiki/Ada_Lovelace',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'Read Ada Lovelace' })).toHaveAttribute(
+      'href',
+      '/viewer/wikipedia/Ada_Lovelace?file=article',
+    );
+    expect(screen.getByText(/In-app article/)).toBeInTheDocument();
+  });
+
   it('offers Watch for a downloadable video', () => {
     renderList([
       makeFile({
@@ -119,6 +139,27 @@ describe('FileList', () => {
       '/viewer/archive/film?file=clip.mp4',
     );
     expect(screen.getByText(/In-app video/)).toBeInTheDocument();
+  });
+
+  it('offers Play for a downloadable Game Boy ROM', () => {
+    renderList([
+      makeFile({
+        id: 'homebrew.gb',
+        providerId: 'archive',
+        itemId: 'gb',
+        name: 'homebrew.gb',
+        mimeType: 'application/x-gameboy-rom',
+        extension: 'gb',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/gb/homebrew.gb',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'Play homebrew.gb' })).toHaveAttribute(
+      'href',
+      '/viewer/archive/gb?file=homebrew.gb',
+    );
+    expect(screen.getByText(/In-app emulator/)).toBeInTheDocument();
   });
 
   it('does not offer Read for a Matroska file or a restricted PDF', () => {

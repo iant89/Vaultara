@@ -1,9 +1,11 @@
 import type { DownloadRecord, DownloadStatus } from '../models/download';
 import { canPlayAudio } from '../viewers/audio/isAudioFile';
 import { canReadBook } from '../viewers/book/isBookFile';
+import { canPlayGameBoy } from '../viewers/emulator/isGameBoyFile';
 import { canViewImage } from '../viewers/image/isImageFile';
 import { canReadPdf } from '../viewers/pdf/isPdfFile';
 import { canPlayVideo } from '../viewers/video/isVideoFile';
+import { canReadWikipedia } from '../viewers/wikipedia/isWikipediaFile';
 
 export interface DownloadAccess {
   readonly name: string;
@@ -63,6 +65,7 @@ export function describeViewerCompatibility(
   file: Pick<DownloadAccess, 'name' | 'mimeType'> & {
     readonly downloadAvailable: boolean;
     readonly downloadUrl?: string;
+    readonly providerId?: string;
   },
 ): string {
   if (canReadPdf(file)) {
@@ -83,6 +86,14 @@ export function describeViewerCompatibility(
 
   if (canPlayVideo(file)) {
     return 'In-app video';
+  }
+
+  if (canReadWikipedia(file)) {
+    return 'In-app article';
+  }
+
+  if (canPlayGameBoy(file)) {
+    return 'In-app emulator';
   }
 
   return 'No in-app viewer';

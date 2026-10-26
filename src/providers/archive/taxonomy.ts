@@ -79,6 +79,9 @@ const FORMAT_MIME_TYPE: Readonly<Record<string, string>> = {
   png: 'image/png',
   gif: 'image/gif',
   'jpeg 2000': 'image/jp2',
+  'nintendo gameboy rom': 'application/x-gameboy-rom',
+  'gameboy rom': 'application/x-gameboy-rom',
+  'game boy rom': 'application/x-gameboy-rom',
 };
 
 const EXTENSION_MIME_TYPE: Readonly<Record<string, string>> = {
@@ -107,6 +110,7 @@ const EXTENSION_MIME_TYPE: Readonly<Record<string, string>> = {
   json: 'application/json',
   zip: 'application/zip',
   torrent: 'application/x-bittorrent',
+  gb: 'application/x-gameboy-rom',
 };
 
 const EXTENSION_PATTERN = /^[a-z0-9]{1,8}$/;
@@ -175,7 +179,16 @@ export function isEpubMimeType(mimeType: string | undefined): boolean {
   return mimeType === 'application/epub+zip' || mimeType === 'application/epub';
 }
 
-/** Formats this app can present today: native media plus the PDF and book readers. */
+function isGameBoyMimeType(mimeType: string | undefined): boolean {
+  return mimeType === 'application/x-gameboy-rom';
+}
+
+/** Formats this app can present today: native media plus the PDF, book, and Game Boy viewers. */
 export function isAppViewable(mimeType: string | undefined): boolean {
-  return isBrowserDisplayable(mimeType) || isPdfMimeType(mimeType) || isEpubMimeType(mimeType);
+  return (
+    isBrowserDisplayable(mimeType) ||
+    isPdfMimeType(mimeType) ||
+    isEpubMimeType(mimeType) ||
+    isGameBoyMimeType(mimeType)
+  );
 }

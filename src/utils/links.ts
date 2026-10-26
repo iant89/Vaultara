@@ -6,6 +6,7 @@
  * and providers may expose the same id, so the provider id is always part of the path.
  */
 
+import { PRIMARY_PROVIDER_ID } from '../config/discovery';
 import type { ContentIdentity } from '../models/identity';
 
 function encodeSegment(value: string): string {
@@ -22,6 +23,18 @@ export function buildProviderPath(providerId: string): string {
 
 export function buildCategoryPath(categoryId: string): string {
   return `/category/${encodeSegment(categoryId)}`;
+}
+
+/**
+ * Archive categories live at `/category/:id`. Other providers have no entry in that
+ * Archive-rooted route, so their categories open as collections instead.
+ */
+export function buildCategoryBrowsePath(categoryId: string, providerId?: string): string {
+  if (providerId !== undefined && providerId !== PRIMARY_PROVIDER_ID) {
+    return buildCollectionPath(providerId, categoryId);
+  }
+
+  return buildCategoryPath(categoryId);
 }
 
 export function buildCollectionPath(providerId: string, collectionId: string): string {

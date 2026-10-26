@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useAsyncValue } from '../data/useAsyncValue';
 import { useProviderServices } from '../data/ProviderServices';
 import { CategoryCard } from '../components/content/CategoryCard';
+import { ItemRow } from '../components/content/ItemRow';
 import { Section } from '../components/content/Section';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { ErrorState } from '../components/feedback/ErrorState';
@@ -9,6 +10,7 @@ import { NotYetImplemented } from '../components/feedback/NotYetImplemented';
 import { Page } from '../components/layout/Page';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { SkeletonCard, SkeletonGroup } from '../components/ui/Skeleton';
+import { ROW_PAGE_SIZE } from '../config/discovery';
 import { appEnvironment } from '../config/env';
 import { findProvider, type ProviderCatalogEntry } from '../config/providers';
 import styles from './ProviderPage.module.css';
@@ -20,6 +22,31 @@ import styles from './ProviderPage.module.css';
  * calling a provider that is not registered would record a failure against it and blame the
  * provider for something the interface chose to do.
  */
+function ProviderPopular({ provider }: { readonly provider: ProviderCatalogEntry }) {
+  const { queries } = useProviderServices();
+  const { state, reload } = useAsyncValue(`provider:popular:${provider.id}`, ({ signal, fresh }) =>
+    queries.search(
+      provider.id,
+      '',
+      { sort: 'added-desc', pageSize: ROW_PAGE_SIZE },
+      { signal, fresh },
+    ),
+  );
+
+  if (state.status === 'ready' && state.value.items.length === 0) {
+    return null;
+  }
+
+  return (
+    <ItemRow
+      title="Popular now"
+      description="A first look at this provider, isolated from the others so a failure here cannot blank the rest of discovery."
+      state={state}
+      reload={reload}
+    />
+  );
+}
+
 function ProviderCategories({ provider }: { readonly provider: ProviderCatalogEntry }) {
   const { queries } = useProviderServices();
   const { state, reload } = useAsyncValue(
@@ -115,6 +142,7 @@ export function ProviderPage() {
 
   return (
     <Page title={provider.name} intro={provider.description}>
+      <ProviderPopular provider={provider} />
       <ProviderCategories provider={provider} />
     </Page>
   );

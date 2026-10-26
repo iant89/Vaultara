@@ -30,7 +30,7 @@ import {
 } from '../utils/contentParams';
 import { formatItemCount } from '../utils/format';
 import {
-  buildCategoryPath,
+  buildCategoryBrowsePath,
   buildCollectionPath,
   buildHomePath,
   buildItemPath,
@@ -179,7 +179,7 @@ export function CollectionPage() {
             { label: 'Home', to: buildHomePath() },
             { label: providerName, to: buildProviderPath(providerId) },
             ...(category !== undefined
-              ? [{ label: category.name, to: buildCategoryPath(category.id) }]
+              ? [{ label: category.name, to: buildCategoryBrowsePath(category.id, providerId) }]
               : []),
             { label: title },
           ]}

@@ -186,10 +186,7 @@ describe('exploration tracking', () => {
     renderAt(`/item/${ARCHIVE}/${ITEM.id}`, backend);
 
     expect(await screen.findByRole('heading', { level: 1, name: ITEM.title })).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Other viewers is not available yet/)).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Files' })).toBeInTheDocument();
 
     expect(
       await backend.getContentState(session.sessionId, { providerId: ARCHIVE, itemId: ITEM.id }),

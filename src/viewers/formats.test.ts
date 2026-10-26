@@ -43,6 +43,7 @@ describe('core viewer formats', () => {
     ['clip.ogv', 'video/ogg', 'movie', 'video'],
     ['alice.epub', 'application/epub+zip', 'book', 'book'],
     ['chapter.txt', 'text/plain', 'document', 'book'],
+    ['homebrew.gb', 'application/x-gameboy-rom', 'game', 'emulator'],
   ] as const)('opens %s with the %s viewer', (name, mime, type, viewerId) => {
     const selection = selectViewer(registry, makeItem({ type }), [listed(name, mime)]);
 
@@ -61,9 +62,30 @@ describe('core viewer formats', () => {
     ['files.zip', 'application/zip'],
     ['scan.djvu', 'image/vnd.djvu'],
     ['scandata.txt', 'text/plain'],
+    ['color.gbc', 'application/octet-stream'],
+    ['mario.nes', 'application/octet-stream'],
   ] as const)('does not invent a specialized viewer for %s', (name, mime) => {
     const selection = selectViewer(registry, makeItem({ type: 'unknown' }), [listed(name, mime)]);
 
     expect(selection?.viewer.descriptor.id).toBe('generic');
+  });
+
+  it('opens a Wikipedia article with the Wikipedia reader', () => {
+    const file = makeFile({
+      id: 'article',
+      providerId: 'wikipedia',
+      itemId: 'Ada_Lovelace',
+      name: 'Ada Lovelace',
+      mimeType: 'application/vnd.vaultara.wikipedia+html',
+      downloadAvailable: true,
+      downloadUrl: 'https://en.wikipedia.org/wiki/Ada_Lovelace',
+    });
+    const selection = selectViewer(
+      registry,
+      makeItem({ id: 'Ada_Lovelace', providerId: 'wikipedia', type: 'article' }),
+      [file],
+    );
+
+    expect(selection?.viewer.descriptor.id).toBe('wikipedia');
   });
 });

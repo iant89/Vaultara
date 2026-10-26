@@ -128,6 +128,23 @@ describe('describeViewerCompatibility', () => {
         downloadUrl: 'https://archive.org/download/album/theme.wav',
       }),
     ).toBe('In-app player');
+    expect(
+      describeViewerCompatibility({
+        name: 'Ada Lovelace',
+        mimeType: 'application/vnd.vaultara.wikipedia+html',
+        downloadAvailable: true,
+        downloadUrl: 'https://en.wikipedia.org/wiki/Ada_Lovelace',
+        providerId: 'wikipedia',
+      }),
+    ).toBe('In-app article');
+    expect(
+      describeViewerCompatibility({
+        name: 'homebrew.gb',
+        mimeType: 'application/x-gameboy-rom',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/gb/homebrew.gb',
+      }),
+    ).toBe('In-app emulator');
   });
 });
 
