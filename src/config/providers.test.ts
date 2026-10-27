@@ -64,6 +64,17 @@ describe('provider catalogue', () => {
     });
   });
 
+  it('marks Adult as available now that its adapter exists', async () => {
+    const { PROVIDER_CATALOG } = await loadProviders(false);
+    const adult = PROVIDER_CATALOG.find((provider) => provider.id === 'adult');
+
+    expect(adult).toMatchObject({
+      availability: 'available',
+      roadmapPhase: 'Phase 16',
+      browsingPhase: 'Phase 16',
+    });
+  });
+
   it('finds providers by id and returns undefined otherwise', async () => {
     const { findProvider } = await loadProviders(false);
 

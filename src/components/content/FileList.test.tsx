@@ -31,9 +31,44 @@ describe('FileList', () => {
       'href',
       '/viewer/archive/alice?file=alice.pdf',
     );
+    expect(screen.getByRole('heading', { name: 'Read alice.pdf' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Download alice.pdf' })).toHaveAttribute(
       'href',
       'https://archive.org/download/alice/alice.pdf',
+    );
+  });
+
+  it('puts viewable files on cards and leaves other files in the list', () => {
+    renderList([
+      makeFile({
+        id: 'alice.pdf',
+        providerId: 'archive',
+        itemId: 'alice',
+        name: 'alice.pdf',
+        mimeType: 'application/pdf',
+        extension: 'pdf',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/alice/alice.pdf',
+      }),
+      makeFile({
+        id: 'clip.mkv',
+        providerId: 'archive',
+        itemId: 'alice',
+        name: 'clip.mkv',
+        mimeType: 'video/x-matroska',
+        extension: 'mkv',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/alice/clip.mkv',
+      }),
+    ]);
+
+    expect(screen.getByRole('heading', { name: 'Read alice.pdf' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /clip\.mkv/ })).not.toBeInTheDocument();
+    expect(screen.getByText('clip.mkv')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Watch clip\.mkv/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Download clip.mkv' })).toHaveAttribute(
+      'href',
+      'https://archive.org/download/alice/clip.mkv',
     );
   });
 
@@ -160,6 +195,47 @@ describe('FileList', () => {
       '/viewer/archive/gb?file=homebrew.gb',
     );
     expect(screen.getByText(/In-app emulator/)).toBeInTheDocument();
+  });
+
+  it('offers View for a web-archive capture', () => {
+    renderList([
+      makeFile({
+        id: 'site.warc.gz',
+        providerId: 'archive',
+        itemId: 'web_stub',
+        name: 'site.warc.gz',
+        mimeType: 'application/warc',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/web_stub/site.warc.gz',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'View site.warc.gz' })).toHaveAttribute(
+      'href',
+      '/viewer/archive/web_stub?file=site.warc.gz',
+    );
+    expect(screen.getByText(/In-app archive/)).toBeInTheDocument();
+  });
+
+  it('offers Inspect for a disk image', () => {
+    renderList([
+      makeFile({
+        id: 'dos.iso',
+        providerId: 'archive',
+        itemId: 'dos_stub',
+        name: 'dos.iso',
+        mimeType: 'application/x-iso9660-image',
+        extension: 'iso',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/dos_stub/dos.iso',
+      }),
+    ]);
+
+    expect(screen.getByRole('link', { name: 'Inspect dos.iso' })).toHaveAttribute(
+      'href',
+      '/viewer/archive/dos_stub?file=dos.iso',
+    );
+    expect(screen.getByText(/Software details/)).toBeInTheDocument();
   });
 
   it('does not offer Read for a Matroska file or a restricted PDF', () => {

@@ -1,10 +1,13 @@
+import type { ContentType } from '../models/content';
 import type { DownloadRecord, DownloadStatus } from '../models/download';
 import { canPlayAudio } from '../viewers/audio/isAudioFile';
 import { canReadBook } from '../viewers/book/isBookFile';
 import { canPlayGameBoy } from '../viewers/emulator/isGameBoyFile';
 import { canViewImage } from '../viewers/image/isImageFile';
 import { canReadPdf } from '../viewers/pdf/isPdfFile';
+import { canInspectSoftware } from '../viewers/software/isSoftwareFile';
 import { canPlayVideo } from '../viewers/video/isVideoFile';
+import { canViewWebArchive } from '../viewers/webarchive/isWebArchiveFile';
 import { canReadWikipedia } from '../viewers/wikipedia/isWikipediaFile';
 
 export interface DownloadAccess {
@@ -66,7 +69,9 @@ export function describeViewerCompatibility(
     readonly downloadAvailable: boolean;
     readonly downloadUrl?: string;
     readonly providerId?: string;
+    readonly extension?: string;
   },
+  itemType?: ContentType,
 ): string {
   if (canReadPdf(file)) {
     return 'In-app reader';
@@ -94,6 +99,14 @@ export function describeViewerCompatibility(
 
   if (canPlayGameBoy(file)) {
     return 'In-app emulator';
+  }
+
+  if (canViewWebArchive(file)) {
+    return 'In-app archive';
+  }
+
+  if (canInspectSoftware(file, itemType)) {
+    return 'Software details';
   }
 
   return 'No in-app viewer';

@@ -774,12 +774,13 @@ Registered viewers:
 - Book reader (EPUB and book-like `.txt` as extracted text; typography, themes, TOC, search, focus, resume)
 - Wikipedia reader (sanitized article HTML, TOC, references, images, language links, original article)
 - Game Boy emulator for compatible `.gb` ROMs (pause, keyboard, touch, palette, battery save when the cart has RAM)
+- Web archive viewer (sandboxed Wayback replay of WARC/ARC captures; capture date, original URL, source)
+- Software information viewer (metadata, platform, files, download; never executes binaries)
 - Generic file details (no specialized preview; download if the provider permits)
 
 Other viewer types remain planned:
 
-- Web archive viewer
-- Software information and file viewer
+- Additional software execution sandboxes beyond the Game Boy emulator
 
 Use specialized libraries when they provide meaningful functionality, reliability, and acceptable maintenance costs.
 

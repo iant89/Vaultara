@@ -93,8 +93,12 @@ export function buildDownloadsPath(): string {
   return '/downloads';
 }
 
-export function buildSettingsPath(): string {
-  return '/settings';
+export function buildSettingsPath(section?: string): string {
+  if (section === undefined || section.trim() === '') {
+    return '/settings';
+  }
+
+  return `/settings/${encodeSegment(section)}`;
 }
 
 export function buildOnboardingPath(): string {

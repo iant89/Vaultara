@@ -44,6 +44,8 @@ describe('core viewer formats', () => {
     ['alice.epub', 'application/epub+zip', 'book', 'book'],
     ['chapter.txt', 'text/plain', 'document', 'book'],
     ['homebrew.gb', 'application/x-gameboy-rom', 'game', 'emulator'],
+    ['site.warc.gz', 'application/warc', 'website', 'webarchive'],
+    ['dos.iso', 'application/x-iso9660-image', 'software', 'software'],
   ] as const)('opens %s with the %s viewer', (name, mime, type, viewerId) => {
     const selection = selectViewer(registry, makeItem({ type }), [listed(name, mime)]);
 
@@ -68,6 +70,17 @@ describe('core viewer formats', () => {
     const selection = selectViewer(registry, makeItem({ type: 'unknown' }), [listed(name, mime)]);
 
     expect(selection?.viewer.descriptor.id).toBe('generic');
+  });
+
+  it('opens a ZIP on a software item for inspection and leaves other ZIPs generic', () => {
+    const zip = listed('files.zip', 'application/zip');
+
+    expect(
+      selectViewer(registry, makeItem({ type: 'software' }), [zip])?.viewer.descriptor.id,
+    ).toBe('software');
+    expect(selectViewer(registry, makeItem({ type: 'unknown' }), [zip])?.viewer.descriptor.id).toBe(
+      'generic',
+    );
   });
 
   it('opens a Wikipedia article with the Wikipedia reader', () => {

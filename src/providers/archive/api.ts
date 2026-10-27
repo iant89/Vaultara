@@ -30,6 +30,8 @@ export const DEFAULT_ARCHIVE_HOST = 'https://archive.org';
 export interface ArchiveApiOptions {
   readonly host?: string;
   readonly fetchImpl?: Fetcher;
+  /** Stamped on transport errors so Adult failures are not blamed on Archive. */
+  readonly providerId?: string;
 }
 
 export interface ArchiveRequestOptions {
@@ -91,35 +93,48 @@ export function parseRetryAfter(
 function providerError(
   kind: Parameters<typeof createAppError>[0],
   message: string,
-  options: { readonly retryAfterMs?: number; readonly cause?: unknown } = {},
+  options: {
+    readonly retryAfterMs?: number;
+    readonly cause?: unknown;
+    readonly providerId?: string;
+  } = {},
 ): AppError {
   return createAppError(kind, message, {
-    providerId: 'archive',
+    providerId: options.providerId ?? 'archive',
     ...(options.retryAfterMs !== undefined ? { retryAfterMs: options.retryAfterMs } : {}),
     ...(options.cause !== undefined ? { cause: options.cause } : {}),
   });
 }
 
 /** Translate a non-success status into an `AppError` the reliability layer understands. */
-export function translateStatus(status: number, retryAfter: string | null): AppError {
+export function translateStatus(
+  status: number,
+  retryAfter: string | null,
+  providerId = 'archive',
+): AppError {
   if (status === 429) {
     const retryAfterMs = parseRetryAfter(retryAfter);
 
     return providerError(
       'rate-limited',
       'The Internet Archive is receiving too many requests from this client. Please try again shortly.',
-      retryAfterMs !== undefined ? { retryAfterMs } : {},
+      retryAfterMs !== undefined ? { retryAfterMs, providerId } : { providerId },
     );
   }
 
   if (status === 404) {
-    return providerError('not-found', 'The requested item does not exist on the Internet Archive.');
+    return providerError(
+      'not-found',
+      'The requested item does not exist on the Internet Archive.',
+      { providerId },
+    );
   }
 
   if (status === 401 || status === 403) {
     return providerError(
       'unauthorized',
       'The Internet Archive refused the request. This item may be restricted.',
+      { providerId },
     );
   }
 
@@ -127,19 +142,24 @@ export function translateStatus(status: number, retryAfter: string | null): AppE
     return providerError(
       'provider-unavailable',
       'The Internet Archive is currently unavailable. Other providers are unaffected.',
+      { providerId },
     );
   }
 
-  return providerError('unknown', `The Internet Archive responded with HTTP ${status}.`);
+  return providerError('unknown', `The Internet Archive responded with HTTP ${status}.`, {
+    providerId,
+  });
 }
 
 export class ArchiveApi {
   private readonly host: string;
   private readonly fetcher: Fetcher;
+  private readonly providerId: string;
 
   constructor(options: ArchiveApiOptions = {}) {
     this.host = (options.host ?? DEFAULT_ARCHIVE_HOST).replace(/\/+$/, '');
     this.fetcher = options.fetchImpl ?? ((url, init) => fetch(url, init));
+    this.providerId = options.providerId ?? 'archive';
   }
 
   /** Absolute URL of an item's public page, used for attribution. */
@@ -227,7 +247,9 @@ export class ArchiveApi {
     const payload = await this.getJson(url, options);
 
     if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
-      throw providerError('invalid-response', 'The response was not a JSON object.');
+      throw providerError('invalid-response', 'The response was not a JSON object.', {
+        providerId: this.providerId,
+      });
     }
 
     return payload as Record<string, unknown>;
@@ -239,6 +261,7 @@ export class ArchiveApi {
     if (options.signal?.aborted === true) {
       throw providerError('cancelled', 'The request was cancelled.', {
         cause: options.signal.reason,
+        providerId: this.providerId,
       });
     }
 
@@ -253,18 +276,21 @@ export class ArchiveApi {
       // Aborts become `cancelled`; anything else is a transport failure worth retrying. The
       // provider id is stamped here so a failure that never reached the gateway still names the
       // provider that failed.
-      throw attachProviderId(toAppError(error, 'network'), 'archive');
+      throw attachProviderId(toAppError(error, 'network'), this.providerId);
     }
 
     if (!response.ok) {
-      throw translateStatus(response.status, response.headers.get('retry-after'));
+      throw translateStatus(response.status, response.headers.get('retry-after'), this.providerId);
     }
 
     try {
       return await response.json();
     } catch (error) {
       // A truncated or non-JSON body is a provider defect, not a network failure.
-      throw providerError('invalid-response', 'The response was not valid JSON.', { cause: error });
+      throw providerError('invalid-response', 'The response was not valid JSON.', {
+        cause: error,
+        providerId: this.providerId,
+      });
     }
   }
 }

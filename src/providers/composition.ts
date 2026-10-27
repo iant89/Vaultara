@@ -10,7 +10,9 @@
  * mentions the runtime does not construct network clients as a side effect.
  */
 
+import { appEnvironment } from '../config/env';
 import type { ContentProvider } from '../models/provider';
+import { createAdultProvider, type AdultProviderOptions } from './adult/adapter';
 import { createArchiveProvider, type ArchiveProviderOptions } from './archive/adapter';
 import { ProviderGateway, type ProviderGatewayOptions } from './gateway';
 import { ProviderRegistry, type ProviderRegistryOptions } from './registry';
@@ -36,13 +38,28 @@ export interface CreateProviderRuntimeOptions {
   readonly archive?: ArchiveProviderOptions;
   /** Transport and host override for the Wikipedia adapter (tests inject a fake `fetch`). */
   readonly wikipedia?: WikipediaProviderOptions;
+  /** Transport override for the Adult adapter. Ignored unless Adult is enabled. */
+  readonly adult?: AdultProviderOptions;
+  /** Overrides the deploy flag so tests can register Adult without mutating `import.meta.env`. */
+  readonly adultEnabled?: boolean;
 }
 
 export function defaultProviderFactories(
   archive: ArchiveProviderOptions = {},
   wikipedia: WikipediaProviderOptions = {},
+  adult: AdultProviderOptions = {},
+  adultEnabled: boolean = appEnvironment.adultProviderEnabled,
 ): readonly ProviderFactory[] {
-  return [() => createArchiveProvider(archive), () => createWikipediaProvider(wikipedia)];
+  const factories: ProviderFactory[] = [
+    () => createArchiveProvider(archive),
+    () => createWikipediaProvider(wikipedia),
+  ];
+
+  if (adultEnabled) {
+    factories.push(() => createAdultProvider(adult));
+  }
+
+  return factories;
 }
 
 /**
@@ -55,7 +72,13 @@ export function defaultProviderFactories(
 export function createProviderRuntime(options: CreateProviderRuntimeOptions = {}): ProviderRuntime {
   const registry = new ProviderRegistry(options.registry);
   const factories =
-    options.factories ?? defaultProviderFactories(options.archive ?? {}, options.wikipedia ?? {});
+    options.factories ??
+    defaultProviderFactories(
+      options.archive ?? {},
+      options.wikipedia ?? {},
+      options.adult ?? {},
+      options.adultEnabled ?? appEnvironment.adultProviderEnabled,
+    );
 
   for (const factory of factories) {
     registry.register(factory());

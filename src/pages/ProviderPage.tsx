@@ -11,7 +11,6 @@ import { Page } from '../components/layout/Page';
 import { ResponsiveGrid } from '../components/ui/ResponsiveGrid';
 import { SkeletonCard, SkeletonGroup } from '../components/ui/Skeleton';
 import { ROW_PAGE_SIZE } from '../config/discovery';
-import { appEnvironment } from '../config/env';
 import { findProvider, type ProviderCatalogEntry } from '../config/providers';
 import styles from './ProviderPage.module.css';
 
@@ -94,19 +93,6 @@ export function ProviderPage() {
         <EmptyState
           title="No provider was specified"
           description="Choose a provider from the navigation to browse its content."
-        />
-      </Page>
-    );
-  }
-
-  // The Adult provider is opt-in and must be hidden when not explicitly enabled
-  // (design spec 13.2, 13.3).
-  if (providerId === 'adult' && !appEnvironment.adultProviderEnabled) {
-    return (
-      <Page title="Adult provider">
-        <EmptyState
-          title="The Adult provider is disabled"
-          description="This provider is opt-in and disabled by default. It must only be enabled where the applicable access requirements are met, and its content never appears in ordinary discovery or in recommendations from other providers."
         />
       </Page>
     );

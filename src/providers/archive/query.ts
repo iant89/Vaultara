@@ -8,6 +8,7 @@
  * which affects only the user's own search.
  */
 
+import { ADULT_ARCHIVE_COLLECTION_ID } from '../../config/adult';
 import type { ContentType } from '../../models/content';
 import type { SearchSort } from '../../models/provider';
 
@@ -161,6 +162,16 @@ export function collectionExclusionClause(
 /** `collection:<id>` filter, escaped. */
 export function buildCollectionClause(collectionId: string): string {
   return `collection:${escapeLucene(collectionId.trim())}`;
+}
+
+/** Ordinary Archive item queries must never return adults-only membership. */
+export function excludeAdultCollectionClause(): string {
+  return `-collection:${escapeLucene(ADULT_ARCHIVE_COLLECTION_ID)}`;
+}
+
+/** Ordinary Archive collection lists must not include the adults-only container itself. */
+export function excludeAdultIdentifierClause(): string {
+  return `-identifier:${escapeLucene(ADULT_ARCHIVE_COLLECTION_ID)}`;
 }
 
 /** `identifier:(a OR b)` lookup used to fetch several known items in one request. */

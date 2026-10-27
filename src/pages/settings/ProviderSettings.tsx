@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { getVisibleProviders } from '../../config/providers';
 import { describeSessionError, useSession } from '../../data/SessionContext';
+import { listConfigurableProviders } from '../../personalization/adultAccess';
 import styles from './Settings.module.css';
 
 export function ProviderSettings() {
   const session = useSession();
   const [error, setError] = useState<string | undefined>();
-  const providers = getVisibleProviders();
+  const providers = listConfigurableProviders(getVisibleProviders(), session.preferences);
 
   if (session.status !== 'signed-in') {
     return (

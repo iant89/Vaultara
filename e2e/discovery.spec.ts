@@ -80,7 +80,9 @@ function collectionParents(identifier: string): readonly string[] {
 }
 
 function parentOf(query: string): string {
-  return /collection:([^\s)]+)/.exec(query)?.[1] ?? 'unknown';
+  // Ordinary Archive queries exclude `collection:adultsonly` with a leading minus. That
+  // negation must not be read as the parent the stub is listing.
+  return /(?<!-)collection:([^\s)]+)/.exec(query)?.[1] ?? 'unknown';
 }
 
 function collectionDocs(query: string): readonly Record<string, unknown>[] {

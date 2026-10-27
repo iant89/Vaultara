@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout';
 import { designSystemRoute } from '../dev/designSystemRoute';
+import { AdultAccessGate } from '../pages/AdultAccessGate';
 import { CategoryPage } from '../pages/CategoryPage';
 import { CollectionPage } from '../pages/CollectionPage';
 import { DownloadsPage } from '../pages/DownloadsPage';
@@ -22,6 +24,10 @@ import {
   SettingsProvidersSection,
 } from '../pages/settings/SettingsSections';
 import { SettingsPage } from '../pages/settings/SettingsPage';
+
+function withAdultGate(page: ReactNode) {
+  return <AdultAccessGate>{page}</AdultAccessGate>;
+}
 
 export interface RouteOptions {
   /**
@@ -46,16 +52,19 @@ export function createRoutes({ includeDevRoutes = false }: RouteOptions = {}): R
       errorElement: <RouteErrorPage />,
       children: [
         { index: true, element: <HomePage /> },
-        { path: 'provider/:providerId', element: <ProviderPage /> },
+        { path: 'provider/:providerId', element: withAdultGate(<ProviderPage />) },
         { path: 'category/:categoryId', element: <CategoryPage /> },
-        { path: 'collection/:providerId/:collectionId', element: <CollectionPage /> },
-        { path: 'item/:providerId/:itemId', element: <ItemPage /> },
+        {
+          path: 'collection/:providerId/:collectionId',
+          element: withAdultGate(<CollectionPage />),
+        },
+        { path: 'item/:providerId/:itemId', element: withAdultGate(<ItemPage />) },
         { path: 'search', element: <SearchPage /> },
         { path: 'favorites', element: <FavoritesPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'onboarding', element: <OnboardingPage /> },
         { path: 'downloads', element: <DownloadsPage /> },
-        { path: 'viewer/:providerId/:itemId', element: <ViewerPage /> },
+        { path: 'viewer/:providerId/:itemId', element: withAdultGate(<ViewerPage />) },
         {
           path: 'settings',
           element: <SettingsPage />,

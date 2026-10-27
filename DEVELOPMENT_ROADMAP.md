@@ -727,7 +727,7 @@ Customize discovery based on user interests and exploration.
 - [x] Persist category selections.
 - [x] Implement preference editing.
 - [x] Implement provider preferences.
-- [ ] Implement content visibility settings. *(Adult visibility remains Phase 16.)*
+- [x] Implement content visibility settings.
 - [x] Implement history controls.
 
 ### 7.3 Exploration Tracking
@@ -750,7 +750,7 @@ Customize discovery based on user interests and exploration.
 
 ## Status
 
-**Implemented (2026-10-26)** except Adult content-visibility settings, which stay Phase 16.
+**Implemented (2026-10-26).** Adult content-visibility settings shipped with Phase 16.
 
 Onboarding is skippable and writes `selectedCategoryIds` plus `onboardingCompleted`. Home rows
 follow that selection (empty means every family). Item details and the PDF viewer mark exploration;
@@ -1253,30 +1253,38 @@ Support archived websites and compatible software artifacts.
 
 ### 15.1 Web Archive Viewer
 
-- [ ] Identify supported replay mechanisms.
-- [ ] Display archived capture dates.
-- [ ] Display original URLs.
-- [ ] Implement sandboxed viewing.
-- [ ] Restrict access to application data.
-- [ ] Handle unsupported resources.
-- [ ] Provide source links.
+- [x] Identify supported replay mechanisms.
+- [x] Display archived capture dates.
+- [x] Display original URLs.
+- [x] Implement sandboxed viewing.
+- [x] Restrict access to application data.
+- [x] Handle unsupported resources.
+- [x] Provide source links.
+
+Wayback Machine iframe with the `if_` embed flag. WARC bytes are never fetched. Sandbox is
+`allow-scripts allow-forms` without `allow-same-origin` or `allow-top-navigation`.
 
 ### 15.2 Software Viewer
 
-- [ ] Display software metadata.
-- [ ] Display platform information.
-- [ ] Display available files.
-- [ ] Support downloads.
-- [ ] Add launch action when a compatible sandbox exists.
-- [ ] Prevent direct execution of arbitrary programs.
+- [x] Display software metadata.
+- [x] Display platform information.
+- [x] Display available files.
+- [x] Support downloads.
+- [x] Add launch action when a compatible sandbox exists.
+- [x] Prevent direct execution of arbitrary programs.
+
+Inspect-only. Game Boy ROMs on the same item can Play in the existing emulator. ISO/EXE/DMG
+are never executed in this origin.
 
 ### 15.3 Testing
 
-- [ ] Test unavailable archived resources.
-- [ ] Test malicious HTML scenarios.
-- [ ] Test file validation.
-- [ ] Test viewer isolation.
-- [ ] Test browser compatibility.
+- [x] Test unavailable archived resources.
+- [x] Test malicious HTML scenarios.
+- [x] Test file validation.
+- [x] Test viewer isolation.
+- [x] Test browser compatibility.
+
+Chromium e2e covers sandbox isolation and missing original URLs. Safari/Firefox remain unverified.
 
 ## Deliverable
 
@@ -1295,33 +1303,40 @@ configuration and appropriate isolation.
 
 ### 16.1 Provider Configuration
 
-- [ ] Define supported source integrations.
-- [ ] Implement provider registration.
-- [ ] Implement enable and disable controls.
-- [ ] Implement provider-specific preferences.
-- [ ] Implement independent error handling.
+- [x] Define supported source integrations.
+- [x] Implement provider registration.
+- [x] Implement enable and disable controls.
+- [x] Implement provider-specific preferences.
+- [x] Implement independent error handling.
 
 ### 16.2 Access Controls
 
-- [ ] Implement opt-in.
-- [ ] Implement applicable age assurance.
-- [ ] Enforce relevant access restrictions.
-- [ ] Implement content visibility controls.
-- [ ] Keep Adult content out of ordinary recommendations.
-- [ ] Respect visibility settings in global favorites.
+- [x] Implement opt-in.
+- [x] Implement applicable age assurance.
+- [x] Enforce relevant access restrictions.
+- [x] Implement content visibility controls.
+- [x] Keep Adult content out of ordinary recommendations.
+- [x] Respect visibility settings in global favorites.
 
 ### 16.3 Privacy
 
-- [ ] Review sensitive history handling.
-- [ ] Prevent unexpected content previews.
-- [ ] Review search-history behavior.
-- [ ] Review shared-screen visibility.
-- [ ] Test disabled-provider behavior.
+- [x] Review sensitive history handling.
+- [x] Prevent unexpected content previews.
+- [x] Review search-history behavior.
+- [x] Review shared-screen visibility.
+- [x] Test disabled-provider behavior.
 
 ## Deliverable
 
 An independently configurable Adult provider that does not
 compromise the other providers or core discovery experience.
+
+**Implemented (2026-10-26).** Adult is a separate registry identity (`id: 'adult'`) over the
+Internet Archive `adultsonly` collection. It registers only when `VITE_ENABLE_ADULT_PROVIDER` is
+on. Signed-in age confirmation plus opt-in are required before the tab, search, and routes
+serve content. Ordinary Archive queries exclude that collection. Favorites and history honor
+`hideAdultInSharedLists` (default on). Age confirmation is local, not identity verification.
+Live Archive adult collections are NOT VERIFIED in this sandbox.
 
 ---
 

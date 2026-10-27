@@ -13,6 +13,7 @@ import { useAsyncValue } from '../data/useAsyncValue';
 import type { ContentItem } from '../models/content';
 import { formatCanonicalId } from '../models/identity';
 import type { StoredContentState } from '../persistence/contract';
+import { filterHiddenAdultRecords } from '../personalization/adultAccess';
 import {
   FAVORITE_SORT_OPTIONS,
   favoriteType,
@@ -55,7 +56,12 @@ export function FavoritesPage() {
     );
   }
 
-  const saved = session.contentStates.filter(isFavoriteRecord);
+  const saved = filterHiddenAdultRecords(
+    session.contentStates.filter(isFavoriteRecord),
+    session.preferences,
+  );
+  const hiddenAdultOnly =
+    saved.length === 0 && session.contentStates.filter(isFavoriteRecord).length > 0;
   const listed = listFavorites(saved, {
     query,
     sort,
@@ -85,8 +91,17 @@ export function FavoritesPage() {
     >
       {saved.length === 0 ? (
         <EmptyState
-          title="Nothing saved yet"
-          description="Save an item from discovery, a collection, or its details page. A like does not add it here."
+          title={hiddenAdultOnly ? 'Adult favorites are hidden' : 'Nothing saved yet'}
+          description={
+            hiddenAdultOnly
+              ? 'Adult items stay saved on this device. Turn off hiding under Content visibility to show them here.'
+              : 'Save an item from discovery, a collection, or its details page. A like does not add it here.'
+          }
+          action={
+            hiddenAdultOnly ? (
+              <Link to={buildSettingsPath('content')}>Open content visibility</Link>
+            ) : undefined
+          }
         />
       ) : (
         <>

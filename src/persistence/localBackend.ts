@@ -382,6 +382,9 @@ function copyPreferences(preferences: UserPreferences): UserPreferences {
     historyTrackingEnabled: preferences.historyTrackingEnabled,
     hideExploredFromDiscovery: preferences.hideExploredFromDiscovery,
     onboardingCompleted: preferences.onboardingCompleted,
+    adultAgeConfirmed: preferences.adultAgeConfirmed,
+    adultOptIn: preferences.adultOptIn,
+    hideAdultInSharedLists: preferences.hideAdultInSharedLists,
   };
 }
 

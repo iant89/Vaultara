@@ -305,6 +305,19 @@ export const DARK_RESPONSE = {
   },
 };
 
+/** Adults-only item: ordinary Archive browsing must treat this as missing. */
+export const ADULT_ITEM_RESPONSE = {
+  files_count: 1,
+  item_size: 1024,
+  metadata: {
+    identifier: 'adult_example',
+    title: 'Restricted Example',
+    mediatype: 'movies',
+    collection: ['adultsonly'],
+  },
+  files: [{ name: 'clip.mp4', source: 'original', format: 'h.264', size: '1024' }],
+};
+
 /** What the metadata endpoint answers for an identifier it does not know. */
 export const UNKNOWN_ITEM_RESPONSE = {};
 

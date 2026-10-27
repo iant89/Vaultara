@@ -9,13 +9,19 @@ import { useSession } from '../data/SessionContext';
 import { useAsyncValue } from '../data/useAsyncValue';
 import { formatCanonicalId } from '../models/identity';
 import type { StoredContentState } from '../persistence/contract';
+import { filterHiddenAdultRecords } from '../personalization/adultAccess';
 import { isExploredRecord } from '../personalization/exploration';
 import { buildItemPath, buildSettingsPath } from '../utils/links';
 import styles from './HistoryPage.module.css';
 
 export function HistoryPage() {
   const session = useSession();
-  const explored = session.contentStates.filter(isExploredRecord).slice().sort(byLastExplored);
+  const allExplored = session.contentStates.filter(isExploredRecord).slice().sort(byLastExplored);
+  const explored =
+    session.status === 'signed-in'
+      ? filterHiddenAdultRecords(allExplored, session.preferences)
+      : allExplored;
+  const hiddenAdultOnly = explored.length === 0 && allExplored.length > 0;
 
   if (session.status === 'loading') {
     return (
@@ -56,8 +62,17 @@ export function HistoryPage() {
 
       {explored.length === 0 ? (
         <EmptyState
-          title="Nothing explored yet"
-          description="Open an item's details or start its viewer to add it here. Opening a collection does not mark its items as explored."
+          title={hiddenAdultOnly ? 'Adult history is hidden' : 'Nothing explored yet'}
+          description={
+            hiddenAdultOnly
+              ? 'Adult visits stay recorded on this device. Turn off hiding under Content visibility to show them here.'
+              : 'Open an item’s details or start its viewer to add it here. Opening a collection does not mark its items as explored.'
+          }
+          action={
+            hiddenAdultOnly ? (
+              <Link to={buildSettingsPath('content')}>Open content visibility</Link>
+            ) : undefined
+          }
         />
       ) : (
         <ol className={styles.list}>

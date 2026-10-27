@@ -7,7 +7,7 @@ development sessions, including sessions performed by different AI agents.
 Record verification results honestly using `PASS` / `FAIL` / `BLOCKED` / `NOT RUN` / `PARTIAL`.
 Never record secrets, credentials, or private user information.
 
-Last updated: 2026-10-26 (Phase 14 Game Boy emulator; see Session Handoff Log)
+Last updated: 2026-10-26 (Phase 16 Adult provider; see Session Handoff Log)
 
 ---
 
@@ -35,7 +35,7 @@ Fixed product decisions already established by
 
 ## Current Development Status
 
-**Phase: 14 Game Boy emulator implemented (after Wikipedia in Phase 13). Deployment to GitHub Pages configured.**
+**Phase: 16 Adult provider implemented (after web archives and software in Phase 15). Deployment to GitHub Pages configured.**
 
 The Internet Archive adapter is now driven by the interface. Home shows a featured item, one row
 per content family (24 cards each) and the provider's category grid; provider pages list categories;
@@ -62,8 +62,9 @@ in, write an `opened` or `unavailable` row to IndexedDB. This app does not fetch
 does not claim it arrived. Category onboarding, exploration history, and home-page filtering
 remain. Downloadable PDFs can be opened with Read; EPUB and book-like text with Read in the book
 reader; photographs with View in the gallery; audio with Listen in the player; video with Watch;
-Wikipedia articles with Read; Game Boy `.gb` ROMs with Play. Other formats get file details rather
-than a fake player.
+Wikipedia articles with Read; Game Boy `.gb` ROMs with Play; web-archive WARC/ARC captures with
+View in a sandboxed Wayback frame; disk images and installers with Inspect (never executed). Other
+formats get file details rather than a fake player.
 
 The application is published as a static site to GitHub Pages by
 `.github/workflows/deploy-pages.yml`. Discovery requires a network route to `archive.org`; without
@@ -363,13 +364,13 @@ Points that are easy to get wrong:
 
 ## Provider Integrations
 
-Two adapters implemented and wired to discovery; Adult remains planned.
+Three adapters implemented. Adult is opt-in and isolated from ordinary discovery.
 
 | Provider         | Status              | Notes / constraints                                                                                                                                                                                      |
 | ---------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Internet Archive | Adapter implemented | Phase 4. Official APIs only. Metadata + thumbnails may be cached per provider policy. Never download full media just to show metadata; prefer streaming/range requests (Spec §11.4). Discovery UI is live. |
+| Internet Archive | Adapter implemented | Phase 4. Official APIs only. Metadata + thumbnails may be cached per provider policy. Never download full media just to show metadata; prefer streaming/range requests (Spec §11.4). Discovery UI is live. Ordinary search excludes the `adultsonly` collection. |
 | Wikipedia        | Adapter implemented | Phase 13. MediaWiki Action API. Document-oriented reader (sanitized HTML, TOC, references). Not a poster grid (Spec §12.2).                                                                               |
-| Adult            | Not started         | Phase 16, opt-in, independently configurable. Must not surface in ordinary Archive/Wikipedia recommendations. Favorites may contain Adult items but visibility settings must be honored (Spec §13).      |
+| Adult            | Adapter implemented | Phase 16. Independent registry id `adult` over Archive `adultsonly`. Registers only when `VITE_ENABLE_ADULT_PROVIDER` is on. Requires signed-in age confirmation + opt-in. Must not surface in ordinary Archive/Wikipedia recommendations. Favorites may contain Adult items but `hideAdultInSharedLists` is honored (Spec §13). Age confirmation is local, not identity verification. Live adult collections NOT VERIFIED. |
 
 Cross-cutting provider requirements: timeouts, cancellation, rate limiting, retries/backoff,
 malformed-response handling, capability honesty, and failure isolation (Spec §25; `AGENTS.md` §7).
@@ -378,8 +379,8 @@ malformed-response handling, capability honesty, and failure isolation (Spec §2
 
 ## Viewer Integrations
 
-Core Phase 12 viewers, the Wikipedia reader, and the Game Boy emulator are registered modules.
-Web-archive remains Phase 15.
+Core Phase 12 viewers, the Wikipedia reader, the Game Boy emulator, the web-archive viewer, and
+the software inspector are registered modules.
 
 | Viewer                 | Phase | Key constraints                                                                                                                                        |
 | ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -390,8 +391,8 @@ Web-archive remains Phase 15.
 | Video                  | 12    | Native `<video>` without `crossOrigin`; WebVTT captions; pause on unmount                                                                              |
 | Wikipedia reader       | 13    | Document layout, TOC, references                                                                                                                       |
 | Game Boy emulator      | 14    | Maintained emulator behind an adapter; **never** execute ROMs as JS; no bundled commercial ROMs; design adapter to allow GBC/NES/SMS later             |
-| Web archive            | 15    | Sandboxed iframe, restrictive policy, no access to app credentials/storage/privileged APIs                                                             |
-| Software / disk images | 15    | Inspect + download only; never execute downloaded binaries in the app origin                                                                           |
+| Web archive            | 15    | Sandboxed Wayback iframe (`allow-scripts allow-forms`, no same-origin/top-navigation); WARC never fetched; capture date + original URL                 |
+| Software / disk images | 15    | Inspect + download only; never execute binaries; Play only when a GB ROM is on the item                                                                |
 | Generic fallback       | 11    | Must never leave the user on a blank page (Spec §18.10)                                                                                                |
 
 Treat file extensions and provider metadata as untrusted when choosing a viewer (Spec §17.4).
@@ -413,7 +414,8 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 | Archive normalization: mediatype/format taxonomy, dates, rights, artwork, access           | Implemented                                         | `src/providers/archive/{taxonomy,map}.ts`                         |
 | Archive available files, access restrictions, download URLs                                | Implemented                                         | `mapFiles`, `getDownloadUrl`                                      |
 | Provider composition root (single registration point)                                      | Implemented; reached through `ProviderServices`     | `src/providers/composition.ts`                                    |
-| Wikipedia and Adult adapters                                                               | **Not implemented** — Phases 13, 16                 | catalogue entries remain `planned`                                |
+| Wikipedia adapter                                                                          | Implemented                                         | `src/providers/wikipedia/`                                        |
+| Adult adapter                                                                              | Implemented; opt-in, isolated from ordinary discovery | `src/providers/adult/`, `adultAccess.ts`, Content visibility    |
 | Discovery query layer: TTL cache, in-flight de-duplication, concurrency limiter            | Implemented                                         | `src/data/{contentQueries,requestCache,requestLimiter}.ts`        |
 | `useAsyncValue`: one request key to one component, abort on change, fresh reload           | Implemented                                         | `src/data/useAsyncValue.ts`                                       |
 | Provider context (`ProviderServices`, shared lazy runtime)                                 | Implemented                                         | `src/data/ProviderServices.tsx`                                   |
@@ -455,16 +457,17 @@ Treat file extensions and provider metadata as untrusted when choosing a viewer 
 | Route table for every documented route, error boundary, not-found                          | Implemented                                         | `src/app/routes.tsx`                                              |
 | Shared models and provider/viewer contracts                                                | Implemented; viewers registered                     | `src/models/`, `src/viewers/`                                     |
 
-Not implemented anywhere: web-archive viewer, software/disk-image execution, Adult adapter.
-Accounts, category preferences, exploration history, favorites, likes, recent searches, and
-download history persist locally. Adult visibility stays Phase 16. There is no download proxy.
+Not implemented anywhere: arbitrary binary execution.
+Accounts, category preferences, exploration history, favorites, likes, recent searches, Adult
+opt-in/age/visibility flags, and download history persist locally. There is no download proxy.
+Adult registers only when `VITE_ENABLE_ADULT_PROVIDER` is on.
 
 ---
 
 ## Features in Progress
 
-Phases 13 (Wikipedia) and 14 (Game Boy emulator) are complete. Next is Phase 15 (web archives and
-software) only on the user's instruction. Do not start web-archive or Adult unprompted.
+Phases 13–16 are complete. Next is Phase 17 (advanced discovery) only on the user's instruction.
+Do not start Phase 17 unprompted.
 
 ---
 
@@ -739,12 +742,12 @@ Non-negotiable boundaries, restated here because they are easy to erode during i
 | Type check                                                  | `npm run typecheck`           | PASS    | Strict + `noUncheckedIndexedAccess`                                                                                                                      |
 | Lint                                                        | `npm run lint`                | PASS    | Zero errors or warnings                                                                                                                                  |
 | Format check                                                | `npm run format:check`        | PASS    | Application code only                                                                                                                                    |
-| Unit and component tests                                    | `npm test`                    | PASS    | 103 files, 954 tests                                                                                                                                     |
-| Production build                                            | `npm run build`               | NOT RUN | Last PASS after Phase 12.6 (main 475.63 kB / 144.69 kB gzip). Not re-run after Wikipedia or the emulator.                                                |
+| Unit and component tests                                    | `npm test`                    | PASS    | 108 files, 973 tests                                                                                                                                     |
+| Production build                                            | `npm run build`               | NOT RUN | Last PASS after Phase 12.6 (main 475.63 kB / 144.69 kB gzip). Not re-run after Wikipedia, emulator, or Phase 15.                                         |
 | Contrast audit                                              | `src/styles/contrast.test.ts` | PASS    | Body text >= 4.5:1 on 4 surfaces; subtle text >= 4.5:1; control boundaries >= 3:1 on 5 surfaces; focus ring >= 3:1                                       |
 | Dev server HTTP smoke                                       | `curl`                        | PASS    | `/`, `/design-system`, `/favorites` all 200                                                                                                              |
 | Production bundle hygiene                                   | `grep dist`                   | PASS    | Sample fixtures absent from the main chunk; dev route not registered                                                                                     |
-| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 53 tests, Chromium; previous surfaces plus Wikipedia reader and Game Boy Play / invalid HTML / oversized Content-Length                                  |
+| End-to-end suite                                            | `npm run test:e2e`            | PASS    | 56 tests, Chromium; previous surfaces plus web-archive sandbox isolation and software Inspect                                                            |
 | Responsive layout / overflow / touch-target measurement     | `e2e/responsive.spec.ts`      | PASS    | 18 tests at 360/414/768/1440 px, plus discovery routes at 390/768/1440 px in `e2e/discovery.spec.ts`                                                     |
 | Visual review of rendered UI                                | screenshots                   | PASS    | Shell, gallery, cards, and the four discovery pages at 390/1440 px; 2 layout defects found by the browser tests and fixed                                |
 | Dependency provisioning                                     | `scripts/setup-deps.sh`       | PASS    | Clean run, idempotent re-run, and `--check` exit 0                                                                                                       |
@@ -1102,15 +1105,17 @@ Previous entry:
 
 ## Next Steps
 
-Phases 0–14 are complete for the Archive-backed app plus Wikipedia: the shell, the design system,
-static deployment, the provider architecture, the Archive adapter, the discovery workflow, a PDF
-reader, local accounts, category onboarding, exploration history, discovery filtering, global
-favorites and likes, global search, the download manager, the viewer registry, the photo gallery,
-the audio player with a decoded-PCM waveform, the video player, the book reader, the Wikipedia
-article reader, the Game Boy emulator, and the Phase 12.6 format / large-resource / cleanup /
-progress / phone tests.
+Phases 0–16 are complete for the Archive-backed app plus Wikipedia and the opt-in Adult provider:
+the shell, the design system, static deployment, the provider architecture, the Archive adapter,
+the discovery workflow, a PDF reader, local accounts, category onboarding, exploration history,
+discovery filtering, global favorites and likes, global search, the download manager, the viewer
+registry, the photo gallery, the audio player with a decoded-PCM waveform, the video player, the
+book reader, the Wikipedia article reader, the Game Boy emulator, sandboxed web-archive replay,
+software inspection, the Phase 12.6 format / large-resource / cleanup / progress / phone tests,
+and the Adult provider with deploy kill-switch, local age confirmation, opt-in, and shared-list
+hiding.
 
-1. **Phase 15 web archives and software** — only on the user's instruction. Do not start Adult.
+1. **Phase 17 Advanced discovery** — only on the user's instruction.
 2. **Verify the hierarchy against the live service:** confirm `mediatype:collection AND
 collection:<media type>` returns the expected collections (and not every collection on the
    Archive), that `-mediatype:collection` behaves as a filter on the live index, and that `numFound`
@@ -1125,6 +1130,46 @@ collection:<media type>` returns the expected collections (and not every collect
 6. **Review `--color-border-strong`** aesthetically; it was lightened to `#6b7686` to meet 3:1.
 
 ## Session Handoff Log
+
+### Session 2026-10-26 (Phase 16 Adult provider)
+
+1. **Objective:** Phase 16 Adult provider, on the user's instruction to start the next phase after
+   the Phase 15 report.
+2. **Specification references:** design spec 13; roadmap 16.1–16.3.
+3. **Changes made:** Adult is an independent `ContentProvider` (`id: 'adult'`) over the Internet
+   Archive `adultsonly` collection. `createAdultProvider` reuses the Archive adapter with a
+   required-collection allowlist and `adultContent: true`. Ordinary Archive queries add
+   `-collection:adultsonly`. Registration happens only when `VITE_ENABLE_ADULT_PROVIDER` is on.
+   Settings → Content visibility: local age confirmation, opt-in, hide-in-favorites/history
+   (default on). Nav/search/routes stay closed until deploy flag + age + opt-in. Adult-only
+   searches are not written to recent-search history. Archive API errors stamp the Adult provider
+   id so an Adult outage cannot be blamed on Archive. Age confirmation is not identity
+   verification.
+4. **Implementation status:** Adult browsing works when enabled and opted in. Home discovery stays
+   Archive-only. Live `adultsonly` collections against archive.org are NOT VERIFIED. `npm run build`
+   NOT RUN this session.
+5. **Verification:** `npm run check` PASS (112 files / 993 tests). `npx playwright test` PASS 57
+   Chromium tests including `e2e/adult.spec.ts` (Adult hidden while disabled).
+6. **Outstanding work:** Phase 17 on instruction. Git commit/PR only if asked.
+
+### Session 2026-10-26 (Phase 15 web archives and software)
+
+1. **Objective:** Phase 15 web archives and software, on the user's instruction to start the next
+   phase after PR #10 merged.
+2. **Specification references:** design spec 18.7, 18.8; roadmap 15.1–15.3; `AGENTS.md` 10.2, 10.4.
+3. **Changes made:** Web-archive viewer replays WARC/ARC captures in a sandboxed Wayback iframe
+   (`allow-scripts allow-forms`, no `allow-same-origin` / `allow-top-navigation`). Replay URL is
+   always `https://web.archive.org/web/…`; WARC bytes are never fetched. Capture date and original
+   URL are shown; javascript/data originals are refused. Software viewer inspects ISO/DMG/EXE and
+   ZIP on software items: metadata, platform, files, download. It does not execute binaries. A
+   Game Boy ROM on the same item can Play in the existing emulator. File list View / Inspect.
+   jsdom stubs for `canvas.getContext` and `HTMLMediaElement.pause` in `src/test/setup.ts`.
+4. **Implementation status:** WARC View and software Inspect open from the file list. Adult remains
+   Phase 16. No download proxy. Live Wayback embedding against archive.org is NOT VERIFIED here.
+5. **Verification:** `npm run check` PASS (108 files / 973 tests). `npx playwright test` PASS 56
+   tests including sandboxed Wayback (parent title not pwned) and software Inspect. `npm run build`
+   NOT RUN this session.
+6. **Outstanding work:** Phase 16 Adult on instruction. Git commit/PR only if asked.
 
 ### Session 2026-10-26 (Phase 14 Game Boy emulator)
 

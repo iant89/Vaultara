@@ -82,6 +82,15 @@ const FORMAT_MIME_TYPE: Readonly<Record<string, string>> = {
   'nintendo gameboy rom': 'application/x-gameboy-rom',
   'gameboy rom': 'application/x-gameboy-rom',
   'game boy rom': 'application/x-gameboy-rom',
+  warc: 'application/warc',
+  'web archive': 'application/warc',
+  'web archive gz': 'application/warc',
+  'warc gz': 'application/warc',
+  arc: 'application/warc',
+  'iso image': 'application/x-iso9660-image',
+  iso: 'application/x-iso9660-image',
+  'apple disk image': 'application/x-apple-diskimage',
+  'windows executable': 'application/x-msdownload',
 };
 
 const EXTENSION_MIME_TYPE: Readonly<Record<string, string>> = {
@@ -111,6 +120,12 @@ const EXTENSION_MIME_TYPE: Readonly<Record<string, string>> = {
   zip: 'application/zip',
   torrent: 'application/x-bittorrent',
   gb: 'application/x-gameboy-rom',
+  warc: 'application/warc',
+  arc: 'application/warc',
+  iso: 'application/x-iso9660-image',
+  dmg: 'application/x-apple-diskimage',
+  exe: 'application/x-msdownload',
+  msi: 'application/x-msi',
 };
 
 const EXTENSION_PATTERN = /^[a-z0-9]{1,8}$/;
@@ -139,6 +154,17 @@ export function resolveMimeType(format: unknown, fileName: string): string | und
 
   if (fromLabel !== undefined) {
     return fromLabel;
+  }
+
+  const lowerName = fileName.toLowerCase();
+
+  if (
+    lowerName.endsWith('.warc') ||
+    lowerName.endsWith('.warc.gz') ||
+    lowerName.endsWith('.arc') ||
+    lowerName.endsWith('.arc.gz')
+  ) {
+    return 'application/warc';
   }
 
   const extension = resolveFileExtension(fileName);
@@ -183,12 +209,26 @@ function isGameBoyMimeType(mimeType: string | undefined): boolean {
   return mimeType === 'application/x-gameboy-rom';
 }
 
-/** Formats this app can present today: native media plus the PDF, book, and Game Boy viewers. */
+function isWebArchiveMimeType(mimeType: string | undefined): boolean {
+  return mimeType === 'application/warc' || mimeType === 'application/warc+gzip';
+}
+
+function isSoftwareInspectMimeType(mimeType: string | undefined): boolean {
+  return (
+    mimeType === 'application/x-iso9660-image' ||
+    mimeType === 'application/x-apple-diskimage' ||
+    mimeType === 'application/x-msdownload'
+  );
+}
+
+/** Formats this app can present today: native media plus specialized viewers. */
 export function isAppViewable(mimeType: string | undefined): boolean {
   return (
     isBrowserDisplayable(mimeType) ||
     isPdfMimeType(mimeType) ||
     isEpubMimeType(mimeType) ||
-    isGameBoyMimeType(mimeType)
+    isGameBoyMimeType(mimeType) ||
+    isWebArchiveMimeType(mimeType) ||
+    isSoftwareInspectMimeType(mimeType)
   );
 }

@@ -145,6 +145,22 @@ describe('describeViewerCompatibility', () => {
         downloadUrl: 'https://archive.org/download/gb/homebrew.gb',
       }),
     ).toBe('In-app emulator');
+    expect(
+      describeViewerCompatibility({
+        name: 'site.warc.gz',
+        mimeType: 'application/warc',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/web/site.warc.gz',
+      }),
+    ).toBe('In-app archive');
+    expect(
+      describeViewerCompatibility({
+        name: 'dos.iso',
+        mimeType: 'application/x-iso9660-image',
+        downloadAvailable: true,
+        downloadUrl: 'https://archive.org/download/dos/dos.iso',
+      }),
+    ).toBe('Software details');
   });
 });
 

@@ -3,8 +3,8 @@
  *
  * This is the only place viewers are constructed and registered. Adding a viewer means adding
  * it here — pages must not `new ViewerRegistry()` except in tests. PDF, photographs, audio,
- * video, books, Wikipedia articles, and Game Boy ROMs are specialized; everything else lands
- * on file details.
+ * video, books, Wikipedia articles, Game Boy ROMs, web archives, and software artifacts are
+ * specialized; everything else lands on file details.
  */
 
 import { audioViewer } from './audio/module';
@@ -16,6 +16,8 @@ import { pdfViewer } from './pdf/module';
 import { ViewerRegistry } from './registry';
 import type { ViewerModule } from './types';
 import { videoViewer } from './video/module';
+import { softwareViewer } from './software/module';
+import { webArchiveViewer } from './webarchive/module';
 import { wikipediaViewer } from './wikipedia/module';
 
 export function defaultViewerModules(): readonly ViewerModule[] {
@@ -27,6 +29,8 @@ export function defaultViewerModules(): readonly ViewerModule[] {
     videoViewer,
     wikipediaViewer,
     emulatorViewer,
+    webArchiveViewer,
+    softwareViewer,
     genericViewer,
   ];
 }

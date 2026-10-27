@@ -51,9 +51,10 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     id: 'adult',
     name: 'Adult',
     description:
-      'Optional, independently configured adult content provider. Disabled unless explicitly enabled.',
-    availability: 'planned',
+      'Optional adult collections from the Internet Archive, isolated from ordinary Archive and Wikipedia discovery. Disabled unless this deployment allows it and you opt in.',
+    availability: 'available',
     roadmapPhase: 'Phase 16',
+    browsingPhase: 'Phase 16',
   },
 ];
 

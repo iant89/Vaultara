@@ -28,6 +28,16 @@ export interface UserPreferences {
   readonly hideExploredFromDiscovery: boolean;
   /** After skip or continue, the category-selection screen is not shown again. */
   readonly onboardingCompleted: boolean;
+  /**
+   * Local confirmation that the account holder is of legal age for adult content where they
+   * are. This is not identity verification; the application has no backend that could perform
+   * one (design spec 13.3).
+   */
+  readonly adultAgeConfirmed: boolean;
+  /** Explicit Adult-provider opt-in. Ignored unless `adultAgeConfirmed` is also true. */
+  readonly adultOptIn: boolean;
+  /** When true, Adult identities stay out of favorites and history lists. */
+  readonly hideAdultInSharedLists: boolean;
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
@@ -36,6 +46,9 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   historyTrackingEnabled: true,
   hideExploredFromDiscovery: true,
   onboardingCompleted: false,
+  adultAgeConfirmed: false,
+  adultOptIn: false,
+  hideAdultInSharedLists: true,
 };
 
 export function normalizePreferences(value: unknown): UserPreferences {
@@ -51,6 +64,9 @@ export function normalizePreferences(value: unknown): UserPreferences {
     historyTrackingEnabled: record['historyTrackingEnabled'] !== false,
     hideExploredFromDiscovery: record['hideExploredFromDiscovery'] !== false,
     onboardingCompleted: record['onboardingCompleted'] === true,
+    adultAgeConfirmed: record['adultAgeConfirmed'] === true,
+    adultOptIn: record['adultOptIn'] === true,
+    hideAdultInSharedLists: record['hideAdultInSharedLists'] !== false,
   };
 }
 

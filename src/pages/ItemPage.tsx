@@ -189,7 +189,16 @@ export function ItemPage() {
                   reload={files.reload}
                   errorTitle="Files could not be loaded"
                 >
-                  {(entries) => <FileList files={entries} itemTitle={loaded.title} />}
+                  {(entries) => (
+                    <FileList
+                      files={entries}
+                      itemTitle={loaded.title}
+                      itemType={loaded.type}
+                      {...(loaded.thumbnailUrl !== undefined
+                        ? { artworkUrl: loaded.thumbnailUrl }
+                        : {})}
+                    />
+                  )}
                 </AsyncContent>
               </Section>
 
