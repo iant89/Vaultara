@@ -84,10 +84,13 @@ export const ARCHIVE_CATEGORIES: readonly ArchiveCategoryDefinition[] = [
   },
 ];
 
-export function findArchiveCategory(categoryId: string): ArchiveCategoryDefinition | undefined {
+export function findArchiveCategory(
+  categoryId: string,
+  catalog: readonly ArchiveCategoryDefinition[] = ARCHIVE_CATEGORIES,
+): ArchiveCategoryDefinition | undefined {
   const normalized = categoryId.trim().toLowerCase();
 
-  return ARCHIVE_CATEGORIES.find((category) => category.id === normalized);
+  return catalog.find((category) => category.id === normalized);
 }
 
 /**
@@ -99,8 +102,9 @@ export function findArchiveCategory(categoryId: string): ArchiveCategoryDefiniti
  */
 export function findArchiveCategoryByCollection(
   collectionId: string,
+  catalog: readonly ArchiveCategoryDefinition[] = ARCHIVE_CATEGORIES,
 ): ArchiveCategoryDefinition | undefined {
   const normalized = collectionId.trim().toLowerCase();
 
-  return ARCHIVE_CATEGORIES.find((category) => category.collectionId === normalized);
+  return catalog.find((category) => category.collectionId === normalized);
 }

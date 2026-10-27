@@ -306,6 +306,7 @@ function mapFile(
   itemId: string,
   access: ArchiveItemAccess,
   urls: ArchiveUrlBuilder,
+  providerId: string,
 ): ContentFile | undefined {
   const record = asRecord(entry);
 
@@ -361,7 +362,7 @@ function mapFile(
       // provider will refuse is worse than offering none (design spec 11.3).
       ...(downloadAvailable ? { downloadUrl: urls.downloadUrl(itemId, name) } : {}),
     },
-    ARCHIVE_PROVIDER_ID,
+    providerId,
     itemId,
   );
 }
@@ -376,6 +377,7 @@ export function mapFiles(
   itemId: string,
   access: ArchiveItemAccess,
   urls: ArchiveUrlBuilder,
+  providerId: string = ARCHIVE_PROVIDER_ID,
 ): readonly ContentFile[] {
   if (!Array.isArray(files)) {
     return [];
@@ -385,7 +387,7 @@ export function mapFiles(
     .map((entry, index) => ({
       index,
       source: normalizeText(asRecord(entry)?.['source']).toLowerCase(),
-      file: mapFile(entry, itemId, access, urls),
+      file: mapFile(entry, itemId, access, urls, providerId),
     }))
     .filter(
       (entry): entry is { index: number; source: string; file: ContentFile } =>
@@ -429,7 +431,11 @@ function mapRights(
  * item without an identifier cannot be linked, cached, or fetched again — the one field that
  * cannot be defaulted.
  */
-export function mapItem(input: ArchiveItemInput, urls: ArchiveUrlBuilder): ContentItem | undefined {
+export function mapItem(
+  input: ArchiveItemInput,
+  urls: ArchiveUrlBuilder,
+  providerId: string = ARCHIVE_PROVIDER_ID,
+): ContentItem | undefined {
   const { metadata } = input;
   const identifier = readIdentifier(metadata);
 
@@ -445,6 +451,10 @@ export function mapItem(input: ArchiveItemInput, urls: ArchiveUrlBuilder): Conte
   const thumbnailUrl = urls.thumbnailUrl(identifier);
   const publisher = joinedString(metadata['publisher'], 2);
   const language = joinedString(metadata['language'], 3);
+  const originalurl = firstString(readFirst(metadata, ['originalurl', 'original_url']));
+  const emulator = firstString(metadata['emulator']);
+  const processor = firstString(metadata['processor']);
+  const os = firstString(readFirst(metadata, ['os', 'operating_system']));
   const collections = normalizeStringList(metadata['collection'], { maxItems: 24, maxLength: 80 });
   const downloads = parseByteSize(metadata['downloads']);
   const filesCount = parseByteSize(input.filesCount);
@@ -488,9 +498,13 @@ export function mapItem(input: ArchiveItemInput, urls: ArchiveUrlBuilder): Conte
               : 'public',
         thumbnailService: thumbnailUrl,
         sourcePage: sourceUrl,
+        ...(originalurl !== '' ? { originalurl } : {}),
+        ...(emulator !== '' ? { emulator } : {}),
+        ...(processor !== '' ? { processor } : {}),
+        ...(os !== '' ? { os } : {}),
       },
     },
-    ARCHIVE_PROVIDER_ID,
+    providerId,
   );
 }
 
@@ -505,6 +519,7 @@ export interface ArchiveCollectionInput {
 export function mapCollection(
   input: ArchiveCollectionInput,
   urls: ArchiveUrlBuilder,
+  providerId: string = ARCHIVE_PROVIDER_ID,
 ): ContentCollection | undefined {
   const { metadata } = input;
   const identifier = readIdentifier(metadata);
@@ -533,6 +548,6 @@ export function mapCollection(
         sourcePage: sourceUrl,
       },
     },
-    ARCHIVE_PROVIDER_ID,
+    providerId,
   );
 }

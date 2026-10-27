@@ -36,6 +36,18 @@ describe('listSearchableProviders', () => {
       [],
     );
   });
+
+  it('omits Adult from global search until it is explicitly included', () => {
+    const runtime = runtimeWith([
+      { id: 'archive', name: 'Internet Archive' },
+      { id: 'adult', name: 'Adult' },
+    ]);
+
+    expect(listSearchableProviders(runtime).map((provider) => provider.id)).toEqual(['archive']);
+    expect(
+      listSearchableProviders(runtime, [], { includeAdult: true }).map((provider) => provider.id),
+    ).toEqual(['archive', 'adult']);
+  });
 });
 
 describe('parseSearchCategoryParam', () => {

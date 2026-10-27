@@ -96,10 +96,17 @@ describe('taxonomy', () => {
     expect(isAppViewable('image/jpeg')).toBe(true);
     expect(isAppViewable('application/epub+zip')).toBe(true);
     expect(isAppViewable('application/x-gameboy-rom')).toBe(true);
+    expect(isAppViewable('application/warc')).toBe(true);
+    expect(isAppViewable('application/x-iso9660-image')).toBe(true);
     expect(resolveMimeType('Nintendo GameBoy ROM', 'homebrew.gb')).toBe(
       'application/x-gameboy-rom',
     );
     expect(resolveMimeType(undefined, 'homebrew.gb')).toBe('application/x-gameboy-rom');
+    expect(resolveMimeType('Web ARChive GZ', 'example.com-20050315.warc.gz')).toBe(
+      'application/warc',
+    );
+    expect(resolveMimeType(undefined, 'example.com-20050315.warc.gz')).toBe('application/warc');
+    expect(resolveMimeType('ISO Image', 'dos.iso')).toBe('application/x-iso9660-image');
   });
 });
 
@@ -266,6 +273,45 @@ describe('mapItem', () => {
     });
     expect(item?.rights).toMatchObject({
       rightsStatement: 'Public domain in the United States.',
+    });
+  });
+
+  it('preserves original URL and software platform fields when the provider sends them', () => {
+    const web = mapItem(
+      {
+        metadata: {
+          identifier: 'web_stub',
+          title: 'Example capture',
+          mediatype: 'web',
+          originalurl: 'http://example.com/',
+          date: '2005-03-15',
+        },
+      },
+      urls,
+    );
+
+    expect(web?.type).toBe('website');
+    expect(web?.metadata['originalurl']).toBe('http://example.com/');
+
+    const software = mapItem(
+      {
+        metadata: {
+          identifier: 'dos_stub',
+          title: 'MS-DOS stub',
+          mediatype: 'software',
+          emulator: 'DOSBox',
+          processor: 'x86',
+          os: 'MS-DOS',
+        },
+      },
+      urls,
+    );
+
+    expect(software?.type).toBe('software');
+    expect(software?.metadata).toMatchObject({
+      emulator: 'DOSBox',
+      processor: 'x86',
+      os: 'MS-DOS',
     });
   });
 

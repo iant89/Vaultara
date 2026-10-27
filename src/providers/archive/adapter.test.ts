@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ARCHIVE_MAX_RESULTS, ARCHIVE_RELATED_LIMIT, createArchiveProvider } from './adapter';
 import {
+  ADULT_ITEM_RESPONSE,
   CATEGORY_COLLECTIONS_RESPONSE,
   COLLECTION_METADATA_RESPONSE,
   COUNT_RESPONSE,
@@ -25,6 +26,16 @@ const METADATA_BODIES: Readonly<Record<string, unknown>> = {
   nodownload_item: NO_DOWNLOAD_RESPONSE,
   darkitem: DARK_RESPONSE,
   feature_films: COLLECTION_METADATA_RESPONSE,
+  adult_example: ADULT_ITEM_RESPONSE,
+  adultsonly: {
+    is_collection: true,
+    metadata: {
+      identifier: 'adultsonly',
+      title: 'Adults Only',
+      mediatype: 'collection',
+      collection: ['movies'],
+    },
+  },
   solo: { metadata: { identifier: 'solo', title: 'Solo Record', mediatype: 'texts' } },
 };
 
@@ -99,7 +110,9 @@ describe('search', () => {
 
     const url = requestUrl(stub);
 
-    expect(url.searchParams.get('q')).toBe('(vampire) AND -mediatype:collection');
+    expect(url.searchParams.get('q')).toBe(
+      '(vampire) AND -mediatype:collection AND -collection:adultsonly',
+    );
     expect(url.searchParams.get('page')).toBe('1');
     expect(url.searchParams.get('rows')).toBe('24');
   });
@@ -129,7 +142,7 @@ describe('search', () => {
     await provider.search('mediatype:movies AND (x)');
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      '(mediatype\\:movies AND \\(x\\)) AND -mediatype:collection',
+      '(mediatype\\:movies AND \\(x\\)) AND -mediatype:collection AND -collection:adultsonly',
     );
   });
 
@@ -139,7 +152,7 @@ describe('search', () => {
     await provider.search('cats OR dogs', { contentTypes: ['book', 'audio'] });
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      '(cats OR dogs) AND mediatype:(texts OR audio OR etree) AND -mediatype:collection',
+      '(cats OR dogs) AND mediatype:(texts OR audio OR etree) AND -mediatype:collection AND -collection:adultsonly',
     );
   });
 
@@ -149,7 +162,7 @@ describe('search', () => {
     await provider.search('   ', { contentTypes: ['movie'] });
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      'mediatype:(movies) AND -mediatype:collection',
+      'mediatype:(movies) AND -mediatype:collection AND -collection:adultsonly',
     );
   });
 
@@ -158,7 +171,9 @@ describe('search', () => {
 
     const result = await provider.search('vampire', { contentTypes: ['collection'] });
 
-    expect(requestUrl(stub).searchParams.get('q')).toBe('(vampire) AND mediatype:(collection)');
+    expect(requestUrl(stub).searchParams.get('q')).toBe(
+      '(vampire) AND mediatype:(collection) AND -collection:adultsonly AND -identifier:adultsonly',
+    );
     expect(result.items.map((item) => item.id)).toContain('SciFi_Horror');
   });
 
@@ -329,7 +344,9 @@ describe('collections', () => {
 
     const url = requestUrl(stub);
 
-    expect(url.searchParams.get('q')).toBe('mediatype:collection AND collection:movies');
+    expect(url.searchParams.get('q')).toBe(
+      'mediatype:collection AND collection:movies AND -collection:adultsonly AND -identifier:adultsonly',
+    );
     expect(url.searchParams.getAll('sort[]')).toEqual(['downloads desc']);
   });
 
@@ -351,7 +368,9 @@ describe('collections', () => {
 
     const url = requestUrl(stub);
 
-    expect(url.searchParams.get('q')).toBe('(film) AND mediatype:collection AND collection:movies');
+    expect(url.searchParams.get('q')).toBe(
+      '(film) AND mediatype:collection AND collection:movies AND -collection:adultsonly AND -identifier:adultsonly',
+    );
     expect(url.searchParams.getAll('sort[]')).toEqual(['titleSorter asc']);
   });
 
@@ -423,7 +442,7 @@ describe('collections', () => {
     expect(result).toMatchObject({ page: 1, total: 2 });
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      'mediatype:collection AND collection:softwarelibrary',
+      'mediatype:collection AND collection:softwarelibrary AND -collection:adultsonly AND -identifier:adultsonly',
     );
   });
 
@@ -470,7 +489,9 @@ describe('collections', () => {
 
       if (parsed.pathname === '/advancedsearch.php') {
         expect(parsed.searchParams.get('rows')).toBe('0');
-        expect(parsed.searchParams.get('q')).toBe('collection:feature_films');
+        expect(parsed.searchParams.get('q')).toBe(
+          'collection:feature_films AND -collection:adultsonly',
+        );
 
         return jsonResponse(COUNT_RESPONSE);
       }
@@ -529,7 +550,9 @@ describe('collections', () => {
 
     const url = requestUrl(stub);
 
-    expect(url.searchParams.get('q')).toBe('collection:feature_films AND -mediatype:collection');
+    expect(url.searchParams.get('q')).toBe(
+      'collection:feature_films AND -mediatype:collection AND -collection:adultsonly',
+    );
     expect(url.searchParams.getAll('sort[]')).toEqual(['downloads desc']);
     expect(url.searchParams.get('rows')).toBe('12');
   });
@@ -549,7 +572,7 @@ describe('collections', () => {
 
     // The user text stays inside its own group, so `OR` cannot widen the collection clause.
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      '(vampire OR \\(bat\\)) AND collection:feature_films AND -mediatype:collection',
+      '(vampire OR \\(bat\\)) AND collection:feature_films AND -mediatype:collection AND -collection:adultsonly',
     );
   });
 
@@ -559,7 +582,7 @@ describe('collections', () => {
     await provider.getCollectionItems('feature_films', { contentTypes: ['movie', 'document'] });
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      'collection:feature_films AND -mediatype:collection AND mediatype:(movies OR texts)',
+      'collection:feature_films AND -mediatype:collection AND mediatype:(movies OR texts) AND -collection:adultsonly',
     );
   });
 
@@ -569,7 +592,7 @@ describe('collections', () => {
     await provider.getCollectionItems('feature_films', { query: '   ' });
 
     expect(requestUrl(stub).searchParams.get('q')).toBe(
-      'collection:feature_films AND -mediatype:collection',
+      'collection:feature_films AND -mediatype:collection AND -collection:adultsonly',
     );
   });
 });
@@ -658,7 +681,9 @@ describe('related items', () => {
 
     const url = requestUrl(stub, 1);
 
-    expect(url.searchParams.get('q')).toBe('(collection:feature_films) AND -mediatype:collection');
+    expect(url.searchParams.get('q')).toBe(
+      '(collection:feature_films) AND -mediatype:collection AND -collection:adultsonly',
+    );
     expect(url.searchParams.get('rows')).toBe(String(ARCHIVE_RELATED_LIMIT + 1));
   });
 
@@ -779,5 +804,15 @@ describe('download urls', () => {
     // The blank identifier is rejected without touching the network; the others each need to
     // inspect the item's files.
     expect(stub.requests).toHaveLength(4);
+  });
+});
+
+describe('adult isolation', () => {
+  it('does not return adults-only items or the adults-only collection', async () => {
+    const { provider } = createRoutedProvider();
+
+    await expect(provider.getItem('adult_example')).rejects.toMatchObject({ kind: 'not-found' });
+    await expect(provider.getCollection('adultsonly')).rejects.toMatchObject({ kind: 'not-found' });
+    await expect(provider.getDownloadUrl('adult_example', 'clip.mp4')).resolves.toBeNull();
   });
 });

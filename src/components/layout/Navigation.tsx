@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { getVisibleProviders } from '../../config/providers';
 import { useSession } from '../../data/SessionContext';
+import { listNavigableProviders } from '../../personalization/adultAccess';
 import { cx } from '../../utils/cx';
 import { buildFavoritesPath, buildProviderPath } from '../../utils/links';
 import { StarIcon } from '../ui/icons';
@@ -23,8 +24,7 @@ function navLinkClassName({ isActive }: { isActive: boolean }): string {
  */
 export function Navigation() {
   const session = useSession();
-  const disabled = new Set(session.preferences.disabledProviderIds);
-  const providers = getVisibleProviders().filter((provider) => !disabled.has(provider.id));
+  const providers = listNavigableProviders(getVisibleProviders(), session.preferences);
 
   return (
     <header className={styles.header}>

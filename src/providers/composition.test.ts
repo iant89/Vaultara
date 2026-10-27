@@ -32,7 +32,9 @@ describe('provider composition root', () => {
     const result = await runtime.gateway.search('archive', 'vampire');
 
     expect(result.items.length).toBeGreaterThan(0);
-    expect(requestUrl(stub).searchParams.get('q')).toBe('(vampire) AND -mediatype:collection');
+    expect(requestUrl(stub).searchParams.get('q')).toBe(
+      '(vampire) AND -mediatype:collection AND -collection:adultsonly',
+    );
   });
 
   it('builds exactly one factory per default provider', () => {
@@ -40,6 +42,13 @@ describe('provider composition root', () => {
     const ids = factories.map((factory) => factory().id);
 
     expect(ids).toEqual(['archive', 'wikipedia']);
+  });
+
+  it('registers Adult only when the deploy flag is on', () => {
+    const runtime = createProviderRuntime({ adultEnabled: true });
+
+    expect(runtime.registry.ids()).toEqual(['archive', 'wikipedia', 'adult']);
+    expect(runtime.registry.get('adult')?.getCapabilities().adultContent).toBe(true);
   });
 
   it('accepts a replacement provider set', async () => {

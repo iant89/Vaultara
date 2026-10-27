@@ -15,6 +15,23 @@ describe('normalizePreferences', () => {
       historyTrackingEnabled: false,
       hideExploredFromDiscovery: true,
       onboardingCompleted: false,
+      adultAgeConfirmed: false,
+      adultOptIn: false,
+      hideAdultInSharedLists: true,
+    });
+  });
+
+  it('keeps Adult access flags from a stored document', () => {
+    expect(
+      normalizePreferences({
+        adultAgeConfirmed: true,
+        adultOptIn: true,
+        hideAdultInSharedLists: false,
+      }),
+    ).toMatchObject({
+      adultAgeConfirmed: true,
+      adultOptIn: true,
+      hideAdultInSharedLists: false,
     });
   });
 

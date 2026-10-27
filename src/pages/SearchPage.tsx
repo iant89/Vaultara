@@ -17,6 +17,7 @@ import { useProviderServices } from '../data/ProviderServices';
 import { useSession } from '../data/SessionContext';
 import { progressiveState, useProgressiveList } from '../data/useProgressiveList';
 import { formatCanonicalId } from '../models/identity';
+import { isAdultContentAccessible, isAdultProviderId } from '../personalization/adultAccess';
 import { recordRecentSearch, readRecentSearches } from '../personalization/recentSearches';
 import {
   contentTypesForSearch,
@@ -45,7 +46,9 @@ export function SearchPage() {
   const categoryId = parseSearchCategoryParam(searchParams.get('category'));
   const providerFilter = searchParams.get('provider')?.trim() || undefined;
 
-  const searchable = listSearchableProviders(runtime, session.preferences.disabledProviderIds);
+  const searchable = listSearchableProviders(runtime, session.preferences.disabledProviderIds, {
+    includeAdult: isAdultContentAccessible(session.preferences),
+  });
   const providers =
     providerFilter === undefined
       ? searchable
@@ -72,10 +75,10 @@ export function SearchPage() {
   const recents = query === '' ? readRecentSearches() : [];
 
   useEffect(() => {
-    if (query.length > 0) {
+    if (query.length > 0 && !isAdultProviderId(providerFilter ?? '')) {
       recordRecentSearch(query);
     }
-  }, [query]);
+  }, [providerFilter, query]);
 
   function updateParams(changes: Readonly<Record<string, string | undefined>>) {
     setSearchParams(nextSearchParams(searchParams, changes));

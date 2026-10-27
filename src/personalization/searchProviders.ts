@@ -10,6 +10,7 @@ import { getProviderName } from '../config/providers';
 import { getDeclaredContentTypes, providerSupports } from '../data/providerCapabilities';
 import type { ContentType } from '../models/content';
 import type { ProviderRuntime } from '../providers/composition';
+import { isAdultProviderId } from './adultAccess';
 
 export interface SearchableProvider {
   readonly id: string;
@@ -19,14 +20,23 @@ export interface SearchableProvider {
 export function listSearchableProviders(
   runtime: ProviderRuntime,
   disabledProviderIds: readonly string[] = [],
+  options: { readonly includeAdult?: boolean } = {},
 ): readonly SearchableProvider[] {
   const disabled = new Set(disabledProviderIds);
 
   return runtime.registry
     .listEnabled()
-    .filter(
-      (provider) => !disabled.has(provider.id) && providerSupports(runtime, provider.id, 'search'),
-    )
+    .filter((provider) => {
+      if (disabled.has(provider.id) || !providerSupports(runtime, provider.id, 'search')) {
+        return false;
+      }
+
+      if (isAdultProviderId(provider.id) && options.includeAdult !== true) {
+        return false;
+      }
+
+      return true;
+    })
     .map((provider) => ({ id: provider.id, name: getProviderName(provider.id) }));
 }
 

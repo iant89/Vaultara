@@ -8,8 +8,13 @@
  *
  * Requests are deliberately small: metadata and search only. No media is downloaded to render an
  * item — artwork and downloads are URLs the browser resolves itself (design spec 11.4).
+ *
+ * The Adult provider (design spec 13) reuses this adapter with a different identity and a
+ * required-collection allowlist. Ordinary Archive browsing excludes that collection so Adult
+ * items cannot leak into Archive discovery.
  */
 
+import { ADULT_ARCHIVE_COLLECTION_ID } from '../../config/adult';
 import type {
   ContentCategory,
   ContentCollection,
@@ -38,6 +43,7 @@ import {
   ARCHIVE_CATEGORIES,
   findArchiveCategory,
   findArchiveCategoryByCollection,
+  type ArchiveCategoryDefinition,
 } from './catalog';
 import {
   ARCHIVE_PROVIDER_ID,
@@ -101,6 +107,12 @@ const COLLECTION_DOCUMENT_FIELDS: readonly string[] = [
   'subject',
 ];
 
+export interface ArchiveProviderIdentity {
+  readonly id: string;
+  readonly name: string;
+  readonly adultContent: boolean;
+}
+
 export interface ArchiveProviderOptions {
   /** Overrides the API base, e.g. for a proxy. */
   readonly host?: string;
@@ -108,21 +120,41 @@ export interface ArchiveProviderOptions {
   readonly fetchImpl?: Fetcher;
   /** Pre-built API client, which takes precedence over `host` and `fetchImpl`. */
   readonly api?: ArchiveApi;
+  /**
+   * Presentation identity. The Adult provider reuses this adapter with a different id so a
+   * failure there cannot be blamed on ordinary Archive browsing.
+   */
+  readonly identity?: ArchiveProviderIdentity;
+  /** Every result must belong to at least one of these Archive collections. */
+  readonly requiredCollectionIds?: readonly string[];
+  /**
+   * Collections ordinary Archive browsing must never return. Defaults to the adults-only
+   * collection unless the caller already supplied a required-collection allowlist.
+   */
+  readonly excludedCollectionIds?: readonly string[];
+  /** Category catalogue; Adult supplies a narrower media-type list. */
+  readonly categories?: readonly ArchiveCategoryDefinition[];
 }
 
-function cancelledError(signal: AbortSignal | undefined): ReturnType<typeof createAppError> {
+function cancelledError(
+  signal: AbortSignal | undefined,
+  providerId: string,
+): ReturnType<typeof createAppError> {
   return createAppError('cancelled', 'The request was cancelled.', {
-    providerId: ARCHIVE_PROVIDER_ID,
+    providerId,
     ...(signal?.reason !== undefined ? { cause: signal.reason } : {}),
   });
 }
 
-function invalidResponseError(message: string): ReturnType<typeof createAppError> {
-  return createAppError('invalid-response', message, { providerId: ARCHIVE_PROVIDER_ID });
+function invalidResponseError(
+  message: string,
+  providerId: string,
+): ReturnType<typeof createAppError> {
+  return createAppError('invalid-response', message, { providerId });
 }
 
-function notFoundError(message: string): ReturnType<typeof createAppError> {
-  return createAppError('not-found', message, { providerId: ARCHIVE_PROVIDER_ID });
+function notFoundError(message: string, providerId: string): ReturnType<typeof createAppError> {
+  return createAppError('not-found', message, { providerId });
 }
 
 function emptyPage<T>(page: number, pageSize: number): PaginatedResult<T> {
@@ -130,11 +162,14 @@ function emptyPage<T>(page: number, pageSize: number): PaginatedResult<T> {
 }
 
 /** A search body without a `docs` array is a provider defect, not an empty result. */
-function readDocuments(response: ArchiveSearchResponse): readonly Record<string, unknown>[] {
+function readDocuments(
+  response: ArchiveSearchResponse,
+  providerId: string,
+): readonly Record<string, unknown>[] {
   const docs = response.response?.docs;
 
   if (!Array.isArray(docs)) {
-    throw invalidResponseError('The search response did not contain a document list.');
+    throw invalidResponseError('The search response did not contain a document list.', providerId);
   }
 
   const documents: Record<string, unknown>[] = [];
@@ -163,18 +198,31 @@ function readTotal(response: ArchiveSearchResponse): number | undefined {
 }
 
 export class ArchiveProvider implements ContentProvider {
-  readonly id = ARCHIVE_PROVIDER_ID;
-  readonly name = 'Internet Archive';
+  readonly id: string;
+  readonly name: string;
   readonly version = '1.0.0';
 
   private readonly api: ArchiveApi;
+  private readonly adultContent: boolean;
+  private readonly requiredCollectionIds: readonly string[];
+  private readonly excludedCollectionIds: readonly string[];
+  private readonly categoryCatalog: readonly ArchiveCategoryDefinition[];
 
   constructor(options: ArchiveProviderOptions = {}) {
+    this.id = options.identity?.id ?? ARCHIVE_PROVIDER_ID;
+    this.name = options.identity?.name ?? 'Internet Archive';
+    this.adultContent = options.identity?.adultContent ?? false;
+    this.requiredCollectionIds = options.requiredCollectionIds ?? [];
+    this.excludedCollectionIds =
+      options.excludedCollectionIds ??
+      (this.requiredCollectionIds.length > 0 ? [] : [ADULT_ARCHIVE_COLLECTION_ID]);
+    this.categoryCatalog = options.categories ?? ARCHIVE_CATEGORIES;
     this.api =
       options.api ??
       new ArchiveApi({
         ...(options.host !== undefined ? { host: options.host } : {}),
         ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
+        providerId: this.id,
       });
   }
 
@@ -193,7 +241,7 @@ export class ArchiveProvider implements ContentProvider {
       // a later phase (roadmap Phase 8).
       streaming: false,
       pagination: true,
-      adultContent: false,
+      adultContent: this.adultContent,
       // Only families this adapter actually emits — `texts` maps to `document`, so `book` and
       // `video` are absent rather than advertised without ever appearing.
       contentTypes: [
@@ -214,8 +262,9 @@ export class ArchiveProvider implements ContentProvider {
    * proves the search endpoint answered, which is what health means here.
    */
   async checkHealth(): Promise<boolean> {
+    const required = this.requiredCollectionIds[0];
     await this.api.search({
-      query: 'identifier:archive',
+      query: required === undefined ? 'identifier:archive' : buildCollectionClause(required),
       page: 1,
       pageSize: 1,
       fields: ['identifier'],
@@ -231,10 +280,10 @@ export class ArchiveProvider implements ContentProvider {
     const text = normalizeText(query);
 
     // An empty query with no filter would ask for the entire Archive; the interface shows an empty
-    // state instead (design spec 5.4).
+    // state instead (design spec 5.4). A required collection (Adult) is itself a filter.
     const mediatypeClause = buildMediatypeClause(options.contentTypes);
 
-    if (text === '' && mediatypeClause === undefined) {
+    if (text === '' && mediatypeClause === undefined && this.requiredCollectionIds.length === 0) {
       return emptyPage<ContentItem>(page, pageSize);
     }
 
@@ -242,12 +291,14 @@ export class ArchiveProvider implements ContentProvider {
       return emptyPage<ContentItem>(page, pageSize);
     }
 
+    const includeCollections = options.contentTypes?.includes('collection') === true;
     const sort = mapSort(options.sort);
     const response = await this.api.search(
       {
         query: buildQuery(text.length > 0 ? escapeLucene(text) : '', [
           mediatypeClause,
           collectionExclusionClause(options.contentTypes),
+          ...(includeCollections ? this.collectionScopeClauses() : this.itemScopeClauses()),
         ]),
         page,
         pageSize,
@@ -257,23 +308,23 @@ export class ArchiveProvider implements ContentProvider {
       this.requestOptions(options),
     );
 
-    return this.toItemPage(response, page, pageSize, {
-      includeCollections: options.contentTypes?.includes('collection') === true,
-    });
+    return this.toItemPage(response, page, pageSize, { includeCollections });
   }
 
   async getCategories(options: ProviderRequestOptions = {}): Promise<readonly ContentCategory[]> {
     this.ensureActive(options.signal);
 
     // The media type list is configuration, so this needs no request. Artwork still comes from
-    // the Archive's thumbnail service on the media type's own collection, and the service answers
-    // with a placeholder rather than a failure for a node without a cover.
-    return ARCHIVE_CATEGORIES.map((category) => ({
+    // the Archive's thumbnail service. Adult categories use the adults-only collection cover so
+    // a Movies shelf cannot show a general-audience poster (design spec 13.3).
+    const artworkId = this.requiredCollectionIds[0];
+
+    return this.categoryCatalog.map((category) => ({
       id: category.id,
       name: category.name,
       description: category.description,
-      artworkUrl: this.api.thumbnailUrl(category.collectionId),
-      providerId: ARCHIVE_PROVIDER_ID,
+      artworkUrl: this.api.thumbnailUrl(artworkId ?? category.collectionId),
+      providerId: this.id,
     }));
   }
 
@@ -291,16 +342,21 @@ export class ArchiveProvider implements ContentProvider {
   ): Promise<PaginatedResult<ContentCollection>> {
     this.ensureActive(options.signal);
 
-    const category = findArchiveCategory(categoryId);
+    const category = findArchiveCategory(categoryId, this.categoryCatalog);
 
     if (category === undefined) {
       throw notFoundError(
         `The Internet Archive category ${JSON.stringify(categoryId)} is not one this app offers.`,
+        this.id,
       );
     }
 
     return this.searchCollections(
-      [COLLECTION_MEDIATYPE_CLAUSE, buildCollectionClause(category.collectionId)],
+      [
+        COLLECTION_MEDIATYPE_CLAUSE,
+        buildCollectionClause(category.collectionId),
+        ...this.collectionScopeClauses(),
+      ],
       { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
       [category.id],
       options,
@@ -320,10 +376,20 @@ export class ArchiveProvider implements ContentProvider {
   ): Promise<PaginatedResult<ContentCollection>> {
     this.ensureActive(options.signal);
 
+    const category = findArchiveCategory(collectionId, this.categoryCatalog);
+
+    if (category !== undefined && this.requiredCollectionIds.length > 0) {
+      return this.getCollections(category.id, options);
+    }
+
     const identifier = this.requireIdentifier(collectionId, 'collection');
 
     return this.searchCollections(
-      [COLLECTION_MEDIATYPE_CLAUSE, buildCollectionClause(identifier)],
+      [
+        COLLECTION_MEDIATYPE_CLAUSE,
+        buildCollectionClause(identifier),
+        ...this.collectionScopeClauses(),
+      ],
       { page: options.page, pageSize: options.pageSize, sort: options.sort, query: options.query },
       [],
       options,
@@ -335,6 +401,27 @@ export class ArchiveProvider implements ContentProvider {
     options: ProviderRequestOptions = {},
   ): Promise<ContentCollection> {
     this.ensureActive(options.signal);
+
+    const category = findArchiveCategory(collectionId, this.categoryCatalog);
+
+    if (category !== undefined && this.requiredCollectionIds.length > 0) {
+      const root = this.requiredCollectionIds[0] ?? ADULT_ARCHIVE_COLLECTION_ID;
+
+      return {
+        id: category.id,
+        title: category.name,
+        description: category.description,
+        providerId: this.id,
+        thumbnailUrl: this.api.thumbnailUrl(root),
+        sourceUrl: this.api.detailsUrl(root),
+        categoryIds: [category.id],
+        metadata: {
+          virtual: true,
+          mediatype: category.mediatype,
+          sourcePage: this.api.detailsUrl(root),
+        },
+      };
+    }
 
     const identifier = this.requireIdentifier(collectionId, 'collection');
     const { response, metadata } = await this.loadItem(identifier, options);
@@ -349,11 +436,13 @@ export class ArchiveProvider implements ContentProvider {
         ...(itemCount !== undefined ? { itemCount } : {}),
       },
       this.api,
+      this.id,
     );
 
     if (collection === undefined) {
       throw notFoundError(
         `The Internet Archive collection ${JSON.stringify(identifier)} has no metadata.`,
+        this.id,
       );
     }
 
@@ -366,20 +455,31 @@ export class ArchiveProvider implements ContentProvider {
   ): Promise<PaginatedResult<ContentItem>> {
     this.ensureActive(options.signal);
 
-    const identifier = this.requireIdentifier(collectionId, 'collection');
     const { page, pageSize } = resolvePaginationOptions(options);
 
     if (calculateOffset(page, pageSize) >= ARCHIVE_MAX_RESULTS) {
       return emptyPage<ContentItem>(page, pageSize);
     }
 
+    const category = findArchiveCategory(collectionId, this.categoryCatalog);
     const text = normalizeText(options.query ?? '');
+    const collectionClause =
+      category !== undefined && this.requiredCollectionIds.length > 0
+        ? undefined
+        : buildCollectionClause(this.requireIdentifier(collectionId, 'collection'));
+    const mediatypeFromCategory =
+      category !== undefined && this.requiredCollectionIds.length > 0
+        ? `mediatype:${escapeLucene(category.mediatype)}`
+        : undefined;
+
     // `-mediatype:collection` is what keeps the list to items: the Archive files ancestors into
     // every item's `collection` field, and a subcollection is an item too.
     const query = buildQuery(text.length > 0 ? escapeLucene(text) : '', [
-      buildCollectionClause(identifier),
+      collectionClause,
+      mediatypeFromCategory,
       EXCLUDE_COLLECTIONS_CLAUSE,
       buildMediatypeClause(options.contentTypes),
+      ...this.itemScopeClauses(),
     ]);
 
     // Most-downloaded first by default: the Archive's relevance order within a collection is
@@ -417,11 +517,13 @@ export class ArchiveProvider implements ContentProvider {
         isCollection: response.is_collection,
       },
       this.api,
+      this.id,
     );
 
     if (item === undefined) {
       throw notFoundError(
         `The Internet Archive item ${JSON.stringify(identifier)} has no identifier.`,
+        this.id,
       );
     }
 
@@ -460,10 +562,14 @@ export class ArchiveProvider implements ContentProvider {
       return emptyPage<ContentItem>(page, pageSize);
     }
 
+    const excluded = new Set(this.excludedCollectionIds.map((id) => id.toLowerCase()));
     const collections = normalizeStringList(metadata['collection'], {
       maxItems: 3,
       maxLength: 120,
-    }).filter((collection) => collection.toLowerCase() !== 'inlibrary');
+    }).filter(
+      (collection) =>
+        collection.toLowerCase() !== 'inlibrary' && !excluded.has(collection.toLowerCase()),
+    );
 
     if (collections.length === 0) {
       return createPaginatedResult<ContentItem>([], { page, pageSize, total: 0 });
@@ -472,7 +578,11 @@ export class ArchiveProvider implements ContentProvider {
     const clause = collections.map((collection) => buildCollectionClause(collection)).join(' OR ');
     const search = await this.api.search(
       {
-        query: buildQuery('', [`(${clause})`, EXCLUDE_COLLECTIONS_CLAUSE]),
+        query: buildQuery('', [
+          `(${clause})`,
+          EXCLUDE_COLLECTIONS_CLAUSE,
+          ...this.itemScopeClauses(),
+        ]),
         page,
         pageSize: pageSize + 1,
         sort: 'downloads desc',
@@ -483,17 +593,21 @@ export class ArchiveProvider implements ContentProvider {
 
     const related: ContentItem[] = [];
 
-    for (const document of readDocuments(search)) {
+    for (const document of readDocuments(search, this.id)) {
       const documentId = readIdentifier(document);
 
       if (documentId === '' || documentId === identifier) {
         continue;
       }
 
-      const item = mapItem({ metadata: document }, this.api);
+      const item = mapItem({ metadata: document }, this.api, this.id);
 
       // A sibling collection is not related *content*; it belongs on a collection shelf.
-      if (item === undefined || item.type === 'collection') {
+      if (
+        item === undefined ||
+        item.type === 'collection' ||
+        !this.membershipAllows(item.id, document)
+      ) {
         continue;
       }
 
@@ -530,7 +644,7 @@ export class ArchiveProvider implements ContentProvider {
 
     // An item existing does not imply its files are usable (design spec 11.3): the access state
     // travels with each file so a restricted scan can still be listed with its restriction shown.
-    return mapFiles(response.files, identifier, access, this.api);
+    return mapFiles(response.files, identifier, access, this.api, this.id);
   }
 
   /**
@@ -562,6 +676,11 @@ export class ArchiveProvider implements ContentProvider {
     }
 
     const metadata = readMetadataRecord(response.metadata) ?? {};
+
+    if (!this.membershipAllows(identifier, metadata)) {
+      return null;
+    }
+
     const access = readItemAccess(metadata, {
       isDark: response.is_dark,
       noDownload: response.nodownload,
@@ -586,7 +705,7 @@ export class ArchiveProvider implements ContentProvider {
 
   private ensureActive(signal: AbortSignal | undefined): void {
     if (signal?.aborted === true) {
-      throw cancelledError(signal);
+      throw cancelledError(signal, this.id);
     }
   }
 
@@ -602,10 +721,53 @@ export class ArchiveProvider implements ContentProvider {
     const identifier = normalizeText(value);
 
     if (identifier === '') {
-      throw notFoundError(`An Internet Archive ${kind} identifier is required.`);
+      throw notFoundError(`An Internet Archive ${kind} identifier is required.`, this.id);
     }
 
     return identifier;
+  }
+
+  private itemScopeClauses(): string[] {
+    const clauses: string[] = [];
+
+    if (this.requiredCollectionIds.length === 1) {
+      const [required] = this.requiredCollectionIds;
+      clauses.push(buildCollectionClause(required ?? ''));
+    } else if (this.requiredCollectionIds.length > 1) {
+      clauses.push(
+        `(${this.requiredCollectionIds.map((id) => buildCollectionClause(id)).join(' OR ')})`,
+      );
+    }
+
+    for (const id of this.excludedCollectionIds) {
+      clauses.push(`-collection:${escapeLucene(id)}`);
+    }
+
+    return clauses;
+  }
+
+  private collectionScopeClauses(): string[] {
+    return [
+      ...this.itemScopeClauses(),
+      ...this.excludedCollectionIds.map((id) => `-identifier:${escapeLucene(id)}`),
+    ];
+  }
+
+  private membershipAllows(identifier: string, metadata: Record<string, unknown>): boolean {
+    const collections = normalizeStringList(metadata['collection'], {
+      maxItems: 64,
+      maxLength: 120,
+    });
+    const names = new Set([identifier, ...collections].map((value) => value.toLowerCase()));
+
+    if (
+      this.requiredCollectionIds.length > 0 &&
+      !this.requiredCollectionIds.some((id) => names.has(id.toLowerCase()))
+    ) {
+      return false;
+    }
+
+    return !this.excludedCollectionIds.some((id) => names.has(id.toLowerCase()));
   }
 
   /**
@@ -626,12 +788,23 @@ export class ArchiveProvider implements ContentProvider {
     const metadata = readMetadataRecord(response.metadata);
 
     if (metadata === undefined) {
-      throw notFoundError(`The Internet Archive item ${JSON.stringify(identifier)} was not found.`);
+      throw notFoundError(
+        `The Internet Archive item ${JSON.stringify(identifier)} was not found.`,
+        this.id,
+      );
     }
 
     if (response.is_dark === true) {
       throw notFoundError(
         `The Internet Archive item ${JSON.stringify(identifier)} is not publicly available.`,
+        this.id,
+      );
+    }
+
+    if (!this.membershipAllows(identifier, metadata)) {
+      throw notFoundError(
+        `The Internet Archive item ${JSON.stringify(identifier)} is not available from this provider.`,
+        this.id,
       );
     }
 
@@ -643,7 +816,10 @@ export class ArchiveProvider implements ContentProvider {
     options: ProviderRequestOptions,
   ): Promise<number | undefined> {
     try {
-      return await this.api.count(buildCollectionClause(identifier), this.requestOptions(options));
+      return await this.api.count(
+        buildQuery('', [buildCollectionClause(identifier), ...this.itemScopeClauses()]),
+        this.requestOptions(options),
+      );
     } catch (error) {
       if (isCancelled(error)) {
         throw error;
@@ -691,7 +867,7 @@ export class ArchiveProvider implements ContentProvider {
 
     const collections: ContentCollection[] = [];
 
-    for (const document of readDocuments(response)) {
+    for (const document of readDocuments(response, this.id)) {
       // The search already asked for containers. Extra `collection` memberships (community
       // media, fav-* lists, sibling collections) are not a parent-child tree — dropping a
       // document because of them emptied live category pages.
@@ -699,10 +875,17 @@ export class ArchiveProvider implements ContentProvider {
         continue;
       }
 
+      const documentId = readIdentifier(document);
+
+      if (documentId === '' || !this.membershipAllows(documentId, document)) {
+        continue;
+      }
+
       const categoryIds = this.categoriesFor(document, fallbackCategoryIds);
       const collection = mapCollection(
         { metadata: document, categoryIds, isCollection: true },
         this.api,
+        this.id,
       );
 
       if (collection !== undefined) {
@@ -733,7 +916,7 @@ export class ArchiveProvider implements ContentProvider {
   ): readonly string[] {
     const ancestors = normalizeStringList(metadata['collection'], { maxItems: 24, maxLength: 80 });
     const matched = ancestors
-      .map((ancestor) => findArchiveCategoryByCollection(ancestor)?.id)
+      .map((ancestor) => findArchiveCategoryByCollection(ancestor, this.categoryCatalog)?.id)
       .filter((id): id is string => id !== undefined);
 
     return matched.length > 0 ? [...new Set(matched)] : fallback;
@@ -746,10 +929,15 @@ export class ArchiveProvider implements ContentProvider {
     options: { readonly includeCollections?: boolean } = {},
   ): PaginatedResult<ContentItem> {
     const includeCollections = options.includeCollections === true;
-    const items = readDocuments(response)
-      .map((document) => mapItem({ metadata: document }, this.api))
+    const items = readDocuments(response, this.id)
+      .map((document) => mapItem({ metadata: document }, this.api, this.id))
       .filter((item): item is ContentItem => item !== undefined)
-      .filter((item) => includeCollections || item.type !== 'collection');
+      .filter((item) => includeCollections || item.type !== 'collection')
+      .filter((item) =>
+        this.membershipAllows(item.id, {
+          collection: item.metadata['collections'] ?? item.categories,
+        }),
+      );
     const total = readTotal(response);
 
     return createPaginatedResult(items, {

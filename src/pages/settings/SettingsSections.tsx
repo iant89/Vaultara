@@ -1,8 +1,8 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import { NotYetImplemented } from '../../components/feedback/NotYetImplemented';
 import { AccountPanel } from './AccountForms';
 import { CategoryPreferences } from './CategoryPreferences';
+import { ContentVisibility } from './ContentVisibility';
 import { PrivacyControls } from './PrivacyControls';
 import { ProviderSettings } from './ProviderSettings';
 import styles from './Settings.module.css';
@@ -59,11 +59,7 @@ export function SettingsPrivacySection() {
 export function SettingsContentSection() {
   return (
     <SettingsSection heading="Content visibility">
-      <NotYetImplemented
-        feature="Content visibility settings"
-        summary="Controls that keep Adult content out of ordinary discovery and hide it in shared contexts such as the favourites list."
-        plannedPhase="Phase 16"
-      />
+      <ContentVisibility />
     </SettingsSection>
   );
 }
